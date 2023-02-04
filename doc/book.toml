@@ -1,0 +1,6 @@
+[book]
+authors = ["Ahmed Farghal"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Cronback Internal Docs"
