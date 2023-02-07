@@ -5,3 +5,4 @@
 - [API](./api.md)
   - [Triggers](./triggers.md)
 - [Security](./security.md)
+- [Ideas](./ideas.md)

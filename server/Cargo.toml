@@ -10,5 +10,13 @@ shared = { path = "../shared" }
 scheduler = { path = "../scheduler" }
 dispatcher = { path = "../dispatcher" }
 api = { path = "../api" }
-config-rs = "0.1.3"
-chrono = "0.4.23"
+chrono = "0.4"
+config = { version = "0.13", features = ["toml"] }
+clap = { version = "4", features = ["color", "derive"] }
+serde = "1"
+thiserror = "1"
+anyhow = "1.0.69"
+tokio = { version = "1", features = ["full"] }
+colored = "2.0"
+tracing = { version = "0.1", features = ["log"] }
+tracing-subscriber = { version = "0.3" }

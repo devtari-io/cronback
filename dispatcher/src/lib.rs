@@ -1,14 +1,12 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+use anyhow::Result;
+use shared::config::CoreConfig;
+use tokio::time::{sleep, Duration};
+use tracing::*;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+pub async fn start_dispatcher(_config: CoreConfig) -> Result<()> {
+    for i in 1..3 {
+        info!("-> {}", i);
+        sleep(Duration::from_secs(1)).await;
     }
+    Ok(())
 }

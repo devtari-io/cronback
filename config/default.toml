@@ -1,0 +1,8 @@
+roles = ["api", "dispatcher", "scheduler"]
+
+[api]
+port = 9888
+
+[dispatcher]
+
+[scheduler]
