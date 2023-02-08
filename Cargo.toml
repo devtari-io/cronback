@@ -3,7 +3,16 @@
 members = [
   "api",
   "shared",
+  "proto",
   "scheduler",
   "server",
   "dispatcher",
 ]
+
+[profile.release]
+lto = "thin"
+strip = "debuginfo"
+
+[profile.release-lto]
+inherits = "release"
+lto = true

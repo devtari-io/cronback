@@ -4,3 +4,10 @@ Allows developers to schedule webhooks on-demand, with backoff, or on a cron rec
 
 # Documentation
 Documentation (/doc) is created with `mdbook`. Make sure that you have `cargo install mdbook`.
+
+
+# Build
+Install protobuf
+```
+brew install protobuf
+```

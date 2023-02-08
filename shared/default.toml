@@ -1,0 +1,17 @@
+[main]
+roles = ["api", "dispatcher", "scheduler"]
+
+[api]
+# Localhost only by default
+address = "::1"
+port = 8888
+
+[dispatcher]
+# Localhost only by default
+address = "::1"
+port = 9999
+
+[scheduler]
+# Localhost only by default
+address = "::1"
+port = 9811

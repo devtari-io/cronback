@@ -1,3 +1,0 @@
-roles = ["api", "scheduler", "dispatcher"]
-[api]
-port = "9090"

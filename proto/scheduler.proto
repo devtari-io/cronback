@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package scheduler_proto;
+
+service Scheduler {
+  rpc Echo (EchoRequest) returns (EchoResponse);
+}
+
+message EchoRequest {
+  string name = 1;
+}
+
+message EchoResponse {
+  string name = 1;
+}
