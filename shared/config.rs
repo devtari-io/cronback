@@ -27,12 +27,14 @@ pub struct MainConfig {
 pub struct DispatcherConfig {
     pub address: String,
     pub port: u16,
+    pub request_processing_timeout_s: u64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct SchedulerConfig {
     pub address: String,
     pub port: u16,
+    pub request_processing_timeout_s: u64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -56,6 +58,7 @@ pub struct Config {
     pub scheduler: SchedulerConfig,
 }
 
+#[derive(Debug)]
 pub struct ConfigLoader {
     builder: ConfigBuilder<DefaultState>,
 }

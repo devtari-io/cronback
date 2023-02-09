@@ -1,12 +1,12 @@
+mod handler;
+
+use shared::rpc_middleware::TelemetryMiddleware;
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::Result;
-use metrics::increment_counter;
-use proto::scheduler_proto::{
-    scheduler_server::{Scheduler, SchedulerServer},
-    EchoRequest, EchoResponse,
-};
-use tonic::{transport::Server, Request, Response, Status};
+use proto::scheduler_proto::scheduler_server::SchedulerServer;
+use tonic::transport::Server;
 use tracing::info;
 
 use shared::config::ConfigLoader;
@@ -14,29 +14,28 @@ use shared::netutils;
 
 pub async fn start_scheduler(config_loader: Arc<ConfigLoader>) -> Result<()> {
     let config = config_loader.load()?;
-    let addr = netutils::parse_addr(config.scheduler.address, config.scheduler.port)?;
+    let addr = netutils::parse_addr(&config.scheduler.address, config.scheduler.port)?;
+    let handler = handler::SchedulerAPIHandler {
+        config_loader: config_loader.clone(),
+    };
+    let svc = SchedulerServer::new(handler);
+
+    // The stack of middleware that our service will be wrapped in
+    let telemetry_middleware = tower::ServiceBuilder::new()
+        // Apply our own middleware
+        .layer(TelemetryMiddleware::new("scheduler"))
+        .into_inner();
+
+    // grpc server
     info!("Starting Scheduler on {:?}", addr);
     Server::builder()
-        .add_service(SchedulerServer::new(MyEcho::default()))
+        .timeout(Duration::from_secs(
+            config.scheduler.request_processing_timeout_s,
+        ))
+        .layer(telemetry_middleware)
+        .add_service(svc)
         .serve(addr)
         .await?;
 
     Ok(())
-}
-
-#[derive(Debug, Default)]
-pub struct MyEcho {}
-
-#[tonic::async_trait]
-impl Scheduler for MyEcho {
-    async fn echo(&self, request: Request<EchoRequest>) -> Result<Response<EchoResponse>, Status> {
-        println!("Got a request: {request:?}");
-        increment_counter!("cronback.scheduler.rpc_request_total");
-
-        let reply = EchoResponse {
-            name: format!("Hello {}!", request.into_inner().name),
-        };
-
-        Ok(Response::new(reply))
-    }
 }

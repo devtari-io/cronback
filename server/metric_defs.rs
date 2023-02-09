@@ -1,12 +1,15 @@
-use metrics::{describe_counter, describe_histogram};
+use metrics::{describe_counter, describe_histogram, Unit};
 
+/// Optional but adds description/help message to the metrics emitted to metric sink.
 pub(crate) fn install_metrics() {
     describe_counter!(
-        "cronback.scheduler.rpc_request_total",
+        "cronback.rpc.requests_total",
+        Unit::Count,
         "Total RPC requests processed"
     );
     describe_histogram!(
-        "cronback.scheduler.rpc_total_latency_ms",
-        "Total latency of RPC processing in millis"
+        "cronback.rpc.duration_seconds",
+        Unit::Seconds,
+        "Total latency of RPC processing in seconds"
     );
 }

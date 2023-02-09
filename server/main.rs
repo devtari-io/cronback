@@ -23,9 +23,9 @@ async fn main() -> Result<()> {
     let opts = cli::CliOpts::parse();
 
     let sub = FmtSubscriber::builder()
-        //        .pretty()
+        .pretty()
         .with_thread_names(true)
-        // TODO: Configure logging
+        // TODO: Configure logging from command line
         .with_max_level(tracing::Level::INFO)
         .finish();
     tracing::subscriber::set_global_default(sub)?;
@@ -44,7 +44,7 @@ async fn main() -> Result<()> {
     info!("Prometheus HTTP listener on {:?}", prometheus_sockaddr);
     builder
         .idle_timeout(
-            MetricKindMask::COUNTER | MetricKindMask::HISTOGRAM,
+            MetricKindMask::HISTOGRAM,
             // Remove a metric from registry if it was not updated for 2 minutes.
             Some(Duration::from_secs(120)),
         )

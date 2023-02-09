@@ -16,3 +16,9 @@ uuid = { version = "1.2", features = ["v4"] }
 serde = { version = "1.0", features = ["derive"] }
 valuable = { version = "0.1.0", features = ["derive"] }
 anyhow = "1.0.69"
+metrics = "0.20"
+tower = { version = "0.4.13", features = ["full"] }
+hyper = "0.14.24"
+tonic = "0.8.3"
+futures = "0.3.26"
+tracing = { version = "0.1", features = ["log"] }
