@@ -13,7 +13,7 @@ use shared::netutils;
 
 pub async fn start_dispatcher(config_loader: Arc<ConfigLoader>) -> Result<()> {
     let config = config_loader.load()?;
-    let addr = netutils::parse_addr(&config.dispatcher.address, config.dispatcher.port)?;
+    let addr = netutils::parse_addr(config.dispatcher.address, config.dispatcher.port)?;
     info!("Starting Dispatcher on {:?}", addr);
     Server::builder()
         .add_service(DispatcherServer::new(MyEcho::default()))

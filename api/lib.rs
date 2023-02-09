@@ -10,7 +10,7 @@ use axum::{routing::get, Router};
 pub async fn start_api_server(config_loader: Arc<ConfigLoader>) -> Result<()> {
     // _almost_ guaranteed to succeed!
     let config = config_loader.load()?;
-    let addr = netutils::parse_addr(&config.api.address, config.api.port)?;
+    let addr = netutils::parse_addr(config.api.address, config.api.port)?;
     info!("API server listening on {:?}", addr);
 
     // build our application with a route

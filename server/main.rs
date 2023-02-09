@@ -1,11 +1,18 @@
 mod cli;
+mod metric_defs;
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::Result;
 use clap::Parser;
 use colored::Colorize;
-use shared::config::{ConfigLoader, Role};
+use metrics_exporter_prometheus::PrometheusBuilder;
+use metrics_util::MetricKindMask;
+use shared::{
+    config::{ConfigLoader, Role},
+    netutils::parse_addr,
+};
 use tokio::task::JoinSet;
 use tracing::{info, trace, warn};
 use tracing_subscriber::FmtSubscriber;
@@ -30,6 +37,24 @@ async fn main() -> Result<()> {
     // Load initial configuration
     let config = config_loader.load()?;
 
+    // Configure Metric Exporter
+    let prometheus_sockaddr =
+        parse_addr(config.main.prometheus_address, config.main.prometheus_port)?;
+    let builder = PrometheusBuilder::new();
+    info!("Prometheus HTTP listener on {:?}", prometheus_sockaddr);
+    builder
+        .idle_timeout(
+            MetricKindMask::COUNTER | MetricKindMask::HISTOGRAM,
+            // Remove a metric from registry if it was not updated for 2 minutes.
+            Some(Duration::from_secs(120)),
+        )
+        .with_http_listener(prometheus_sockaddr)
+        .install()
+        .expect("failed to install Prometheus recorder");
+    // Install metric definitions
+    metric_defs::install_metrics();
+
+    // Init services
     let mut services = JoinSet::new();
     for role in config.main.roles {
         info!(role = role.as_value(), "Starting service");

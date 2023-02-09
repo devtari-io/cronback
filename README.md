@@ -11,3 +11,14 @@ Install protobuf
 ```
 brew install protobuf
 ```
+
+# Run
+```
+cargo run -- -c <config-file>
+```
+
+# Prometheus
+
+```
+curl http://localhost:9000/metrics
+```

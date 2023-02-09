@@ -1,12 +1,12 @@
 use anyhow::Result;
-use std::net::{IpAddr, Ipv6Addr, SocketAddr};
+use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
 
-pub fn parse_addr(address: &Option<String>, port: u16) -> Result<SocketAddr> {
-    let addr = match address {
-        Some(addr) => IpAddr::from_str(addr)?,
-        _ => IpAddr::V6(Ipv6Addr::UNSPECIFIED),
-    };
+pub fn parse_addr<A>(address: A, port: u16) -> Result<SocketAddr>
+where
+    A: AsRef<str>,
+{
+    let addr = IpAddr::from_str(address.as_ref())?;
 
     Ok(SocketAddr::from((addr, port)))
 }

@@ -19,23 +19,25 @@ pub enum Role {
 #[derive(Debug, Clone, Deserialize)]
 pub struct MainConfig {
     pub roles: HashSet<Role>,
+    pub prometheus_address: String,
+    pub prometheus_port: u16,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct DispatcherConfig {
-    pub address: Option<String>,
+    pub address: String,
     pub port: u16,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct SchedulerConfig {
-    pub address: Option<String>,
+    pub address: String,
     pub port: u16,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ApiConfig {
-    pub address: Option<String>,
+    pub address: String,
     pub port: u16,
 }
 

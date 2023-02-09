@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use metrics::increment_counter;
 use proto::scheduler_proto::{
     scheduler_server::{Scheduler, SchedulerServer},
     EchoRequest, EchoResponse,
@@ -13,7 +14,7 @@ use shared::netutils;
 
 pub async fn start_scheduler(config_loader: Arc<ConfigLoader>) -> Result<()> {
     let config = config_loader.load()?;
-    let addr = netutils::parse_addr(&config.scheduler.address, config.scheduler.port)?;
+    let addr = netutils::parse_addr(config.scheduler.address, config.scheduler.port)?;
     info!("Starting Scheduler on {:?}", addr);
     Server::builder()
         .add_service(SchedulerServer::new(MyEcho::default()))
@@ -30,6 +31,7 @@ pub struct MyEcho {}
 impl Scheduler for MyEcho {
     async fn echo(&self, request: Request<EchoRequest>) -> Result<Response<EchoResponse>, Status> {
         println!("Got a request: {request:?}");
+        increment_counter!("cronback.scheduler.rpc_request_total");
 
         let reply = EchoResponse {
             name: format!("Hello {}!", request.into_inner().name),
