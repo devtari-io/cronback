@@ -1,0 +1,94 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+
+package trigger_proto;
+
+enum HttpMethod {
+    HttpMethod_UNKNOWN = 0;
+    HttpMethod_GET = 1;
+    HttpMethod_POST = 2;
+    HttpMethod_PUT = 3;
+    HttpMethod_DELETE = 4;
+    HttpMethod_HEAD = 5;
+}
+
+enum TriggerStatus {
+    TriggerStatus_UNKNOWN = 0;
+    TriggerStatus_ACTIVE = 1;
+    TriggerStatus_EXPIRED = 2;
+    TriggerStatus_PAUSED = 3;
+    TriggerStatus_CANCELED = 4;
+}
+
+message Cron {
+    string cron = 1;
+    string cron_timezone = 2;
+    // The number of times this trigger should run. A value of 0, means that it never expires
+    int64 cron_events_limit = 3;
+}
+
+// TODO: Move to the event protobuf when it's there
+enum EventStatus {
+    EventStatus_UNKNOWN = 0;
+    EventStatus_SUCCEEDED = 1;
+    EventStatus_FAILED = 2;
+}
+
+message EventDetails {
+    string id = 1;
+    EventStatus status = 2;
+    google.protobuf.Timestamp finished_at = 3;
+}
+
+enum RetryPolicy {
+    RetryPolicy_UNKNOWN = 0;
+    RetryPolicy_SIMPLE = 1;
+    RetryPolicy_EXPONENTIAL = 2;
+}
+
+enum NotificationType {
+    Notifications_UNKNOWN = 0;
+    Notifications_SLACK = 1;
+}
+
+message EventRetryPolicy {
+    optional RetryPolicy policy = 1;
+    int32 limit = 2;
+    google.protobuf.Duration delay = 3;
+    // Only relevant in the exponential policy
+    google.protobuf.Duration max_delay = 4;
+    repeated NotificationType notifications = 5;
+}
+
+message OnStatusHandler {
+    repeated NotificationType notifications = 1;
+    // A value of zero means that it doesn't get auto cancelled
+    int32 auto_cancel_after = 2;
+}
+
+message Trigger {
+    string id = 1;
+    string reference_id = 2;
+    string name = 3;
+    string description = 4;
+    google.protobuf.Timestamp created_at = 5;
+    HttpMethod http_method = 6; 
+    string endpoint = 7;
+    bytes payload = 8;
+    map<string, string> headers = 9;
+    google.protobuf.Duration timeout = 10;
+    string content_type = 11;
+    // Using cron for scheduling, if this is set, run_at must be empty.
+    optional Cron cron = 12;
+    // Using pre-defined timestamps for running the event.
+    // If this is not-empty, `cron` must not be set.
+    repeated google.protobuf.Timestamp run_at = 13;
+    TriggerStatus status = 14;
+    optional EventDetails last_event_details = 15;
+    OnStatusHandler on_success = 16;
+    OnStatusHandler on_failures = 17;
+    RetryPolicy event_retry_policy = 18;
+}
+
