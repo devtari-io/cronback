@@ -3,13 +3,48 @@ syntax = "proto3";
 package scheduler_proto;
 
 service Scheduler {
-  rpc Echo (EchoRequest) returns (EchoResponse);
+  /// Install a new trigger onto the scheduler
+  rpc InstallTrigger (InstallTriggerRequest)  returns (InstallTriggerResponse);
+  /// Update an existing trigger
+  rpc UpdateTrigger (UpdateTriggerRequest)  returns (UpdateTriggerResponse);
+  /// Manually run a trigger
+  rpc ExecuteTrigger (ExecuteTriggerRequest)  returns (ExecuteTriggerResponse);
+  /// Get a trigger by id
+  rpc GetTrigger (GetTriggerRequest)  returns (GetTriggerResponse);
+  /// Retrieve a trigger by token
+  rpc FindTriggers (FindTriggersRequest)  returns (FindTriggersResponse);
 }
 
-message EchoRequest {
-  string name = 1;
+// == INSTALL TRIGGER ==
+message InstallTriggerRequest {
 }
 
-message EchoResponse {
-  string name = 1;
+message InstallTriggerResponse {
+}
+
+// == UPDATE TRIGGER ==
+message UpdateTriggerRequest {
+}
+
+message UpdateTriggerResponse {
+}
+
+// == EXECUTE TRIGGER MANUALLY ==
+message ExecuteTriggerRequest {
+}
+
+message ExecuteTriggerResponse {
+}
+
+// == GET TRIGGER ==
+message GetTriggerRequest {
+}
+
+message GetTriggerResponse {
+}
+
+// == Find TRIGGERS ==
+message FindTriggersRequest {
+}
+message FindTriggersResponse {
 }
