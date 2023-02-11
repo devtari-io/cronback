@@ -1,6 +1,13 @@
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    tonic_build::compile_protos("../proto/scheduler.proto")?;
-    tonic_build::compile_protos("../proto/dispatcher.proto")?;
-    tonic_build::compile_protos("../proto/trigger.proto")?;
+    tonic_build::configure()
+        .protoc_arg("--experimental_allow_proto3_optional")
+        .compile(
+            &[
+                "../proto/scheduler.proto",
+                "../proto/dispatcher.proto",
+                "trigger.proto",
+            ],
+            &["../proto"],
+        )?;
     Ok(())
 }
