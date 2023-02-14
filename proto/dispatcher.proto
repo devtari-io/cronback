@@ -1,15 +1,21 @@
 syntax = "proto3";
 
+import "event.proto";
+
 package dispatcher_proto;
 
 service Dispatcher {
-  rpc Echo (EchoRequest) returns (EchoResponse);
+  rpc DispatchEvent (DispatchEventRequest) returns (DispatchEventResponse);
 }
 
-message EchoRequest {
-  string name = 1;
+message DispatchEventRequest {
+  event_proto.Event event = 1;
 }
 
-message EchoResponse {
-  string name = 1;
+message DispatchEventResponse {
+  event_proto.EventInstanceStatus status = 1;
+  // Only set if status is SUCCESS
+  optional event_proto.Response response = 2;
+  // Only set if status is not SUCCESS
+  optional string error_message = 3;
 }

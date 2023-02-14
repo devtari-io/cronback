@@ -70,7 +70,8 @@ message Endpoint {
 
 message Payload {
   string content_type = 1;
-  bytes payload = 2;
+  map<string, string> headers = 2;
+  bytes payload = 3;
 }
 
 message RunAt {
@@ -95,12 +96,11 @@ message Trigger {
   // TODO: Explore having multiple endpoints with independent status
   Endpoint endpoint = 7;
   Payload payload = 8;
-  map<string, string> headers = 9;
-  google.protobuf.Duration timeout = 10;
-  Schedule schedule = 11;
-  TriggerStatus status = 12;
-  OnStatusHandler on_success = 13;
-  OnStatusHandler on_failure = 14;
-  RetryPolicy event_retry_policy = 15;
+  google.protobuf.Duration timeout = 9;
+  Schedule schedule = 10;
+  TriggerStatus status = 11;
+  OnStatusHandler on_success = 12;
+  OnStatusHandler on_failure = 13;
+  RetryPolicy event_retry_policy = 14;
 }
 

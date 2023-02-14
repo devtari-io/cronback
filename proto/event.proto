@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+import "trigger.proto";
+
+package event_proto;
+
+enum EventStatus {
+    EventStatus_UNKNOWN = 0;
+    // No event instances have finished
+    EventStatus_NEW = 1;
+    // The last event instance failed, but a retry is scheduled
+    EventStatus_RETRYING = 2;
+    // The last event instance succeeded
+    EventStatus_SUCCESS = 3;
+    // The last event instance failed, and we exhusated all retries
+    EventStatus_FAILED = 4;
+}
+
+enum EventInstanceStatus {
+    EventInstanceStatus_UNKNOWN = 0;
+    // Indicates a 2XX http status code
+    EventInstanceStatus_SUCCESS = 1;
+    // Indicates a non 2XX http status code
+    EventInstanceStatus_FAILED = 2;
+    // Request timedout before getting response from the endpoint
+    EventInstanceStatus_TIMEOUT = 3;
+    // Enpoint is unreachable
+    EventInstanceStatus_CONNFAILED = 4;
+    // Indicates an invalid request (e.g. malformed/malicious endpoint)
+    EventInstanceStatus_INVALID_REQUEST = 5;
+}
+
+message Request {
+    trigger_proto.Endpoint endpoint = 1;
+    trigger_proto.Payload request_payload = 2;
+    google.protobuf.Duration timeout = 3;
+}
+
+message Response {
+    int32 http_code = 1;
+    // Could be not set, if we're not storing the customer payloads
+    optional trigger_proto.Payload payload = 2;
+    google.protobuf.Duration latency = 3;
+}
+
+message Event {
+    string id = 1;
+    string trigger_id = 2;
+    google.protobuf.Timestamp started_at = 3;
+    Request request = 4;
+    EventStatus status = 6;
+    // TODO: Notification settings
+  }
+
+message EventInstance {
+    string id = 1;
+    string event_id = 2;
+    google.protobuf.Timestamp started_at = 3;
+    EventInstanceStatus status = 4;
+    // Only set if status is SUCCESS
+    optional Response response = 5;
+    // Only set if status is not SUCCESS
+    optional string error_message = 6;
+}
