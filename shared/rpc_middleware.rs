@@ -46,14 +46,23 @@ impl<S> InnerMiddleware<S> {
 
 impl<S> Service<hyper::Request<Body>> for InnerMiddleware<S>
 where
-    S: Service<hyper::Request<Body>, Response = hyper::Response<BoxBody>> + Clone + Send + 'static,
+    S: Service<hyper::Request<Body>, Response = hyper::Response<BoxBody>>
+        + Clone
+        + Send
+        + 'static,
     S::Future: Send + 'static,
 {
     type Response = S::Response;
     type Error = S::Error;
-    type Future = futures::future::BoxFuture<'static, Result<Self::Response, Self::Error>>;
+    type Future = futures::future::BoxFuture<
+        'static,
+        Result<Self::Response, Self::Error>,
+    >;
 
-    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+    fn poll_ready(
+        &mut self,
+        cx: &mut Context<'_>,
+    ) -> Poll<Result<(), Self::Error>> {
         self.inner.poll_ready(cx)
     }
 

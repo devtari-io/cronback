@@ -3,7 +3,8 @@ use tonic::{Request, Response, Status};
 use crate::{validators, webhook};
 use proto::{
     dispatcher_proto::{
-        dispatcher_server::Dispatcher, DispatchEventRequest, DispatchEventResponse,
+        dispatcher_server::Dispatcher, DispatchEventRequest,
+        DispatchEventResponse,
     },
     event_proto::EventInstanceStatus,
     trigger_proto::endpoint::Endpoint,
@@ -30,7 +31,8 @@ impl Dispatcher for DispatcherAPIHandler {
         let (_metadata, _extensions, request) = request.into_parts();
 
         let event = request.event.expect("event must be set to a value");
-        let event_request = event.request.expect("An event must have a request set");
+        let event_request =
+            event.request.expect("An event must have a request set");
 
         if let Err(e) = validators::validate_dispatch_request(&event_request) {
             return Ok(Response::new(DispatchEventResponse {
@@ -49,7 +51,7 @@ impl Dispatcher for DispatcherAPIHandler {
             .unwrap();
 
         let response = match endpoint {
-            Endpoint::Webhook(w) => {
+            | Endpoint::Webhook(w) => {
                 webhook::dispatch_webhook(
                     w,
                     event_request.request_payload.as_ref().unwrap(),

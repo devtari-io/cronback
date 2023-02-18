@@ -24,7 +24,11 @@ pub struct ServiceContext {
 }
 
 impl ServiceContext {
-    pub fn new(name: String, config_loader: Arc<ConfigLoader>, shutdown: Shutdown) -> Self {
+    pub fn new(
+        name: String,
+        config_loader: Arc<ConfigLoader>,
+        shutdown: Shutdown,
+    ) -> Self {
         Self {
             name,
             config_loader,
@@ -60,8 +64,12 @@ impl ServiceContext {
 }
 
 #[tracing::instrument(skip_all, fields(service = context.service_name()))]
-pub async fn grpc_serve<S>(context: &mut ServiceContext, addr: SocketAddr, svc: S, timeout: u64)
-where
+pub async fn grpc_serve<S>(
+    context: &mut ServiceContext,
+    addr: SocketAddr,
+    svc: S,
+    timeout: u64,
+) where
     S: Service<Request<Body>, Response = Response<BoxBody>, Error = Infallible>
         + NamedService
         + Clone

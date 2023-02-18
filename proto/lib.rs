@@ -14,4 +14,5 @@ pub mod event_proto {
     tonic::include_proto!("event_proto");
 }
 
-pub const FILE_DESCRIPTOR_SET: &[u8] = tonic::include_file_descriptor_set!("file_descriptor");
+pub const FILE_DESCRIPTOR_SET: &[u8] =
+    tonic::include_file_descriptor_set!("file_descriptor");

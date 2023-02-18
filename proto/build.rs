@@ -1,7 +1,6 @@
-use std::{path::PathBuf, env};
+use std::{env, path::PathBuf};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-
     let out_dir = PathBuf::from(env::var("OUT_DIR")?);
 
     tonic_build::configure()

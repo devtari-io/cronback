@@ -5,8 +5,9 @@ use tracing::info;
 
 use proto::scheduler_proto::{
     scheduler_server::Scheduler, ExecuteTriggerRequest, ExecuteTriggerResponse,
-    FindTriggersRequest, FindTriggersResponse, GetTriggerRequest, GetTriggerResponse,
-    InstallTriggerRequest, InstallTriggerResponse, UpdateTriggerRequest, UpdateTriggerResponse,
+    FindTriggersRequest, FindTriggersResponse, GetTriggerRequest,
+    GetTriggerResponse, InstallTriggerRequest, InstallTriggerResponse,
+    UpdateTriggerRequest, UpdateTriggerResponse,
 };
 use shared::service::ServiceContext;
 

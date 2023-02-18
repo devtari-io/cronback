@@ -14,7 +14,9 @@ pub async fn start_scheduler_server(mut context: service::ServiceContext) {
     let config = context.load_config();
     let spinner = Spinner::new(context.clone()).start();
 
-    let addr = netutils::parse_addr(&config.scheduler.address, config.scheduler.port).unwrap();
+    let addr =
+        netutils::parse_addr(&config.scheduler.address, config.scheduler.port)
+            .unwrap();
     let handler = SchedulerAPIHandler::new(context.clone());
     let svc = SchedulerServer::new(handler);
 

@@ -58,7 +58,8 @@ impl Spinner {
     #[tracing::instrument(skip_all)]
     fn run_forever(self) {
         let config = self.context.load_config();
-        let yield_max_duration = Duration::from_millis(config.scheduler.spinner_yield_max_ms);
+        let yield_max_duration =
+            Duration::from_millis(config.scheduler.spinner_yield_max_ms);
         'tick_loop: loop {
             {
                 let shutdown = self.shutdown.read().unwrap();
@@ -72,7 +73,8 @@ impl Spinner {
                 info!("async-dispatch test");
             });
 
-            let remaining = yield_max_duration.saturating_sub(instant.elapsed());
+            let remaining =
+                yield_max_duration.saturating_sub(instant.elapsed());
             if remaining != Duration::ZERO {
                 // TODO: Consider using spin_sleep
                 std::thread::sleep(remaining);

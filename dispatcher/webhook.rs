@@ -13,14 +13,17 @@ use reqwest::Method;
 use proto::event_proto::EventInstanceStatus;
 
 fn to_reqwest_http_method(method_int: i32) -> Result<reqwest::Method> {
-    let method = HttpMethod::from_i32(method_int).unwrap_or(HttpMethod::Unknown);
+    let method =
+        HttpMethod::from_i32(method_int).unwrap_or(HttpMethod::Unknown);
     match method {
-        HttpMethod::Unknown => Err(anyhow!("Invalid http method enum value: {}", method_int)),
-        HttpMethod::Get => Ok(Method::GET),
-        HttpMethod::Post => Ok(Method::POST),
-        HttpMethod::Put => Ok(Method::PUT),
-        HttpMethod::Delete => Ok(Method::DELETE),
-        HttpMethod::Head => Ok(Method::HEAD),
+        | HttpMethod::Unknown => {
+            Err(anyhow!("Invalid http method enum value: {}", method_int))
+        }
+        | HttpMethod::Get => Ok(Method::GET),
+        | HttpMethod::Post => Ok(Method::POST),
+        | HttpMethod::Put => Ok(Method::PUT),
+        | HttpMethod::Delete => Ok(Method::DELETE),
+        | HttpMethod::Head => Ok(Method::HEAD),
     }
 }
 
@@ -62,8 +65,9 @@ async fn dispatch_webhook_impl(
             .parse()
             .map_err(|e| anyhow!("Invalid content-type header: {}", e))?,
     );
-    let http_timeout = TryInto::<std::time::Duration>::try_into(timeout.clone())
-        .map_err(|e| anyhow!("Invalid timeout: {}", e))?;
+    let http_timeout =
+        TryInto::<std::time::Duration>::try_into(timeout.clone())
+            .map_err(|e| anyhow!("Invalid timeout: {}", e))?;
 
     let request_start_time = SystemTime::now();
     let response = http_client
@@ -74,10 +78,11 @@ async fn dispatch_webhook_impl(
         .send()
         .await;
     let latency = request_start_time.elapsed().unwrap_or_default();
-    let latency = TryInto::<prost_types::Duration>::try_into(latency).unwrap_or_default();
+    let latency =
+        TryInto::<prost_types::Duration>::try_into(latency).unwrap_or_default();
 
     Ok(match response {
-        Ok(resp) => DispatchEventResponse {
+        | Ok(resp) => DispatchEventResponse {
             status: EventInstanceStatus::Success.into(),
             response: Some(Response {
                 http_code: resp.status().as_u16() as i32,
@@ -90,7 +95,9 @@ async fn dispatch_webhook_impl(
                     headers: resp
                         .headers()
                         .iter()
-                        .map(|(h, v)| (h.to_string(), v.to_str().unwrap().to_owned()))
+                        .map(|(h, v)| {
+                            (h.to_string(), v.to_str().unwrap().to_owned())
+                        })
                         .collect::<HashMap<_, _>>(),
                     // TODO: Don't attempt to read the payload if it's larger than the max allowed payload size (based on the Content-length header)
                     payload: resp.bytes().await.unwrap().to_vec(),
@@ -99,7 +106,7 @@ async fn dispatch_webhook_impl(
             }),
             error_message: None,
         },
-        Err(e) => {
+        | Err(e) => {
             let status = if e.is_connect() {
                 EventInstanceStatus::Connfailed
             } else if e.is_timeout() {

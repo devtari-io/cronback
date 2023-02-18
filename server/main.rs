@@ -40,8 +40,10 @@ async fn main() -> Result<()> {
     let config = config_loader.load()?;
 
     // Configure Metric Exporter
-    let prometheus_sockaddr =
-        parse_addr(config.main.prometheus_address, config.main.prometheus_port)?;
+    let prometheus_sockaddr = parse_addr(
+        config.main.prometheus_address,
+        config.main.prometheus_port,
+    )?;
     let builder = PrometheusBuilder::new();
     info!("Prometheus HTTP listener on {:?}", prometheus_sockaddr);
     builder
@@ -99,24 +101,29 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn spawn_service(role: Role, config_loader: Arc<ConfigLoader>, shutdown: Shutdown) {
+async fn spawn_service(
+    role: Role,
+    config_loader: Arc<ConfigLoader>,
+    shutdown: Shutdown,
+) {
     let service_name = format!("{role:?}");
     info!(service = service_name, "Starting service '{service_name}'");
 
-    let join_handle =
-        match role {
-            Role::Api => tokio::spawn(api::start_api_server(ServiceContext::new(
+    let join_handle = match role {
+        | Role::Api => tokio::spawn(api::start_api_server(
+            ServiceContext::new(service_name.clone(), config_loader, shutdown),
+        )),
+        | Role::Scheduler => tokio::spawn(scheduler::start_scheduler_server(
+            ServiceContext::new(service_name.clone(), config_loader, shutdown),
+        )),
+        | Role::Dispatcher => tokio::spawn(
+            dispatcher::start_dispatcher_server(ServiceContext::new(
                 service_name.clone(),
                 config_loader,
                 shutdown,
-            ))),
-            Role::Scheduler => tokio::spawn(scheduler::start_scheduler_server(
-                ServiceContext::new(service_name.clone(), config_loader, shutdown),
             )),
-            Role::Dispatcher => tokio::spawn(dispatcher::start_dispatcher_server(
-                ServiceContext::new(service_name.clone(), config_loader, shutdown),
-            )),
-        };
+        ),
+    };
     join_handle.await.unwrap_or_default();
     info!("Service '{service_name}' terminated!");
 }

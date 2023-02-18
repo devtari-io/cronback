@@ -3,7 +3,10 @@
 use std::collections::HashSet;
 
 use config::FileFormat;
-use config::{builder::DefaultState, Config as ConfigRaw, ConfigBuilder, ConfigError, File};
+use config::{
+    builder::DefaultState, Config as ConfigRaw, ConfigBuilder, ConfigError,
+    File,
+};
 use serde::Deserialize;
 use valuable::Valuable;
 
@@ -76,7 +79,8 @@ impl ConfigLoader {
     /// * `config_file`: The path of the configuration file to load.
     pub fn from_path(path: &Option<String>) -> ConfigLoader {
         let raw = include_str!("default.toml");
-        let mut builder = ConfigRaw::builder().add_source(File::from_str(raw, FileFormat::Toml));
+        let mut builder = ConfigRaw::builder()
+            .add_source(File::from_str(raw, FileFormat::Toml));
         if let Some(path) = path {
             builder = builder.add_source(File::with_name(path));
         }

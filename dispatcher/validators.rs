@@ -5,7 +5,8 @@ use proto::trigger_proto::{endpoint::Endpoint, Webhook};
 use url::Url;
 
 fn validate_endpoint_url_parsable(url: &String) -> Result<Url> {
-    Url::parse(url).map_err(|e| anyhow!("Failed to parse endpoint URL '{}': {} ", url, e))
+    Url::parse(url)
+        .map_err(|e| anyhow!("Failed to parse endpoint URL '{}': {} ", url, e))
 }
 
 fn validate_endpoint_scheme(scheme: &str) -> Result<()> {
@@ -48,7 +49,9 @@ fn validate_endpoint_url_public_ip(host: Option<&str>) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn validate_dispatch_request(request: &proto::event_proto::Request) -> Result<()> {
+pub(crate) fn validate_dispatch_request(
+    request: &proto::event_proto::Request,
+) -> Result<()> {
     let url_string = match request
         .endpoint
         .as_ref()
@@ -57,7 +60,7 @@ pub(crate) fn validate_dispatch_request(request: &proto::event_proto::Request) -
         .as_ref()
         .unwrap()
     {
-        Endpoint::Webhook(Webhook { url, .. }) => url,
+        | Endpoint::Webhook(Webhook { url, .. }) => url,
     };
 
     let url = validate_endpoint_url_parsable(url_string)?;
