@@ -4,7 +4,7 @@ mod metric_defs;
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use clap::Parser;
 use colored::Colorize;
 use metrics_exporter_prometheus::PrometheusBuilder;
@@ -12,16 +12,18 @@ use metrics_util::MetricKindMask;
 use shared::{
     config::{ConfigLoader, Role},
     netutils::parse_addr,
+    service::ServiceContext,
+    shutdown::Shutdown,
 };
-use tokio::task::JoinSet;
-use tracing::{info, trace, warn};
+use tokio::{select, task::JoinSet, time};
+use tracing::{error, info, trace, warn};
 use tracing_subscriber::FmtSubscriber;
-use valuable::Valuable;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Shutdown broadcast channel first
     let opts = cli::CliOpts::parse();
-
+    let mut shutdown = Shutdown::default();
     let sub = FmtSubscriber::builder()
         .pretty()
         .with_thread_names(true)
@@ -56,19 +58,65 @@ async fn main() -> Result<()> {
 
     // Init services
     let mut services = JoinSet::new();
-    for role in config.main.roles {
-        info!(role = role.as_value(), "Starting service");
-        match role {
-            Role::Api => services.spawn(api::start_api_server(config_loader.clone())),
-            Role::Scheduler => services.spawn(scheduler::start_scheduler(config_loader.clone())),
-            Role::Dispatcher => services.spawn(dispatcher::start_dispatcher(config_loader.clone())),
-        };
+    for ref role in config.main.roles {
+        services.spawn(spawn_service(
+            role.clone(),
+            config_loader.clone(),
+            shutdown.clone(),
+        ));
     }
 
     // Waiting for <C-c> to terminate
-    tokio::signal::ctrl_c().await?;
-    warn!("Received interrupt signal, terminating servers...");
-    services.shutdown().await;
+    select! {
+        _ = shutdown.recv() => {
+            warn!("Received shutdown signal from downstream services!");
+        },
+        _ = tokio::signal::ctrl_c() => {
+            warn!("Received Ctrl+c signal (SIGINT)!");
+            shutdown.broadcast_shutdown();
+        }
+    };
+
+    // Give services 10 seconds to cleanly shutdown after the shutdown signal.
+    info!("Waiting (10s) for services to shutdown cleanly...");
+    if (time::timeout(Duration::from_secs(10), async {
+        while let Some(_) = services.join_next().await {
+            info!("Need to wait for {} services to terminate", services.len());
+        }
+    })
+    .await)
+        .is_err()
+    {
+        error!(
+            "Timed out awaiting {} services to shutdown!",
+            services.len()
+        );
+        services.shutdown().await;
+        bail!("Some services were not terminated cleanly!");
+    }
+    info!("Bye!");
 
     Ok(())
+}
+
+async fn spawn_service(role: Role, config_loader: Arc<ConfigLoader>, shutdown: Shutdown) {
+    let service_name = format!("{role:?}");
+    info!(service = service_name, "Starting service '{service_name}'");
+
+    let join_handle =
+        match role {
+            Role::Api => tokio::spawn(api::start_api_server(ServiceContext::new(
+                service_name.clone(),
+                config_loader,
+                shutdown,
+            ))),
+            Role::Scheduler => tokio::spawn(scheduler::start_scheduler_server(
+                ServiceContext::new(service_name.clone(), config_loader, shutdown),
+            )),
+            Role::Dispatcher => tokio::spawn(dispatcher::start_dispatcher_server(
+                ServiceContext::new(service_name.clone(), config_loader, shutdown),
+            )),
+        };
+    join_handle.await.unwrap_or_default();
+    info!("Service '{service_name}' terminated!");
 }

@@ -22,3 +22,5 @@ hyper = "0.14.24"
 tonic = "0.8.3"
 futures = "0.3.26"
 tracing = { version = "0.1", features = ["log"] }
+tokio = { version = "1", features = ["full"] }
+tonic-reflection = "0.6.0"

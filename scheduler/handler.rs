@@ -30,28 +30,28 @@ impl Scheduler for SchedulerAPIHandler {
 
     async fn update_trigger(
         &self,
-        request: Request<UpdateTriggerRequest>,
+        _request: Request<UpdateTriggerRequest>,
     ) -> Result<Response<UpdateTriggerResponse>, Status> {
         todo!()
     }
 
     async fn execute_trigger(
         &self,
-        request: Request<ExecuteTriggerRequest>,
+        _request: Request<ExecuteTriggerRequest>,
     ) -> Result<Response<ExecuteTriggerResponse>, Status> {
         todo!()
     }
 
     async fn get_trigger(
         &self,
-        request: Request<GetTriggerRequest>,
+        _request: Request<GetTriggerRequest>,
     ) -> Result<Response<GetTriggerResponse>, Status> {
         todo!()
     }
 
     async fn find_triggers(
         &self,
-        request: Request<FindTriggersRequest>,
+        _request: Request<FindTriggersRequest>,
     ) -> Result<Response<FindTriggersResponse>, Status> {
         todo!()
     }

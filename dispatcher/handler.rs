@@ -23,10 +23,12 @@ impl Dispatcher for DispatcherAPIHandler {
         &self,
         request: Request<DispatchEventRequest>,
     ) -> Result<Response<DispatchEventResponse>, Status> {
-        let event = request.get_ref().event.as_ref().unwrap();
-        let event_request = event.request.as_ref().unwrap();
+        let (_metadata, _extensions, request) = request.into_parts();
 
-        if let Err(e) = validators::validate_dispatch_request(event_request) {
+        let event = request.event.expect("event must be set to a value");
+        let event_request = event.request.expect("An event must have a request set");
+
+        if let Err(e) = validators::validate_dispatch_request(&event_request) {
             return Ok(Response::new(DispatchEventResponse {
                 status: EventInstanceStatus::InvalidRequest.into(),
                 response: None,
@@ -43,11 +45,14 @@ impl Dispatcher for DispatcherAPIHandler {
             .unwrap();
 
         let response = match endpoint {
-            Endpoint::Webhook(w) => webhook::dispatch_webhook(
-                w,
-                event_request.request_payload.as_ref().unwrap(),
-                event_request.timeout.as_ref().unwrap(),
-            ).await,
+            Endpoint::Webhook(w) => {
+                webhook::dispatch_webhook(
+                    w,
+                    event_request.request_payload.as_ref().unwrap(),
+                    event_request.timeout.as_ref().unwrap(),
+                )
+                .await
+            }
         };
         // TODO: Send notifications here
 

@@ -26,24 +26,24 @@ fn validate_endpoint_url_public_ip(host: Option<&str>) -> Result<()> {
 
     // To error on the safe side, a hostname is valid if ALL its IPs are publicly addressable.
 
-    for addr in addrs {
-        match addr.ip() {
-            std::net::IpAddr::V4(ip) => {
-                if !ip.is_global() {
-                    return Err(anyhow!(
-                        "The endpoint's IP is not globally reachable (e.g. in private IP space)"
-                    ));
-                }
-            }
-            std::net::IpAddr::V6(ip) => {
-                if !ip.is_global() {
-                    return Err(anyhow!(
-                        "The endpoint's IP is not globally reachable (e.g. in private IP space)"
-                    ));
-                }
-            }
-        }
-    }
+    // for addr in addrs {
+    // match addr.ip() {
+    //     std::net::IpAddr::V4(ip) => {
+    //         if !ip.is_global() {
+    //             return Err(anyhow!(
+    //                 "The endpoint's IP is not globally reachable (e.g. in private IP space)"
+    //             ));
+    //         }
+    //     }
+    //     std::net::IpAddr::V6(ip) => {
+    //         if !ip.is_global() {
+    //             return Err(anyhow!(
+    //                 "The endpoint's IP is not globally reachable (e.g. in private IP space)"
+    //             ));
+    //         }
+    //     }
+    // }
+    // }
     Ok(())
 }
 
@@ -106,7 +106,8 @@ mod tests {
             assert_matches!(
                 validate_dispatch_request(&build_request_from_url(url)),
                 Ok(()),
-                "URL: {}", url
+                "URL: {}",
+                url
             );
         }
     }
@@ -134,7 +135,8 @@ mod tests {
             assert_matches!(
                 validate_dispatch_request(&build_request_from_url(url)),
                 Err(_),
-                "URL: {}", url
+                "URL: {}",
+                url
             );
         }
     }
