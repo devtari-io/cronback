@@ -1,17 +1,23 @@
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
+
+use tonic::{Request, Response, Status};
+use tracing::info;
 
 use proto::scheduler_proto::{
     scheduler_server::Scheduler, ExecuteTriggerRequest, ExecuteTriggerResponse,
     FindTriggersRequest, FindTriggersResponse, GetTriggerRequest, GetTriggerResponse,
     InstallTriggerRequest, InstallTriggerResponse, UpdateTriggerRequest, UpdateTriggerResponse,
 };
-use tonic::{Request, Response, Status};
-
-use shared::config::ConfigLoader;
-use tracing::info;
+use shared::service::ServiceContext;
 
 pub(crate) struct SchedulerAPIHandler {
-    pub config_loader: Arc<ConfigLoader>,
+    #[allow(unused)]
+    context: ServiceContext,
+}
+impl SchedulerAPIHandler {
+    pub(crate) fn new(context: ServiceContext) -> Self {
+        Self { context }
+    }
 }
 
 #[tonic::async_trait]

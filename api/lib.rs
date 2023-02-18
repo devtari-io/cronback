@@ -6,6 +6,7 @@ use axum::{routing::get, Router};
 
 use shared::service;
 
+#[tracing::instrument(skip_all, fields(service = context.service_name()))]
 pub async fn start_api_server(mut context: service::ServiceContext) {
     let config = context.load_config();
     let addr = netutils::parse_addr(config.api.address, config.api.port).unwrap();

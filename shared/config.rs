@@ -35,6 +35,7 @@ pub struct SchedulerConfig {
     pub address: String,
     pub port: u16,
     pub request_processing_timeout_s: u64,
+    pub spinner_yield_max_ms: u64,
 }
 
 #[derive(Debug, Clone, Deserialize)]

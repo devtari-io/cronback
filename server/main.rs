@@ -80,7 +80,7 @@ async fn main() -> Result<()> {
     // Give services 10 seconds to cleanly shutdown after the shutdown signal.
     info!("Waiting (10s) for services to shutdown cleanly...");
     if (time::timeout(Duration::from_secs(10), async {
-        while let Some(_) = services.join_next().await {
+        while services.join_next().await.is_some() {
             info!("Need to wait for {} services to terminate", services.len());
         }
     })

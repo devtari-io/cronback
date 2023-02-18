@@ -1,5 +1,6 @@
-use std::sync::Arc;
+use tonic::{Request, Response, Status};
 
+use crate::{validators, webhook};
 use proto::{
     dispatcher_proto::{
         dispatcher_server::Dispatcher, DispatchEventRequest, DispatchEventResponse,
@@ -7,14 +8,17 @@ use proto::{
     event_proto::EventInstanceStatus,
     trigger_proto::endpoint::Endpoint,
 };
-use tonic::{Request, Response, Status};
-
-use shared::config::ConfigLoader;
-
-use crate::{validators, webhook};
+use shared::service::ServiceContext;
 
 pub(crate) struct DispatcherAPIHandler {
-    pub config_loader: Arc<ConfigLoader>,
+    #[allow(unused)]
+    context: ServiceContext,
+}
+
+impl DispatcherAPIHandler {
+    pub fn new(context: ServiceContext) -> Self {
+        Self { context }
+    }
 }
 
 #[tonic::async_trait]
@@ -32,7 +36,7 @@ impl Dispatcher for DispatcherAPIHandler {
             return Ok(Response::new(DispatchEventResponse {
                 status: EventInstanceStatus::InvalidRequest.into(),
                 response: None,
-                error_message: Some(format!("Invalid request: {}", e)),
+                error_message: Some(format!("Invalid request: {e}")),
             }));
         }
 

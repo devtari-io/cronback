@@ -34,7 +34,7 @@ pub(crate) async fn dispatch_webhook(
     response.unwrap_or_else(|e| DispatchEventResponse {
         status: EventInstanceStatus::InvalidRequest.into(),
         response: None,
-        error_message: Some(format!("Invalid request: {}", e)),
+        error_message: Some(format!("Invalid request: {e}")),
     })
 }
 

@@ -8,12 +8,11 @@ use tracing::info;
 use shared::netutils;
 use shared::service;
 
+#[tracing::instrument(skip_all, fields(service = context.service_name()))]
 pub async fn start_dispatcher_server(mut context: service::ServiceContext) {
     let config = context.load_config();
     let addr = netutils::parse_addr(&config.dispatcher.address, config.dispatcher.port).unwrap();
-    let handler = handler::DispatcherAPIHandler {
-        config_loader: context.config_loader(),
-    };
+    let handler = handler::DispatcherAPIHandler::new(context.clone());
     let svc = DispatcherServer::new(handler);
 
     // grpc server
