@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use tonic::{Request, Response, Status};
 use tracing::info;
@@ -11,13 +11,19 @@ use proto::scheduler_proto::{
 };
 use shared::service::ServiceContext;
 
+use crate::sched::event_scheduler::EventScheduler;
+
 pub(crate) struct SchedulerAPIHandler {
     #[allow(unused)]
     context: ServiceContext,
+    scheduler: Arc<EventScheduler>,
 }
 impl SchedulerAPIHandler {
-    pub(crate) fn new(context: ServiceContext) -> Self {
-        Self { context }
+    pub(crate) fn new(
+        context: ServiceContext,
+        scheduler: Arc<EventScheduler>,
+    ) -> Self {
+        Self { context, scheduler }
     }
 }
 
@@ -31,6 +37,9 @@ impl Scheduler for SchedulerAPIHandler {
 
         tokio::time::sleep(Duration::from_millis(800)).await;
         let reply = InstallTriggerResponse {};
+        {
+            self.scheduler.install_trigger();
+        }
 
         Ok(Response::new(reply))
     }

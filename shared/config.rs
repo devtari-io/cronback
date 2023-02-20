@@ -35,6 +35,8 @@ pub struct DispatcherConfig {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct SchedulerConfig {
+    // Cell Id of the current scheduler
+    pub cell_id: u32,
     pub address: String,
     pub port: u16,
     pub request_processing_timeout_s: u64,
