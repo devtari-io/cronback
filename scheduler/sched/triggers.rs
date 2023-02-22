@@ -29,10 +29,36 @@ use proto::trigger_proto::Trigger;
 /// last time the spinner has looked at it. The spinner resets the set after
 /// reloading.
 #[derive(Default, Debug)]
-pub(crate) struct TriggerMap {
-    pub state: HashMap<String, Trigger>,
+pub(crate) struct ActiveTriggerMap {
+    state: HashMap<String, Trigger>,
     /// The set of trigger Ids that has been updated
-    pub dirty_triggers: HashSet<String>,
+    dirty_triggers: HashSet<String>,
+}
+
+impl ActiveTriggerMap {
+    /// Inserts or updates a trigger if exists
+    pub fn add_or_update(&mut self, trigger: Trigger) {
+        let trigger_id = trigger.id.clone();
+        self.state.insert(trigger_id.clone(), trigger);
+        self.trigger_updated(trigger_id);
+    }
+
+    pub fn is_dirty(&self) -> bool {
+        !self.dirty_triggers.is_empty()
+    }
+
+    pub fn reset_dirty(&mut self) {
+        self.dirty_triggers.clear();
+    }
+    pub fn clear(&mut self) {
+        self.state.clear();
+        self.dirty_triggers.clear();
+    }
+
+    //// PRIVATE
+    fn trigger_updated(&mut self, trigger_id: String) {
+        self.dirty_triggers.insert(trigger_id);
+    }
 }
 
 /// Metadata exclusively owned by the spinner, keeps the Id of the installed

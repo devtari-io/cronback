@@ -3,15 +3,15 @@ use std::{sync::Arc, time::Duration};
 use tonic::{Request, Response, Status};
 use tracing::info;
 
+use crate::sched::event_scheduler::EventScheduler;
 use proto::scheduler_proto::{
     scheduler_server::Scheduler, ExecuteTriggerRequest, ExecuteTriggerResponse,
     FindTriggersRequest, FindTriggersResponse, GetTriggerRequest,
     GetTriggerResponse, InstallTriggerRequest, InstallTriggerResponse,
     UpdateTriggerRequest, UpdateTriggerResponse,
 };
+use proto::trigger_proto::Trigger;
 use shared::service::ServiceContext;
-
-use crate::sched::event_scheduler::EventScheduler;
 
 pub(crate) struct SchedulerAPIHandler {
     #[allow(unused)]
@@ -37,9 +37,8 @@ impl Scheduler for SchedulerAPIHandler {
 
         tokio::time::sleep(Duration::from_millis(800)).await;
         let reply = InstallTriggerResponse {};
-        {
-            self.scheduler.install_trigger();
-        }
+        let (_metadata, _ext, _request) = request.into_parts();
+        self.scheduler.install_trigger(Trigger::default());
 
         Ok(Response::new(reply))
     }

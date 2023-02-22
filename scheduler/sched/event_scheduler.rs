@@ -4,8 +4,9 @@ use tracing::info;
 
 use super::{
     spinner::{Spinner, SpinnerHandle},
-    triggers::TriggerMap,
+    triggers::ActiveTriggerMap,
 };
+use proto::trigger_proto::Trigger;
 use shared::service::ServiceContext;
 
 /**
@@ -14,9 +15,19 @@ use shared::service::ServiceContext;
  * It's designed to be easily shared with inner mutability and minimal locking
  * to reduce contention.
  *
+ *
+ * Event Scheduler also wraps the database. I'll load and store triggers from
+ * the database as needed. Installing a new trigger happens on two steps:
+ * - Inserting the trigger in the database
+ * - Adding the trigger to the ActiveTriggerMap (while holding a write lock)
+ *
+ * This is designed like this to minimise locking the ActiveTriggerMap (vs. making
+ * database queries from the TriggerMap while holding the write lock unnecessarily)
+ *
  * EventScheduler owns
  *   - Active TriggerMap
  *   - The SpinnerHandle
+ *   - Database Handle
  * Provides:
  *   - API to install/remove/update/query triggers
  *   - Start/pause the spinner.
@@ -26,7 +37,7 @@ use shared::service::ServiceContext;
  */
 pub(crate) struct EventScheduler {
     context: ServiceContext,
-    triggers: Arc<RwLock<TriggerMap>>,
+    triggers: Arc<RwLock<ActiveTriggerMap>>,
     spinner: Mutex<Option<SpinnerHandle>>,
 }
 
@@ -51,8 +62,9 @@ impl EventScheduler {
         );
     }
 
-    pub fn install_trigger(&self) {
-        self.trigger_updated("trig_somethingsomething".to_owned())
+    pub fn install_trigger(&self, trigger: Trigger) {
+        let mut w = self.triggers.write().unwrap();
+        w.add_or_update(trigger)
     }
 
     pub fn shutdown(&self) {
@@ -61,17 +73,10 @@ impl EventScheduler {
         if let Some(spinner) = spinner.take() {
             spinner.shutdown();
             let mut triggers = self.triggers.write().unwrap();
-            triggers.dirty_triggers.clear();
-            triggers.state.clear();
+            triggers.clear();
         } else {
             info!("EventScheduler has already been shutdown!");
         }
         // TODO: Do we need to flush anything to the database/filesystem?
-    }
-
-    //// PRIVATE
-    fn trigger_updated(&self, trigger_id: String) {
-        let mut w = self.triggers.write().unwrap();
-        w.dirty_triggers.insert(trigger_id);
     }
 }

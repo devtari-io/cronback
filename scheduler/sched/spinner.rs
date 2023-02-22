@@ -10,11 +10,11 @@ use tracing::info;
 
 use shared::service::ServiceContext;
 
-use super::triggers::TriggerMap;
+use super::triggers::ActiveTriggerMap;
 
 pub(crate) struct Spinner {
     tokio_handle: Handle,
-    triggers: Arc<RwLock<TriggerMap>>,
+    triggers: Arc<RwLock<ActiveTriggerMap>>,
     shutdown: Arc<RwLock<bool>>,
     context: ServiceContext,
 }
@@ -78,7 +78,7 @@ impl SpinnerHandle {
 impl Spinner {
     pub fn new(
         context: ServiceContext,
-        triggers: Arc<RwLock<TriggerMap>>,
+        triggers: Arc<RwLock<ActiveTriggerMap>>,
     ) -> Self {
         Self {
             tokio_handle: Handle::current(),
@@ -116,12 +116,12 @@ impl Spinner {
             }
             {
                 // Is the state dirty?
-                if !self.triggers.read().unwrap().dirty_triggers.is_empty() {
+                if !self.triggers.read().unwrap().is_dirty() {
                     info!("Triggers updated, reloading...");
                     // TODO reload the triggers that has been updated. Or
                     // re-construct the entire temporal state.
                     let mut w = self.triggers.write().unwrap();
-                    w.dirty_triggers.clear();
+                    w.reset_dirty();
                 }
             }
             /*
