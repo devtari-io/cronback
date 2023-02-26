@@ -42,6 +42,7 @@ pub struct SchedulerConfig {
     pub request_processing_timeout_s: u64,
     pub spinner_yield_max_ms: u64,
     pub max_triggers_per_tick: u64,
+    pub dispatcher_uri: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]

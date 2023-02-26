@@ -9,6 +9,7 @@ edition = "2021"
 path = "lib.rs"
 
 [dependencies]
+proto = { path = "../proto" }
 chrono = "0.4"
 config = { version = "0.13", features = ["toml"] }
 rand = "0.8"

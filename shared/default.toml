@@ -22,3 +22,4 @@ port = 9811
 request_processing_timeout_s = 30
 spinner_yield_max_ms = 250
 max_triggers_per_tick = 100000
+dispatcher_uri = "http://127.0.0.1:9999"

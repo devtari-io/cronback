@@ -7,7 +7,9 @@ use super::{
     triggers::{ActiveTriggerMap, TriggerError},
 };
 use proto::trigger_proto::Trigger;
-use shared::service::ServiceContext;
+use shared::{
+    grpc_client_provider::DispatcherClientProvider, service::ServiceContext,
+};
 
 /**
  *
@@ -50,7 +52,10 @@ impl EventScheduler {
         }
     }
 
-    pub fn start(&self) {
+    pub fn start(
+        &self,
+        dispatcher_client_provider: Arc<DispatcherClientProvider>,
+    ) {
         let mut spinner = self.spinner.lock().unwrap();
         if spinner.is_some() {
             info!("EventScheduler has already started!");
@@ -58,7 +63,12 @@ impl EventScheduler {
         }
         // TODO: Load state from database
         *spinner = Some(
-            Spinner::new(self.context.clone(), self.triggers.clone()).start(),
+            Spinner::new(
+                self.context.clone(),
+                self.triggers.clone(),
+                dispatcher_client_provider,
+            )
+            .start(),
         );
     }
 

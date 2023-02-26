@@ -23,3 +23,4 @@ cron = "0.12"
 chrono-tz = "0.8"
 tokio-stream = { version = "0.1", features = ["net"] }
 tempfile = "3.4"
+prost-types = "0.11"

@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use handler::SchedulerAPIHandler;
 use proto::scheduler_proto::scheduler_server::SchedulerServer;
+use shared::grpc_client_provider::DispatcherClientProvider;
 
 use sched::event_scheduler::EventScheduler;
 use shared::netutils;
@@ -16,10 +17,15 @@ pub async fn start_scheduler_server(mut context: service::ServiceContext) {
     let config = context.load_config();
     let event_scheduler = Arc::new(EventScheduler::new(context.clone()));
 
+    let dispatcher_client_provider = Arc::new(DispatcherClientProvider::new(
+        config.scheduler.dispatcher_uri.clone(),
+    ));
+
     let addr =
         netutils::parse_addr(&config.scheduler.address, config.scheduler.port)
             .unwrap();
-    event_scheduler.start();
+    event_scheduler.start(dispatcher_client_provider);
+
     let handler =
         SchedulerAPIHandler::new(context.clone(), event_scheduler.clone());
     let svc = SchedulerServer::new(handler);
@@ -40,6 +46,7 @@ pub mod test_helpers {
     use std::future::Future;
     use std::sync::Arc;
 
+    use shared::grpc_client_provider::DispatcherClientProvider;
     use tempfile::NamedTempFile;
     use tokio::net::{UnixListener, UnixStream};
     use tokio_stream::wrappers::UnixListenerStream;
@@ -62,8 +69,13 @@ pub mod test_helpers {
         let uds = UnixListener::bind(&*socket).unwrap();
         let stream = UnixListenerStream::new(uds);
 
+        let dispatcher_client_provider =
+            Arc::new(DispatcherClientProvider::new(
+                context.load_config().scheduler.dispatcher_uri,
+            ));
+
         let event_scheduler = Arc::new(EventScheduler::new(context.clone()));
-        event_scheduler.start();
+        event_scheduler.start(dispatcher_client_provider);
         let handler =
             SchedulerAPIHandler::new(context.clone(), event_scheduler.clone());
         let svc = SchedulerServer::new(handler);

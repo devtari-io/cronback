@@ -13,15 +13,20 @@ use metrics::{gauge, histogram};
 use tokio::runtime::Handle;
 use tracing::{info, trace, warn};
 
-use shared::service::ServiceContext;
+use shared::{
+    grpc_client_provider::DispatcherClientProvider, service::ServiceContext,
+};
 
 use super::triggers::{ActiveTriggerMap, TriggerTemporalState};
+
+use super::event_dispatcher::DispatchedEvent;
 
 pub(crate) struct Spinner {
     tokio_handle: Handle,
     triggers: Arc<RwLock<ActiveTriggerMap>>,
     shutdown: Arc<RwLock<bool>>,
     context: ServiceContext,
+    dispatcher_client_provider: Arc<DispatcherClientProvider>,
 }
 
 pub(crate) struct SpinnerHandle {
@@ -84,12 +89,14 @@ impl Spinner {
     pub fn new(
         context: ServiceContext,
         triggers: Arc<RwLock<ActiveTriggerMap>>,
+        dispatcher_client_provider: Arc<DispatcherClientProvider>,
     ) -> Self {
         Self {
             tokio_handle: Handle::current(),
             shutdown: Arc::new(RwLock::new(false)),
             context,
             triggers,
+            dispatcher_client_provider,
         }
     }
 
@@ -165,7 +172,6 @@ impl Spinner {
             for trigger in dispatch_queue.iter() {
                 let id = trigger.trigger_id.clone();
                 let scheduled_time = trigger.next_tick;
-                let dispatch_instant = Instant::now();
                 let lag = Utc::now()
                     .signed_duration_since(scheduled_time)
                     .num_milliseconds() as f64;
@@ -178,12 +184,7 @@ impl Spinner {
                           `max_triggers_per_tick` (current '{max_triggers_per_tick}') \
                           or reduce `spinner_yield_max_ms` (current '{}')", config.scheduler.spinner_yield_max_ms);
                 }
-                self.tokio_handle.spawn(async move {
-                    let now = Instant::now();
-                    info!("async-dispatch trigger: {} - async dispatch delay: {}ms", id,
-                         (now - dispatch_instant).as_millis()
-                          );
-                });
+                self.dispatch(&id);
             }
             /*
              * 3. Write-Lock TriggerMap
@@ -239,5 +240,30 @@ impl Spinner {
                 std::thread::sleep(remaining);
             }
         }
+    }
+
+    fn dispatch(&self, trigger_id: &str) {
+        let event = {
+            let r = self.triggers.read().unwrap();
+            let Some(trigger) = r.get(trigger_id) else {
+                // The trigger could have been removed from the active trigger maps, let's just
+                // ignore it.
+                return;
+            };
+            DispatchedEvent::from_trigger(
+                trigger.clone(),
+                self.dispatcher_client_provider.clone(),
+            )
+        };
+
+        let dispatch_instant = Instant::now();
+        self.tokio_handle.spawn(async move {
+            info!(
+                "async-dispatch event: {} - async dispatch delay: {:?}",
+                event.id(),
+                Instant::now().duration_since(dispatch_instant),
+            );
+            event.run().await;
+        });
     }
 }

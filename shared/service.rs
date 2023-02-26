@@ -5,9 +5,9 @@ use std::time::Duration;
 
 use hyper::Body;
 use hyper::{Request, Response};
+use proto::FILE_DESCRIPTOR_SET;
 use tonic::body::BoxBody;
 use tonic::transport::{NamedService, Server};
-use tonic_reflection::proto::FILE_DESCRIPTOR_SET;
 use tonic_reflection::server::Builder;
 use tower::Service;
 use tracing::{error, info};
