@@ -9,7 +9,6 @@ path = "lib.rs"
 [dependencies]
 shared = { path = "../shared" }
 proto = { path = "../proto" }
-saffron = "0.1.0"
 rand = "0.8.5"
 uuid = { version = "1.2.2", features = ["v4"] }
 chrono = "0.4"
@@ -25,3 +24,5 @@ metrics = "0.20"
 const_format = { version = "0.2.30", features = ["rust_1_64"] }
 tower = { version = "0.4.13", features = ["full"] }
 tonic-reflection = "0.6.0"
+cron = "0.12.0"
+chrono-tz = "0.8.1"

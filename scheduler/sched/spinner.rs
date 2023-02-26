@@ -1,4 +1,5 @@
 use std::{
+    collections::BinaryHeap,
     sync::Arc,
     sync::RwLock,
     thread::JoinHandle,
@@ -10,13 +11,14 @@ use tracing::info;
 
 use shared::service::ServiceContext;
 
-use super::triggers::ActiveTriggerMap;
+use super::triggers::{ActiveTriggerMap, TemporalState};
 
 pub(crate) struct Spinner {
     tokio_handle: Handle,
     triggers: Arc<RwLock<ActiveTriggerMap>>,
     shutdown: Arc<RwLock<bool>>,
     context: ServiceContext,
+    //temporal_states: BinaryHeap<TemporalState>,
 }
 
 pub(crate) struct SpinnerHandle {
@@ -46,10 +48,10 @@ impl SpinnerHandle {
  *   for too long will cause grpc handlers to block.
  * - The design needs to handles wall clock time shifts nicely (forwards or
  *   backwards)
- * - Spinner will pop as many triggers from the max-heap as long as the next_tick
+ * - Spinner will pop as many triggers from the min-heap as long as the next_tick
  *   is smaller or equal to the current timestamp. The rest is kept for the next
  *   tick.
- * - We don't need to drop the tail of the max-heap (after drain) if no change
+ * - We don't need to drop the tail of the min-heap (after drain) if no change
  *   happened to triggers map.
  *
  *   ** Shared State & Concurrency Control **
@@ -67,7 +69,7 @@ impl SpinnerHandle {
  *       in-memory state (TriggerMap) is the source-of-truth.
  *      - The Spinner maintains the `TemporalState` locally. Each installed trigger
  *        will have a corresponding TemporalState that tells the spinner the time
- *        point to trigger the next event. We keep TemporalState(s) in a max-heap
+ *        point to trigger the next event. We keep TemporalState(s) in a min-heap
  *        sorted by the next tick for installed triggers. This state is created
  *        from the TriggerMap and is checked/updated on each iteration of the loop.
  *      - EventScheduler will only edit the trigger map as it receives API calls.
@@ -85,6 +87,7 @@ impl Spinner {
             shutdown: Arc::new(RwLock::new(false)),
             context,
             triggers,
+            //BinaryHeap,
         }
     }
     pub fn start(self) -> SpinnerHandle {
@@ -103,7 +106,7 @@ impl Spinner {
     }
 
     #[tracing::instrument(skip_all)]
-    fn run_forever(self) {
+    fn run_forever(mut self) {
         let config = self.context.load_config();
         let yield_max_duration =
             Duration::from_millis(config.scheduler.spinner_yield_max_ms);
@@ -127,8 +130,8 @@ impl Spinner {
             /*
              * The rough plan:
              *
-             * 1. Go over all installed triggers that have next_tick >= now()
-             * Those are removed from the max-heap. Keep the list of removed
+             * 1. Go over all installed triggers that have next_tick <= now()
+             * Those are removed from the min-heap. Keep the list of removed
              * triggers until we finish up the loop.
              *
              * 2. Dispatch a new event (async) for each of those triggers.
@@ -158,6 +161,15 @@ impl Spinner {
                 // TODO: Consider using spin_sleep
                 std::thread::sleep(remaining);
             }
+        }
+    }
+
+    fn rebuild_temporal_state(&mut self) {
+        // for all active triggers, determine the next tick.
+        //self.temporal_states.clear();
+        let mut triggers = self.triggers.read().unwrap();
+        for trigger in triggers.triggers_iter() {
+            let trigger_id = trigger.get().id.clone();
         }
     }
 }

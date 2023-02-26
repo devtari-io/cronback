@@ -4,7 +4,7 @@ use tracing::info;
 
 use super::{
     spinner::{Spinner, SpinnerHandle},
-    triggers::ActiveTriggerMap,
+    triggers::{ActiveTriggerMap, TriggerError},
 };
 use proto::trigger_proto::Trigger;
 use shared::service::ServiceContext;
@@ -62,7 +62,10 @@ impl EventScheduler {
         );
     }
 
-    pub fn install_trigger(&self, trigger: Trigger) {
+    pub fn install_trigger(
+        &self,
+        trigger: Trigger,
+    ) -> Result<(), TriggerError> {
         let mut w = self.triggers.write().unwrap();
         w.add_or_update(trigger)
     }
