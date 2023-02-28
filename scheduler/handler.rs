@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use tonic::{Request, Response, Status};
 use tracing::info;
@@ -10,7 +10,9 @@ use proto::scheduler_proto::{
     GetTriggerResponse, InstallTriggerRequest, InstallTriggerResponse,
     UpdateTriggerRequest, UpdateTriggerResponse,
 };
-use proto::trigger_proto::Trigger;
+use proto::trigger_proto::Cron;
+use proto::trigger_proto::{self, Schedule};
+use proto::trigger_proto::{Trigger, TriggerStatus};
 use shared::service::ServiceContext;
 
 pub(crate) struct SchedulerAPIHandler {
@@ -35,10 +37,36 @@ impl Scheduler for SchedulerAPIHandler {
     ) -> Result<Response<InstallTriggerResponse>, Status> {
         info!("Got a request: {request:?}");
 
-        tokio::time::sleep(Duration::from_millis(800)).await;
         let reply = InstallTriggerResponse {};
         let (_metadata, _ext, _request) = request.into_parts();
-        self.scheduler.install_trigger(Trigger::default());
+        let id = format!("trig_{}", rand::random::<u64>());
+        let sec = format!("{}", rand::random::<u16>() % 59);
+        let trigger = Trigger {
+            id,
+            owner_id: "asoli".to_owned(),
+            reference_id: None,
+            name: None,
+            description: None,
+            created_at: None,
+            endpoint: None,
+            payload: None,
+            timeout: None,
+            status: TriggerStatus::Active.into(),
+            event_retry_policy: None,
+            on_success: None,
+            on_failure: None,
+            schedule: Some(Schedule {
+                schedule: Some(trigger_proto::schedule::Schedule::Cron(Cron {
+                    cron: format!("{} * * * * *", sec),
+                    timezone: "Europe/London".into(),
+                    events_limit: 4,
+                })),
+            }),
+        };
+        info!("Installing trigger {:?}", trigger);
+        self.scheduler
+            .install_trigger(trigger)
+            .map_err(|e| Status::invalid_argument(e.to_string()))?;
 
         Ok(Response::new(reply))
     }

@@ -1,24 +1,27 @@
 use std::{
+    cmp::Reverse,
     collections::BinaryHeap,
     sync::Arc,
     sync::RwLock,
     thread::JoinHandle,
     time::{Duration, Instant},
+    vec,
 };
 
+use chrono::Utc;
+use metrics::{gauge, histogram};
 use tokio::runtime::Handle;
-use tracing::info;
+use tracing::{info, trace, warn};
 
 use shared::service::ServiceContext;
 
-use super::triggers::{ActiveTriggerMap, TemporalState};
+use super::triggers::{ActiveTriggerMap, TriggerTemporalState};
 
 pub(crate) struct Spinner {
     tokio_handle: Handle,
     triggers: Arc<RwLock<ActiveTriggerMap>>,
     shutdown: Arc<RwLock<bool>>,
     context: ServiceContext,
-    //temporal_states: BinaryHeap<TemporalState>,
 }
 
 pub(crate) struct SpinnerHandle {
@@ -87,9 +90,9 @@ impl Spinner {
             shutdown: Arc::new(RwLock::new(false)),
             context,
             triggers,
-            //BinaryHeap,
         }
     }
+
     pub fn start(self) -> SpinnerHandle {
         let shutdown_signal = self.shutdown.clone();
         let join = std::thread::Builder::new()
@@ -106,25 +109,18 @@ impl Spinner {
     }
 
     #[tracing::instrument(skip_all)]
-    fn run_forever(mut self) {
+    fn run_forever(self) {
+        let mut temporal_states: BinaryHeap<Reverse<TriggerTemporalState>> =
+            Default::default();
         let config = self.context.load_config();
         let yield_max_duration =
             Duration::from_millis(config.scheduler.spinner_yield_max_ms);
+        let max_triggers_per_tick = config.scheduler.max_triggers_per_tick;
         'tick_loop: loop {
             {
                 let shutdown = self.shutdown.read().unwrap();
                 if *shutdown {
                     break 'tick_loop;
-                }
-            }
-            {
-                // Is the state dirty?
-                if !self.triggers.read().unwrap().is_dirty() {
-                    info!("Triggers updated, reloading...");
-                    // TODO reload the triggers that has been updated. Or
-                    // re-construct the entire temporal state.
-                    let mut w = self.triggers.write().unwrap();
-                    w.reset_dirty();
                 }
             }
             /*
@@ -134,20 +130,98 @@ impl Spinner {
              * Those are removed from the min-heap. Keep the list of removed
              * triggers until we finish up the loop.
              *
+             */
+            let mut dispatch_queue = vec![];
+            for _ in 0..max_triggers_per_tick {
+                let Some(temporal_state) = temporal_states.peek() else { break };
+                if temporal_state.0.next_tick <= Utc::now() {
+                    let temporal_state = temporal_states.pop().unwrap().0;
+                    trace!(
+                        "Adding trigger {} to the dispatch queue",
+                        temporal_state.trigger_id,
+                    );
+                    dispatch_queue.push(temporal_state);
+                } else {
+                    // The rest is in the future.
+                    break;
+                }
+            }
+            if dispatch_queue.len() == max_triggers_per_tick as usize {
+                warn!(
+                    "Reached max dispatches per tick ({}), some triggers will be deferred",
+                    max_triggers_per_tick
+                );
+            }
+
+            /*
              * 2. Dispatch a new event (async) for each of those triggers.
              */
             let instant = Instant::now();
-            info!("[REMOVE ME] Tick...");
-            self.tokio_handle.spawn(async move {
-                info!("async-dispatch test");
-            });
+            trace!(
+                "[TICK] temporal_state {} and dispatch_queue {}",
+                temporal_states.len(),
+                dispatch_queue.len(),
+            );
+            for trigger in dispatch_queue.iter() {
+                let id = trigger.trigger_id.clone();
+                let scheduled_time = trigger.next_tick;
+                let dispatch_instant = Instant::now();
+                let lag = Utc::now()
+                    .signed_duration_since(scheduled_time)
+                    .num_milliseconds() as f64;
+                histogram!(
+                    "cronback.spinner.dispatch_lag_seconds",
+                    lag / 1000.0
+                );
+                if lag > 10_000.0 {
+                    warn!("Spinner lag has exceeded 10s, you might need to increase \
+                          `max_triggers_per_tick` (current '{max_triggers_per_tick}') \
+                          or reduce `spinner_yield_max_ms` (current '{}')", config.scheduler.spinner_yield_max_ms);
+                }
+                self.tokio_handle.spawn(async move {
+                    let now = Instant::now();
+                    info!("async-dispatch trigger: {} - async dispatch delay: {}ms", id,
+                         (now - dispatch_instant).as_millis()
+                          );
+                });
+            }
             /*
-             * 3. Read-Lock TriggerMap
-             * 4. Check if we have dirty triggers, fetch their contents.
-             * 5. Calculate temporal state for the removed triggers and re-insert.
-             * 6. Update existing temporal state if triggers have been updated.
+             * 3. Write-Lock TriggerMap
+             * 4. Calculate temporal state for the removed triggers and re-insert.
+             * 5. Check if we have dirty triggers, fetch their contents.
+             * 6. Rebuild temporal state if needed.
              * 7. loop
              */
+            if !dispatch_queue.is_empty() {
+                // Maybe individual triggers need to be advanced.
+                let mut w = self.triggers.write().unwrap();
+                for mut trigger in dispatch_queue {
+                    // Those states that yield None in advance will be dropped.
+                    if let Some(next_tick) = w.advance(&trigger.trigger_id) {
+                        trace!(
+                            "Trigger {} next trigger time is {}",
+                            trigger.trigger_id,
+                            next_tick
+                        );
+                        // _can_ be avoided if the trigger map is dirty, but will
+                        // keep it for simplicity.
+                        trigger.next_tick = next_tick;
+                        temporal_states.push(Reverse(trigger));
+                    }
+                }
+            }
+            // Is the state dirty?
+            if self.triggers.read().unwrap().is_dirty() {
+                trace!("Triggers updated, reloading...");
+                // TODO reload the triggers that has been updated. Or re-construct
+                // the entire temporal state.
+                let mut w = self.triggers.write().unwrap();
+                temporal_states = w.build_temporal_state();
+                gauge!(
+                    "cronback.spinner.active_triggers_total",
+                    temporal_states.len() as f64
+                );
+            }
 
             // This number indicates how busy the machine is. The closer to zero
             // the busier we are. That said, it's not an accurate indicator of
@@ -157,19 +231,13 @@ impl Spinner {
             // For those, the latency is measured separately.
             let remaining =
                 yield_max_duration.saturating_sub(instant.elapsed());
+            histogram!(
+                "cronback.spinner.yield_duration_ms",
+                remaining.as_millis() as f64,
+            );
             if remaining != Duration::ZERO {
-                // TODO: Consider using spin_sleep
                 std::thread::sleep(remaining);
             }
-        }
-    }
-
-    fn rebuild_temporal_state(&mut self) {
-        // for all active triggers, determine the next tick.
-        //self.temporal_states.clear();
-        let mut triggers = self.triggers.read().unwrap();
-        for trigger in triggers.triggers_iter() {
-            let trigger_id = trigger.get().id.clone();
         }
     }
 }

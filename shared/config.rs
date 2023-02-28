@@ -41,6 +41,7 @@ pub struct SchedulerConfig {
     pub port: u16,
     pub request_processing_timeout_s: u64,
     pub spinner_yield_max_ms: u64,
+    pub max_triggers_per_tick: u64,
 }
 
 #[derive(Debug, Clone, Deserialize)]

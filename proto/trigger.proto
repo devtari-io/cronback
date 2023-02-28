@@ -101,6 +101,6 @@ message Trigger {
   TriggerStatus status = 11;
   OnStatusHandler on_success = 12;
   OnStatusHandler on_failure = 13;
-  RetryPolicy event_retry_policy = 14;
+  EventRetryPolicy event_retry_policy = 14;
 }
 

@@ -20,4 +20,5 @@ cell_id = 0
 address = "0.0.0.0"
 port = 9811
 request_processing_timeout_s = 30
-spinner_yield_max_ms = 500
+spinner_yield_max_ms = 250
+max_triggers_per_tick = 100000
