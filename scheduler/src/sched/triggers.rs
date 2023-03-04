@@ -21,26 +21,12 @@ pub(crate) enum TriggerError {
     InvalidTimezone(String),
     #[error("Trigger '{0}' should not have passed validation!")]
     MalformedTrigger(String),
+    #[error("Trigger with Id '{0}' is unknown to this scheduler!")]
+    NotFound(String),
+    //join error
+    #[error("Internal async processing failure!")]
+    JoinError(#[from] tokio::task::JoinError),
 }
-
-// message Trigger {
-//   string id = 1;
-//   string owner_id = 2;
-//   /// [Future] User supplied identifier, unique per owner account
-//   optional string reference_id = 3;
-//   optional string name = 4;
-//   optional string description = 5;
-//   google.protobuf.Timestamp created_at = 6;
-//   // TODO: Explore having multiple endpoints with independent status
-//   Endpoint endpoint = 7;
-//   Payload payload = 8;
-//   google.protobuf.Duration timeout = 9;
-//   Schedule schedule = 10;
-//   TriggerStatus status = 11;
-//   OnStatusHandler on_success = 12;
-//   OnStatusHandler on_failure = 13;
-//   RetryPolicy event_retry_policy = 14;
-// }
 
 ///
 /// Maintains the set of `active` triggers in memory. Expired triggers are
@@ -99,6 +85,9 @@ impl ActiveTriggerMap {
         }
         self.reset_dirty();
         new_state
+    }
+    pub fn get(&self, id: &str) -> Option<&Trigger> {
+        self.state.get(id).map(|t| t.get())
     }
 
     /*
@@ -379,7 +368,9 @@ mod tests {
     fn future_ticks_parsing_cron_with_limits() -> Result<(), TriggerError> {
         //  sec  min   hour   day of month   month   day of week   year
         //  A specific second in the future, this should yield exactly one time point.
-        let cron_pattern = "0 5 4 2 3 * 2040"; // fifth minute of every hour
+        // FIXME: This will fail soon, see https://github.com/zslayton/cron/issues/97
+
+        let cron_pattern = "0 5 4 2 6 * 2040"; // fifth minute of every hour
         let schedule_proto = create_cron_schedule(cron_pattern, 4);
 
         let mut result =

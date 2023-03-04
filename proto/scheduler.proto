@@ -1,12 +1,12 @@
 syntax = "proto3";
 
+import "trigger.proto";
+
 package scheduler_proto;
 
 service Scheduler {
-  /// Install a new trigger onto the scheduler
+  /// Install or update a trigger onto the scheduler
   rpc InstallTrigger (InstallTriggerRequest)  returns (InstallTriggerResponse);
-  /// Update an existing trigger
-  rpc UpdateTrigger (UpdateTriggerRequest)  returns (UpdateTriggerResponse);
   /// Manually run a trigger
   rpc ExecuteTrigger (ExecuteTriggerRequest)  returns (ExecuteTriggerResponse);
   /// Get a trigger by id
@@ -15,18 +15,13 @@ service Scheduler {
   rpc FindTriggers (FindTriggersRequest)  returns (FindTriggersResponse);
 }
 
-// == INSTALL TRIGGER ==
+// == INSTALL OR UPDATE EXISTING TRIGGER ==
 message InstallTriggerRequest {
+  trigger_proto.Trigger trigger = 1;
 }
 
 message InstallTriggerResponse {
-}
 
-// == UPDATE TRIGGER ==
-message UpdateTriggerRequest {
-}
-
-message UpdateTriggerResponse {
 }
 
 // == EXECUTE TRIGGER MANUALLY ==
@@ -38,9 +33,11 @@ message ExecuteTriggerResponse {
 
 // == GET TRIGGER ==
 message GetTriggerRequest {
+  string id = 1;
 }
 
 message GetTriggerResponse {
+  trigger_proto.Trigger trigger = 1;
 }
 
 // == Find TRIGGERS ==

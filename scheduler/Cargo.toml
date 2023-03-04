@@ -3,26 +3,29 @@ name = "scheduler"
 version = "0.1.0"
 edition = "2021"
 
-[lib]
-path = "lib.rs"
-
 [dependencies]
 shared = { path = "../shared" }
 proto = { path = "../proto" }
 rand = "0.8.5"
-uuid = { version = "1.2.2", features = ["v4"] }
+uuid = { version = "1.3", features = ["v4"] }
 chrono = "0.4"
 serde = "1"
 thiserror = "1"
-anyhow = "1.0.69"
+anyhow = "1.0"
 tokio = { version = "1", features = ["full"] }
 colored = "2.0"
 tracing = { version = "0.1", features = ["log"] }
 tonic = "0.8"
 prost = "0.11"
 metrics = "0.20"
-const_format = { version = "0.2.30", features = ["rust_1_64"] }
-tower = { version = "0.4.13", features = ["full"] }
-tonic-reflection = "0.6.0"
-cron = "0.12.0"
-chrono-tz = "0.8.1"
+tower = { version = "0.4", features = ["full"] }
+tonic-reflection = "0.6"
+cron = "0.12"
+chrono-tz = "0.8"
+tokio-stream = { version = "0.1", features = ["net"] }
+tempfile = "3.4"
+
+[dev-dependencies]
+tokio-stream = { version = "0.1", features = ["net"] }
+tower = { version = "0.4" }
+tempfile = "3.4"

@@ -62,12 +62,30 @@ impl EventScheduler {
         );
     }
 
-    pub fn install_trigger(
+    pub async fn install_trigger(
         &self,
         trigger: Trigger,
     ) -> Result<(), TriggerError> {
-        let mut w = self.triggers.write().unwrap();
-        w.add_or_update(trigger)
+        let triggers = self.triggers.clone();
+        tokio::task::spawn_blocking(move || {
+            let mut w = triggers.write().unwrap();
+            w.add_or_update(trigger)
+        })
+        .await?
+    }
+
+    pub async fn get_trigger(
+        &self,
+        id: String,
+    ) -> Result<Trigger, TriggerError> {
+        let triggers = self.triggers.clone();
+        tokio::task::spawn_blocking(move || {
+            let r = triggers.read().unwrap();
+            r.get(&id)
+                .ok_or_else(|| TriggerError::NotFound(id))
+                .cloned()
+        })
+        .await?
     }
 
     pub fn shutdown(&self) {
