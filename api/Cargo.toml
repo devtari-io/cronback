@@ -7,10 +7,10 @@ edition = "2021"
 path = "lib.rs"
 
 [dependencies]
-axum = "0.6.4"
+axum = { version = "0.6.4", features = ["macros"] }
 shared = { path = "../shared" }
 proto = { path = "../proto" }
-serde = "1"
+serde = { version = "1", features = ["derive"] }
 thiserror = "1"
 anyhow = "1.0.69"
 tokio = { version = "1", features = ["full"] }
@@ -19,3 +19,8 @@ tracing = { version = "0.1", features = ["log"] }
 tonic = "0.8"
 prost = "0.11"
 metrics = "0.20"
+chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = "0.8"
+serde_json = "1.0.93"
+validator = { version = "0.16.0", features = ["derive"] }
+serde_urlencoded = "0.7.1"

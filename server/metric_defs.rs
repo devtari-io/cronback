@@ -27,4 +27,16 @@ pub(crate) fn install_metrics() {
         Unit::Count,
         "How many active triggers are loaded into the spinner"
     );
+
+    // API Server
+    describe_counter!(
+        "cronback.api.http_requests_total",
+        Unit::Count,
+        "Total HTTP API requests processed"
+    );
+    describe_histogram!(
+        "cronback.api.http_requests_duration_seconds",
+        Unit::Seconds,
+        "Total HTTP API processing in seconds"
+    );
 }

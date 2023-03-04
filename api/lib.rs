@@ -1,10 +1,28 @@
+pub mod errors;
+mod handlers;
+mod model;
+
+use std::{sync::Arc, time::Instant};
+
+use metrics::{histogram, increment_counter};
 use shared::netutils;
 use tokio::select;
 use tracing::{error, info, warn};
 
-use axum::{routing::get, Router};
+use axum::{
+    extract::MatchedPath,
+    http::{Request, StatusCode},
+    middleware::{self, Next},
+    response::IntoResponse,
+    routing::get,
+    routing::post,
+    Router,
+};
 
+use handlers::create_trigger::create_trigger;
 use shared::service;
+
+pub(crate) struct AppState {}
 
 #[tracing::instrument(skip_all, fields(service = context.service_name()))]
 pub async fn start_api_server(mut context: service::ServiceContext) {
@@ -12,10 +30,18 @@ pub async fn start_api_server(mut context: service::ServiceContext) {
     let addr =
         netutils::parse_addr(config.api.address, config.api.port).unwrap();
 
+    let shared_state = Arc::new(AppState {});
+
     // build our application with a route
     let app = Router::new()
         // `GET /` goes to `root`
-        .route("/", get(root));
+        .route("/", get(root))
+        .route("/v1/triggers", post(create_trigger))
+        .route_layer(middleware::from_fn(track_metrics))
+        .with_state(shared_state);
+
+    // Handle 404
+    let app = app.fallback(handler_404);
 
     let mut context_clone = context.clone();
     info!("Starting '{}' on {:?}", context.service_name(), addr);
@@ -54,6 +80,41 @@ pub async fn start_api_server(mut context: service::ServiceContext) {
 
 // basic handler that responds with a static string
 async fn root() -> &'static str {
-    info!("Received request");
-    "Hello, World!"
+    "Hey, better visit https://cronback.me"
+}
+
+async fn track_metrics<B>(req: Request<B>, next: Next<B>) -> impl IntoResponse {
+    let start = Instant::now();
+    let path = if let Some(matched_path) = req.extensions().get::<MatchedPath>()
+    {
+        matched_path.as_str().to_owned()
+    } else {
+        req.uri().path().to_owned()
+    };
+    let method = req.method().clone();
+
+    let response = next.run(req).await;
+
+    let latency = start.elapsed().as_secs_f64();
+    let status = response.status().as_u16().to_string();
+
+    let labels = [
+        ("method", method.to_string()),
+        ("path", path),
+        ("status", status),
+    ];
+
+    increment_counter!("cronback.api.http_requests_total", &labels);
+    histogram!(
+        "cronback.api.http_requests_duration_seconds",
+        latency,
+        &labels
+    );
+
+    response
+}
+
+// handle 404
+async fn handler_404() -> impl IntoResponse {
+    (StatusCode::NOT_FOUND, "You lost mate?")
 }

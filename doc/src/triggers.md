@@ -18,7 +18,7 @@ Endpoint: `/v1/triggers`
   "headers": {
     "Something": "5"
   },
-  "timeout_s": "5",
+  "timeout_s": 5,
   "content_type": "application/json; charset=utf-8",
   "cron": "0 * * * *", // mut. exl. with run_at
   "cron_timezone": "Europe/London",
