@@ -5,13 +5,14 @@ use std::{
     str::FromStr,
 };
 
-use chrono_tz::{Tz, UTC};
+use chrono_tz::Tz;
+use cron::{OwnedScheduleIterator, Schedule as CronSchedule};
 use thiserror::Error;
+use tracing::info;
 
 use chrono::{DateTime, Utc};
-use cron::{OwnedScheduleIterator, Schedule as CronSchedule};
 use proto::trigger_proto::{self, Trigger};
-use tracing::info;
+use shared::timeutil::parse_iso8601;
 
 #[derive(Error, Debug)]
 pub(crate) enum TriggerError {
@@ -190,10 +191,7 @@ impl TriggerFutureTicks {
             | trigger_proto::schedule::Schedule::RunAt(run_at) => {
                 let mut ticks = BinaryHeap::new();
                 for ts in run_at.run_at.iter() {
-                    let parsed: DateTime<Tz> =
-                        DateTime::parse_from_str(ts, "%+")
-                            .unwrap()
-                            .with_timezone(&UTC);
+                    let parsed: DateTime<Tz> = parse_iso8601(ts).unwrap();
                     if parsed < Utc::now() {
                         // TODO: Remove this log line
                         info!("Tick of trigger is in the past, skipping...");

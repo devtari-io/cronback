@@ -7,7 +7,8 @@ use axum::{
     Json,
 };
 
-use crate::{errors::ApiError, model::Trigger, AppState};
+use crate::model::trigger::Trigger;
+use crate::{errors::ApiError, AppState};
 
 use super::ValidatedJson;
 
