@@ -51,6 +51,7 @@ dependencies = [
  "metrics",
  "prost",
  "proto",
+ "rand",
  "serde",
  "serde_json",
  "serde_urlencoded",

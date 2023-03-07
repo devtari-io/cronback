@@ -7,8 +7,6 @@ use cron::Schedule as CronSchedule;
 use serde::{Deserialize, Serialize};
 use validator::{Validate, ValidationError};
 
-use shared::model_util::generate_model_id;
-
 #[derive(Debug, Clone, Serialize, Deserialize, Validate)]
 #[serde(tag = "object")]
 #[serde(deny_unknown_fields)]
@@ -26,7 +24,6 @@ pub(crate) struct Trigger {
         message = "name must be between 2 and 1000 characters if set"
     ))]
     pub name: Option<String>,
-    #[serde(skip_deserializing)]
     pub created_at: DateTime<Utc>,
     pub reference_id: Option<String>,
     #[validate(length(
@@ -85,7 +82,7 @@ impl Default for Status {
 impl Default for Trigger {
     fn default() -> Self {
         Self {
-            id: generate_model_id("trig"),
+            id: Default::default(),
             name: None,
             reference_id: None,
             created_at: Utc::now(),

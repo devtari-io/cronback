@@ -9,6 +9,8 @@ use axum::{
 
 use thiserror::Error;
 
+use crate::AppStateError;
+
 #[derive(Error, Debug)]
 pub enum ApiError {
     #[error(
@@ -22,6 +24,8 @@ pub enum ApiError {
     FormRejection(#[from] FormRejection),
     #[error(transparent)]
     JsonRejection(#[from] JsonRejection),
+    #[error(transparent)]
+    AppStateError(#[from] AppStateError),
 }
 
 impl IntoResponse for ApiError {
@@ -49,6 +53,9 @@ impl IntoResponse for ApiError {
             | ApiError::JsonRejection(e) => serde_json_error_response(e),
             | ApiError::UnsupportedContentType(_) => {
                 (StatusCode::UNSUPPORTED_MEDIA_TYPE, self.to_string())
+            }
+            | ApiError::AppStateError(e) => {
+                (StatusCode::SERVICE_UNAVAILABLE, e.to_string())
             }
         }
         .into_response()

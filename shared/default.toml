@@ -4,9 +4,13 @@ prometheus_address = "127.0.0.1"
 prometheus_port = 9000
 
 [api]
-# Localhost only by default
+#scheduler_shard_map = { 023 = "127.0.0.1:9811" }
 address = "0.0.0.0"
 port = 8888
+
+[api.scheduler_cell_map]
+# Maps a cell_id to a scheduler address
+0 = "http://127.0.0.1:9811"
 
 [dispatcher]
 # Localhost only by default

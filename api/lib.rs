@@ -5,7 +5,10 @@ mod model;
 use std::{sync::Arc, time::Instant};
 
 use metrics::{histogram, increment_counter};
-use shared::netutils;
+use proto::scheduler_proto::scheduler_client::SchedulerClient as GenSchedulerClient;
+
+use rand::seq::SliceRandom;
+use thiserror::Error;
 use tokio::select;
 use tracing::{error, info, warn};
 
@@ -21,16 +24,48 @@ use axum::{
 
 use handlers::create_trigger::create_trigger;
 use shared::service;
+use shared::{config::Config, netutils};
 
-pub(crate) struct AppState {}
+#[derive(Debug, Error)]
+pub enum AppStateError {
+    #[error(transparent)]
+    ConnectError(#[from] tonic::transport::Error),
+}
+
+pub(crate) struct AppState {
+    context: service::ServiceContext,
+    config: Config,
+}
+pub type SchedulerClient = GenSchedulerClient<tonic::transport::Channel>;
+
+impl AppState {
+    pub async fn pick_scheduler(
+        &self,
+        _owner_id: String,
+    ) -> Result<SchedulerClient, AppStateError> {
+        let (_, address) = self.pick_random_scheduler();
+        Ok(SchedulerClient::connect(address).await.unwrap())
+    }
+    fn pick_random_scheduler(&self) -> (u64, String) {
+        let mut rng = rand::thread_rng();
+        // // pick random entry from hashmap self.config.api.scheduler_cell_map
+        let keys: Vec<_> = self.config.api.scheduler_cell_map.iter().collect();
+        let (cell_id, address) = keys.choose(&mut rng).unwrap();
+        info!("Picked scheduler cell {} at {}", cell_id, address);
+        (**cell_id, address.to_string())
+    }
+}
 
 #[tracing::instrument(skip_all, fields(service = context.service_name()))]
 pub async fn start_api_server(mut context: service::ServiceContext) {
     let config = context.load_config();
     let addr =
-        netutils::parse_addr(config.api.address, config.api.port).unwrap();
+        netutils::parse_addr(&config.api.address, config.api.port).unwrap();
 
-    let shared_state = Arc::new(AppState {});
+    let shared_state = Arc::new(AppState {
+        context: context.clone(),
+        config: config.clone(),
+    });
 
     // build our application with a route
     let app = Router::new()

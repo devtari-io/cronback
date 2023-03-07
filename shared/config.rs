@@ -1,6 +1,7 @@
 //! Configuration Model
 
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
+use std::net::{IpAddr, SocketAddr};
 
 use config::FileFormat;
 use config::{
@@ -49,6 +50,7 @@ pub struct SchedulerConfig {
 pub struct ApiConfig {
     pub address: String,
     pub port: u16,
+    pub scheduler_cell_map: HashMap<u64, String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

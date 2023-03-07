@@ -26,3 +26,4 @@ validator = { version = "0.16.0", features = ["derive"] }
 serde_urlencoded = "0.7.1"
 cron = "0.12"
 iso8601-duration = "0.1.0"
+rand = "0.8"
