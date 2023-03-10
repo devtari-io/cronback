@@ -159,7 +159,7 @@ impl Eq for TriggerTemporalState {}
 pub(crate) enum TriggerFutureTicks {
     CronPattern {
         next_ticks: Peekable<OwnedScheduleIterator<Tz>>,
-        remaining_events_limit: Option<i64>,
+        remaining_events_limit: Option<u64>,
     },
     RunAt(BinaryHeap<Reverse<DateTime<Tz>>>),
 }
@@ -298,7 +298,7 @@ mod tests {
 
     fn create_cron_schedule(
         pattern: &str,
-        events_limit: i64,
+        events_limit: u64,
     ) -> proto::trigger_proto::Schedule {
         proto::trigger_proto::Schedule {
             schedule: Some(trigger_proto::schedule::Schedule::Cron(Cron {
@@ -328,9 +328,8 @@ mod tests {
             name: None,
             description: None,
             created_at: None,
-            endpoint: None,
+            emit: None,
             payload: None,
-            timeout: None,
             status: TriggerStatus::Active.into(),
             event_retry_policy: None,
             on_success: None,

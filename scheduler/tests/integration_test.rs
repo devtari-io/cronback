@@ -3,7 +3,9 @@ use std::sync::Arc;
 use proto::trigger_proto::{self, Cron, Schedule, Trigger, TriggerStatus};
 use tonic::{Request, Status};
 
-use proto::scheduler_proto::{GetTriggerRequest, InstallTriggerRequest};
+use proto::scheduler_proto::{
+    GetTriggerRequest, InstallTrigger, InstallTriggerRequest,
+};
 use scheduler::test_helpers;
 use shared::config::{ConfigLoader, Role};
 use shared::service::ServiceContext;
@@ -24,7 +26,7 @@ async fn install_trigger_invalid_test() {
     let request_future = async {
         let response = client
             .install_trigger(Request::new(InstallTriggerRequest {
-                trigger: None,
+                install_trigger: None,
             }))
             .await;
         assert!(matches!(response, Err(Status { .. })));
@@ -48,20 +50,14 @@ async fn install_trigger_valid_test() {
     );
     let (serve_future, mut client) =
         test_helpers::test_server_and_client(context).await;
-    let trigger = Some(Trigger {
-        id: "trig_12345".to_owned(),
+    let install_trigger = Some(InstallTrigger {
+        cell_id: 0,
         owner_id: "asoli".to_owned(),
         reference_id: None,
         name: None,
         description: None,
-        created_at: None,
-        endpoint: None,
+        emit: None,
         payload: None,
-        timeout: None,
-        status: TriggerStatus::Active.into(),
-        event_retry_policy: None,
-        on_success: None,
-        on_failure: None,
         schedule: Some(Schedule {
             schedule: Some(trigger_proto::schedule::Schedule::Cron(Cron {
                 cron: format!("0 * * * * *"),
@@ -73,7 +69,7 @@ async fn install_trigger_valid_test() {
     let request_future = async {
         client
             .install_trigger(Request::new(InstallTriggerRequest {
-                trigger: trigger.clone(),
+                install_trigger: install_trigger.clone(),
             }))
             .await
             .unwrap()
@@ -86,7 +82,8 @@ async fn install_trigger_valid_test() {
             .await
             .unwrap()
             .into_inner();
-        assert_eq!(response.trigger, trigger);
+        todo!();
+        //assert_eq!(response.trigger, trigger);
     };
 
     // Wait for completion, when the client request future completes

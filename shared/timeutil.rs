@@ -29,6 +29,53 @@ pub fn parse_iso8601(input: &str) -> Option<DateTime<Tz>> {
     )
 }
 
+pub fn to_iso8601(input: &DateTime<Tz>) -> String {
+    input.format("%+").to_string()
+}
+
+pub mod iso8601_dateformat {
+    use super::parse_iso8601;
+    use chrono::DateTime;
+    use chrono_tz::Tz;
+    use serde::{self, Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S>(
+        timepoints: &Vec<DateTime<Tz>>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut vec = Vec::new();
+        for t in timepoints {
+            let s = format!("{}", t.format("%+"));
+            vec.push(s);
+        }
+        serializer.serialize_some(&vec)
+    }
+
+    pub fn deserialize<'de, D>(
+        deserializer: D,
+    ) -> Result<Vec<DateTime<Tz>>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let vec_de = Vec::<String>::deserialize(deserializer)?;
+        let items: Result<Vec<DateTime<Tz>>, D::Error> = vec_de
+            .into_iter()
+            .map(|x| {
+                parse_iso8601(&x).ok_or_else(|| {
+                    serde::de::Error::custom(
+                        "Invalid datetime format. Only ISO-8601 is allowed.",
+                    )
+                })
+            })
+            .collect();
+        let items = items?;
+        Ok(items)
+    }
+}
+
 #[test]
 fn test_iso8601_duration_parsing() {
     let input1 = "PT5M";

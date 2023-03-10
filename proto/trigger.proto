@@ -12,6 +12,7 @@ enum HttpMethod {
   HttpMethod_PUT = 3;
   HttpMethod_DELETE = 4;
   HttpMethod_HEAD = 5;
+  HttpMethod_PATCH = 6;
 }
 
 enum TriggerStatus {
@@ -26,7 +27,7 @@ message Cron {
   string cron = 1;
   string timezone = 2;
   // The number of times this trigger should run. A value of 0, means that it never expires
-  int64 events_limit = 3;
+  uint64 events_limit = 3;
 }
 
 enum RetryPolicy {
@@ -59,19 +60,20 @@ message OnStatusHandler {
 message Webhook {
   HttpMethod http_method = 1;
   string url = 2;
-}
-
-message Endpoint {
-  oneof endpoint {
-    Webhook webhook = 1;
-    // TODO: Tunnel;
-  }
+  double timeout_s = 3;
 }
 
 message Payload {
   string content_type = 1;
   map<string, string> headers = 2;
-  bytes payload = 3;
+  bytes body = 3;
+}
+
+message Emit {
+  oneof emit {
+    Webhook webhook = 1;
+    //Tunnel tunnel = 2;
+  }
 }
 
 message RunAt {
@@ -94,9 +96,8 @@ message Trigger {
   optional string description = 5;
   google.protobuf.Timestamp created_at = 6;
   // TODO: Explore having multiple endpoints with independent status
-  Endpoint endpoint = 7;
+  Emit emit = 7;
   Payload payload = 8;
-  google.protobuf.Duration timeout = 9;
   Schedule schedule = 10;
   TriggerStatus status = 11;
   OnStatusHandler on_success = 12;

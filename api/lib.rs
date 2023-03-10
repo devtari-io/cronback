@@ -1,6 +1,6 @@
+mod api_model;
 pub mod errors;
 mod handlers;
-mod model;
 
 use std::{sync::Arc, time::Instant};
 
@@ -22,9 +22,9 @@ use axum::{
     Router,
 };
 
-use handlers::create_trigger::create_trigger;
-use shared::service;
+use handlers::install_trigger::install_trigger;
 use shared::{config::Config, netutils};
+use shared::{service, types::CellId};
 
 #[derive(Debug, Error)]
 pub enum AppStateError {
@@ -42,17 +42,18 @@ impl AppState {
     pub async fn pick_scheduler(
         &self,
         _owner_id: String,
-    ) -> Result<SchedulerClient, AppStateError> {
-        let (_, address) = self.pick_random_scheduler();
-        Ok(SchedulerClient::connect(address).await.unwrap())
+    ) -> Result<(CellId, SchedulerClient), AppStateError> {
+        let (cell_id, address) = self.pick_random_scheduler();
+        Ok((cell_id, SchedulerClient::connect(address).await.unwrap()))
     }
-    fn pick_random_scheduler(&self) -> (u64, String) {
+
+    fn pick_random_scheduler(&self) -> (CellId, String) {
         let mut rng = rand::thread_rng();
         // // pick random entry from hashmap self.config.api.scheduler_cell_map
         let keys: Vec<_> = self.config.api.scheduler_cell_map.iter().collect();
         let (cell_id, address) = keys.choose(&mut rng).unwrap();
         info!("Picked scheduler cell {} at {}", cell_id, address);
-        (**cell_id, address.to_string())
+        (CellId::from(**cell_id), address.to_string())
     }
 }
 
@@ -71,7 +72,7 @@ pub async fn start_api_server(mut context: service::ServiceContext) {
     let app = Router::new()
         // `GET /` goes to `root`
         .route("/", get(root))
-        .route("/v1/triggers", post(create_trigger))
+        .route("/v1/triggers", post(install_trigger))
         .route_layer(middleware::from_fn(track_metrics))
         .with_state(shared_state);
 

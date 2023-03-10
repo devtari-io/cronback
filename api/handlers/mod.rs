@@ -11,7 +11,7 @@ use validator::Validate;
 
 use crate::errors::ApiError;
 
-pub(crate) mod create_trigger;
+pub(crate) mod install_trigger;
 
 // Parse input as form or json based on the content-type of the request.
 // Note, this doesn't not perform any validation. For validated form/json, please

@@ -27,3 +27,4 @@ serde_urlencoded = "0.7.1"
 cron = "0.12"
 iso8601-duration = "0.1.0"
 rand = "0.8"
+serde_with = { version = "2.2.0", features = ["chrono_0_4", "json"] }

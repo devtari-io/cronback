@@ -7,7 +7,8 @@ use crate::sched::event_scheduler::EventScheduler;
 use proto::scheduler_proto::{
     scheduler_server::Scheduler, ExecuteTriggerRequest, ExecuteTriggerResponse,
     FindTriggersRequest, FindTriggersResponse, GetTriggerRequest,
-    GetTriggerResponse, InstallTriggerRequest, InstallTriggerResponse,
+    GetTriggerResponse, InstallTrigger, InstallTriggerRequest,
+    InstallTriggerResponse,
 };
 use shared::service::ServiceContext;
 
@@ -35,22 +36,19 @@ impl Scheduler for SchedulerAPIHandler {
 
         let (_metadata, _ext, request) = request.into_parts();
         // basic validation for sanity
-        let trigger = request
-            .trigger
-            .ok_or(Status::invalid_argument("Trigger must be set"))?;
-        // trigger must have an id set
-        if trigger.id.is_empty() {
-            return Err(Status::invalid_argument("Trigger id must be set"));
-        }
-        if trigger.schedule.is_none() {
-            return Err(Status::invalid_argument(
-                "Trigger schedule must be set",
-            ));
-        }
+        let install_trigger: InstallTrigger =
+            request.install_trigger.ok_or_else(|| {
+                Status::invalid_argument("Missing install_trigger in request!")
+            })?;
 
-        info!("Installing trigger {:?}", trigger);
+        info!("Installing trigger {:?}", install_trigger);
+        // TODO: Instantiate a trigger, we will lookup the database to check for reference id
+        // TODO:
+        let trigger = todo!();
         self.scheduler.install_trigger(trigger).await?;
-        let reply = InstallTriggerResponse {};
+        let reply = InstallTriggerResponse {
+            trigger: Some(trigger),
+        };
         Ok(Response::new(reply))
     }
 

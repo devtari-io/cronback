@@ -8,6 +8,7 @@ use axum::{
 };
 
 use thiserror::Error;
+use tonic::Status;
 
 use crate::AppStateError;
 
@@ -26,6 +27,8 @@ pub enum ApiError {
     JsonRejection(#[from] JsonRejection),
     #[error(transparent)]
     AppStateError(#[from] AppStateError),
+    #[error(transparent)]
+    SchedulerError(#[from] Status),
 }
 
 impl IntoResponse for ApiError {
@@ -56,6 +59,10 @@ impl IntoResponse for ApiError {
             }
             | ApiError::AppStateError(e) => {
                 (StatusCode::SERVICE_UNAVAILABLE, e.to_string())
+            }
+            | ApiError::SchedulerError(e) => {
+                // TODO: Ship GRPC errors better
+                (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
             }
         }
         .into_response()

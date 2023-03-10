@@ -1,7 +1,6 @@
 //! Configuration Model
 
-use std::collections::{HashSet, HashMap};
-use std::net::{IpAddr, SocketAddr};
+use std::collections::{HashMap, HashSet};
 
 use config::FileFormat;
 use config::{

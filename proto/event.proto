@@ -33,9 +33,8 @@ enum EventInstanceStatus {
 }
 
 message Request {
-    trigger_proto.Endpoint endpoint = 1;
+    trigger_proto.Emit emit = 1;
     trigger_proto.Payload request_payload = 2;
-    google.protobuf.Duration timeout = 3;
 }
 
 message Response {

@@ -12,23 +12,33 @@ Endpoint: `/v1/triggers`
   "name": "Remind user to finish sign-up",
   "description": "Something something something", 
   "created_at": "1997-07-16T19:20:30.45Z",
-  "http_method": "POST",
-  "endpoint": "https://google.com/something",
+  "emit": {
+    "webhook": {
+      "url": "https://google.com/something",
+      "http_method": "https://google.com/something",
+      "content_type": "application/json; charset=utf-8",
+      "timeout_s": 5,
+    },
+  },
   "payload": "anything",
   "headers": {
     "Something": "5"
   },
-  "timeout_s": 5,
-  "content_type": "application/json; charset=utf-8",
-  "cron": "0 * * * *", // mut. exl. with run_at
-  "cron_timezone": "Europe/London",
-  // requires "cron" [optional, no limit by default]
-  "cron_events_limit": "1", 
-  // OR
-  "run_at": [ 
+  "schedule": {
+    "recurring": {
+      "cron": "0 * * * *", // mut. exl. with run_at
+      "cron_timezone": "Europe/London",
+      // [optional, no limit by default or if set to 0]
+      "cron_events_limit": "1", 
+    },
+    // OR
+    "run_at": [
     // can have up to 100 points, has timezone in iso 8601 format.
     "1997-07-16T19:20:30.45Z",
-  ], // seconds are mostly ignored.
+    // Supports ISO-8601 durations as well (e.g. PT5M)
+    "1997-07-16T19:20:30.45Z",
+    ],
+  },
   "status": "active" | "expired" | "paused" | "canceled",
   "last_event_details": {  // optional
     "id": "evt_89425729345bbwfywerxxx",

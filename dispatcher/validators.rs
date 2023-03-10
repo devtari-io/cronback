@@ -1,7 +1,7 @@
 use std::net::ToSocketAddrs;
 
 use anyhow::{anyhow, Result};
-use proto::trigger_proto::{endpoint::Endpoint, Webhook};
+use proto::trigger_proto::{emit::Emit, Webhook};
 use url::Url;
 
 fn validate_endpoint_url_parsable(url: &String) -> Result<Url> {
@@ -52,15 +52,9 @@ fn validate_endpoint_url_public_ip(host: Option<&str>) -> Result<()> {
 pub(crate) fn validate_dispatch_request(
     request: &proto::event_proto::Request,
 ) -> Result<()> {
-    let url_string = match request
-        .endpoint
-        .as_ref()
-        .unwrap()
-        .endpoint
-        .as_ref()
-        .unwrap()
+    let url_string = match request.emit.as_ref().unwrap().emit.as_ref().unwrap()
     {
-        | Endpoint::Webhook(Webhook { url, .. }) => url,
+        | Emit::Webhook(Webhook { url, .. }) => url,
     };
 
     let url = validate_endpoint_url_parsable(url_string)?;

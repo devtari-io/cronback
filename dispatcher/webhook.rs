@@ -1,7 +1,9 @@
-use std::{collections::HashMap, time::SystemTime};
+use std::{
+    collections::HashMap,
+    time::{Duration, SystemTime},
+};
 
 use anyhow::{anyhow, Result};
-use prost_types::Duration;
 
 use proto::{
     dispatcher_proto::DispatchEventResponse,
@@ -24,15 +26,15 @@ fn to_reqwest_http_method(method_int: i32) -> Result<reqwest::Method> {
         | HttpMethod::Put => Ok(Method::PUT),
         | HttpMethod::Delete => Ok(Method::DELETE),
         | HttpMethod::Head => Ok(Method::HEAD),
+        | HttpMethod::Patch => Ok(Method::PATCH),
     }
 }
 
 pub(crate) async fn dispatch_webhook(
     webhook: &Webhook,
     payload: &Payload,
-    timeout: &Duration,
 ) -> DispatchEventResponse {
-    let response = dispatch_webhook_impl(webhook, payload, timeout).await;
+    let response = dispatch_webhook_impl(webhook, payload).await;
 
     response.unwrap_or_else(|e| DispatchEventResponse {
         status: EventInstanceStatus::InvalidRequest.into(),
@@ -44,7 +46,6 @@ pub(crate) async fn dispatch_webhook(
 async fn dispatch_webhook_impl(
     webhook: &Webhook,
     payload: &Payload,
-    timeout: &Duration,
 ) -> Result<DispatchEventResponse> {
     // It's important to not follow any redirects for security reasons.
     // TODO: Reconsider this by hooking into the redirect hooks and re-running
@@ -65,15 +66,13 @@ async fn dispatch_webhook_impl(
             .parse()
             .map_err(|e| anyhow!("Invalid content-type header: {}", e))?,
     );
-    let http_timeout =
-        TryInto::<std::time::Duration>::try_into(timeout.clone())
-            .map_err(|e| anyhow!("Invalid timeout: {}", e))?;
+    let http_timeout = Duration::from_secs_f64(webhook.timeout_s);
 
     let request_start_time = SystemTime::now();
     let response = http_client
         .request(http_method, webhook.url.clone())
         .headers(http_headers)
-        .body(payload.payload.clone())
+        .body(payload.body.clone())
         .timeout(http_timeout)
         .send()
         .await;
@@ -100,7 +99,7 @@ async fn dispatch_webhook_impl(
                         })
                         .collect::<HashMap<_, _>>(),
                     // TODO: Don't attempt to read the payload if it's larger than the max allowed payload size (based on the Content-length header)
-                    payload: resp.bytes().await.unwrap().to_vec(),
+                    body: resp.bytes().await.unwrap().to_vec(),
                 }),
                 latency: Some(latency),
             }),

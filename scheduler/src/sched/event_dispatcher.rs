@@ -10,7 +10,7 @@ use proto::{
 };
 use shared::{
     grpc_client_provider::DispatcherClientProvider,
-    model_util::generate_model_id,
+    types::{EventId, OwnerId},
 };
 use tracing::info;
 
@@ -31,13 +31,12 @@ impl DispatchedEvent {
     ) -> Self {
         DispatchedEvent {
             event: Event {
-                id: generate_model_id("evt"),
+                id: EventId::new(&OwnerId(trigger.owner_id)).into(),
                 trigger_id: trigger.id,
                 started_at: Some(SystemTime::now().into()),
                 request: Some(Request {
-                    endpoint: trigger.endpoint,
+                    emit: trigger.emit,
                     request_payload: trigger.payload,
-                    timeout: trigger.timeout,
                 }),
                 status: EventStatus::New.into(),
             },

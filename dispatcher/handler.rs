@@ -7,7 +7,7 @@ use proto::{
         DispatchEventResponse,
     },
     event_proto::EventInstanceStatus,
-    trigger_proto::endpoint::Endpoint,
+    trigger_proto::emit::Emit,
 };
 use shared::service::ServiceContext;
 
@@ -42,20 +42,14 @@ impl Dispatcher for DispatcherAPIHandler {
             }));
         }
 
-        let endpoint = event_request
-            .endpoint
-            .as_ref()
-            .unwrap()
-            .endpoint
-            .as_ref()
-            .unwrap();
+        let endpoint =
+            event_request.emit.as_ref().unwrap().emit.as_ref().unwrap();
 
         let response = match endpoint {
-            | Endpoint::Webhook(w) => {
+            | Emit::Webhook(w) => {
                 webhook::dispatch_webhook(
                     w,
                     event_request.request_payload.as_ref().unwrap(),
-                    event_request.timeout.as_ref().unwrap(),
                 )
                 .await
             }
