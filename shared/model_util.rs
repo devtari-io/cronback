@@ -27,5 +27,5 @@ fn test_model_id_generation() {
 
     let id1 = generate_owner_id("acc");
     assert!(id1.len() > 4);
-    assert!(!id1.starts_with("acc_"));
+    assert!(id1.starts_with("acc_"));
 }

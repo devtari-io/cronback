@@ -1,4 +1,4 @@
-use chrono::{DateTime, Duration, Timelike, Utc};
+use chrono::{DateTime, Timelike, Utc};
 use chrono_tz::{Tz, UTC};
 use iso8601_duration::Duration as IsoDuration;
 
@@ -19,9 +19,19 @@ pub fn parse_iso8601(input: &str) -> Option<DateTime<Tz>> {
         return None;
     };
 
+    // convert IsoDuration into chrono::Duration
+    let duration = chrono::Duration::milliseconds(
+        ((duration.year * 60. * 60. * 24. * 30. * 12.
+            + duration.month * 60. * 60. * 24. * 30.
+            + duration.day * 60. * 60. * 24.
+            + duration.hour * 60. * 60.
+            + duration.minute * 60.
+            + duration.second)
+            * 1000.) as i64,
+    );
     Some(
         Utc::now()
-            .checked_add_signed(Duration::from_std(duration.to_std()).unwrap())
+            .checked_add_signed(duration)
             .unwrap()
             .with_nanosecond(0)
             .unwrap()
@@ -117,6 +127,15 @@ fn test_iso8601_duration_parsing() {
     let now = Utc::now().with_nanosecond(0).unwrap().with_timezone(&UTC);
     assert!(result.is_some());
     assert_eq!(5, (result.unwrap() - now).num_minutes());
+}
+
+#[test]
+fn test_iso8601_negative_duration_parsing() {
+    let input = "PT-5M";
+    let result = parse_iso8601(input);
+    let now = Utc::now().with_nanosecond(0).unwrap().with_timezone(&UTC);
+    assert!(result.is_some());
+    assert_eq!(-5, (result.unwrap() - now).num_minutes());
 }
 
 #[test]

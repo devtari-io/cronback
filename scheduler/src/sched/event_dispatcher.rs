@@ -6,7 +6,7 @@ use std::{
 use proto::{
     dispatcher_proto::DispatchEventRequest,
     event_proto::{self, Event, EventStatus, Request},
-    trigger_proto::{self, EventRetryPolicy, OnStatusHandler},
+    trigger_proto::{self, EventRetryPolicy},
 };
 use shared::{
     grpc_client_provider::DispatcherClientProvider,
@@ -18,8 +18,8 @@ const MAX_ALLOWED_RETRY_DURATION: Duration = Duration::from_secs(60 * 10);
 
 pub(crate) struct DispatchedEvent {
     event: Event,
-    on_success: Option<OnStatusHandler>,
-    on_failure: Option<OnStatusHandler>,
+    // on_success: Option<OnStatusHandler>,
+    // on_failure: Option<OnStatusHandler>,
     retry_policy: Option<EventRetryPolicy>,
     dispatcher_client_provider: Arc<DispatcherClientProvider>,
 }
@@ -43,8 +43,6 @@ impl DispatchedEvent {
             // on_success: trigger.on_success,
             // on_failure: trigger.on_failure,
             // retry_policy: trigger.event_retry_policy,
-            on_success: None,
-            on_failure: None,
             retry_policy: None,
             dispatcher_client_provider,
         }

@@ -7,7 +7,7 @@ use shared::types::*;
 
 #[serde_as]
 #[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize, Validate)]
 #[serde(deny_unknown_fields)]
 #[serde(default)]
 pub struct InstallTrigger {
@@ -31,19 +31,6 @@ pub struct InstallTrigger {
     // Necessary to perform nested validation.
     #[validate]
     pub emit: Option<Emit>,
-}
-
-impl Default for InstallTrigger {
-    fn default() -> Self {
-        Self {
-            name: None,
-            reference_id: None,
-            description: None,
-            payload: Default::default(),
-            emit: None,
-            schedule: None,
-        }
-    }
 }
 
 impl InstallTrigger {

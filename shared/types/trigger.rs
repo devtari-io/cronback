@@ -218,7 +218,7 @@ fn validate_run_at(run_at: &Vec<DateTime<Tz>>) -> Result<(), ValidationError> {
             // Duplicate found!
             return Err(validation_error(
                 "duplicate_run_at_value",
-                format!("Duplicate value '{}'", timepoint).into(),
+                format!("Duplicate value '{timepoint}'"),
             ));
         } else {
             ts.insert(timepoint);
@@ -234,8 +234,7 @@ fn validate_timezone(cron_timezone: &String) -> Result<(), ValidationError> {
         return Err(validation_error(
             "unrecognized_cron_timezone",
             format!(
-                "Timezone unrecognized '{}'. A valid IANA timezone string is required",
-                cron_timezone
+                "Timezone unrecognized '{cron_timezone}'. A valid IANA timezone string is required",
             )
         ));
     };
@@ -246,7 +245,7 @@ fn validate_timeout(timeout: &Duration) -> Result<(), ValidationError> {
     if timeout.as_secs_f64() < 1.0 || timeout.as_secs_f64() > 30.0 {
         return Err(validation_error(
             "invalid_timeout",
-            format!("Timeout must be between 1.0 and 30.0 seconds"),
+            "Timeout must be between 1.0 and 30.0 seconds".to_string(),
         ));
     };
     Ok(())

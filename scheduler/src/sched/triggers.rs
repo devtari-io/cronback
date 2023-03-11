@@ -198,7 +198,7 @@ impl TriggerFutureTicks {
                         info!("Tick of trigger is in the past, skipping...");
                     } else {
                         // Reversed to make this min-heap
-                        ticks.push(Reverse(ts.clone()));
+                        ticks.push(Reverse(*ts));
                     }
                 }
                 Ok(TriggerFutureTicks::RunAt(ticks))
@@ -290,50 +290,42 @@ impl ActiveTrigger {
 
 #[cfg(test)]
 mod tests {
-    use std::ops::{Add, Sub};
     use std::time::Duration;
 
+    use chrono_tz::UTC;
+
+    use shared::timeutil::parse_iso8601;
+    use shared::types::{
+        Cron, OwnerId, Payload, RunAt, Schedule, Status, Trigger, TriggerId,
+    };
+
     use super::*;
-    use trigger_proto::{Cron, RunAt, TriggerStatus};
 
-    fn create_cron_schedule(
-        pattern: &str,
-        events_limit: u64,
-    ) -> proto::trigger_proto::Schedule {
-        proto::trigger_proto::Schedule {
-            schedule: Some(trigger_proto::schedule::Schedule::Cron(Cron {
-                cron: pattern.into(),
-                timezone: "Europe/London".into(),
-                events_limit,
-            })),
-        }
+    fn create_cron_schedule(pattern: &str, cron_events_limit: u64) -> Schedule {
+        Schedule::Recurring(Cron {
+            cron: Some(pattern.into()),
+            cron_timezone: "Europe/London".into(),
+            cron_events_limit,
+        })
     }
 
-    fn create_run_at(
-        timepoints: Vec<String>,
-    ) -> proto::trigger_proto::Schedule {
-        proto::trigger_proto::Schedule {
-            schedule: Some(trigger_proto::schedule::Schedule::RunAt(RunAt {
-                run_at: timepoints,
-            })),
-        }
+    fn create_run_at(timepoints: Vec<DateTime<Tz>>) -> Schedule {
+        Schedule::RunAt(RunAt { run_at: timepoints })
     }
 
-    fn create_trigger(sched: proto::trigger_proto::Schedule) -> Trigger {
-        let id = format!("trig_{}", rand::random::<u64>());
+    fn create_trigger(sched: Schedule) -> Trigger {
+        let owner_id = OwnerId("asoli".to_owned());
+        let id = TriggerId::new(&owner_id);
         Trigger {
             id,
-            owner_id: "asoli".to_owned(),
+            owner_id,
             reference_id: None,
             name: None,
             description: None,
-            created_at: None,
+            created_at: Utc::now().with_timezone(&UTC),
             emit: None,
-            payload: None,
-            status: TriggerStatus::Active.into(),
-            event_retry_policy: None,
-            on_success: None,
-            on_failure: None,
+            payload: Payload::default(),
+            status: Status::Active,
             schedule: Some(sched),
         }
     }
@@ -341,10 +333,9 @@ mod tests {
     #[test]
     fn future_ticks_parsing_cron() -> Result<(), TriggerError> {
         let cron_pattern = "0 5 * * * *"; // fifth minute of every hour
-        let schedule_proto = create_cron_schedule(cron_pattern, 0);
+        let schedule = create_cron_schedule(cron_pattern, 0);
 
-        let mut result =
-            TriggerFutureTicks::from_proto(&schedule_proto.schedule.unwrap())?;
+        let mut result = TriggerFutureTicks::from_schedule(&schedule)?;
         assert!(matches!(result, TriggerFutureTicks::CronPattern { .. }));
 
         assert!(result.peek().is_some());
@@ -368,10 +359,9 @@ mod tests {
         // FIXME: This will fail soon, see https://github.com/zslayton/cron/issues/97
 
         let cron_pattern = "0 5 4 2 6 * 2040"; // fifth minute of every hour
-        let schedule_proto = create_cron_schedule(cron_pattern, 4);
+        let schedule = create_cron_schedule(cron_pattern, 4);
 
-        let mut result =
-            TriggerFutureTicks::from_proto(&schedule_proto.schedule.unwrap())?;
+        let mut result = TriggerFutureTicks::from_schedule(&schedule)?;
         assert!(matches!(result, TriggerFutureTicks::CronPattern { .. }));
 
         if let TriggerFutureTicks::CronPattern {
@@ -394,17 +384,13 @@ mod tests {
     fn future_ticks_parsing_run_at() -> Result<(), TriggerError> {
         // generating some time points, one in the past, and three in the future.
         let mut timepoints = vec![];
-        let k = Utc::now().sub(chrono::Duration::seconds(10));
-        timepoints.push(format!("{}", k.format("%+")));
-        let k = Utc::now().add(chrono::Duration::seconds(10));
-        timepoints.push(format!("{}", k.format("%+")));
-        let k = Utc::now().add(chrono::Duration::seconds(20));
-        timepoints.push(format!("{}", k.format("%+")));
+        timepoints.push(parse_iso8601("PT-1M").unwrap()); // 1 minute ago (in the past)
+        timepoints.push(parse_iso8601("PT2M").unwrap());
+        timepoints.push(parse_iso8601("PT3M").unwrap());
 
-        let schedule_proto = create_run_at(timepoints);
+        let schedule = create_run_at(timepoints);
 
-        let mut result =
-            TriggerFutureTicks::from_proto(&schedule_proto.schedule.unwrap())?;
+        let mut result = TriggerFutureTicks::from_schedule(&schedule)?;
         assert!(matches!(result, TriggerFutureTicks::RunAt { .. }));
 
         if let TriggerFutureTicks::RunAt(ref points) = result {

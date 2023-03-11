@@ -1,7 +1,5 @@
 use std::sync::Arc;
 
-use chrono::Utc;
-use chrono_tz::UTC;
 use tonic::{Request, Response, Status};
 use tracing::info;
 
@@ -12,10 +10,7 @@ use proto::scheduler_proto::{
     GetTriggerResponse, InstallTrigger, InstallTriggerRequest,
     InstallTriggerResponse,
 };
-use shared::{
-    service::ServiceContext,
-    types::{OwnerId, Trigger, TriggerId},
-};
+use shared::service::ServiceContext;
 
 pub(crate) struct SchedulerAPIHandler {
     #[allow(unused)]

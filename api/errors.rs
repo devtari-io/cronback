@@ -78,7 +78,7 @@ where
     if let Some(serde_json_err) = find_error_source::<serde_json::Error>(&err) {
         (
             StatusCode::BAD_REQUEST,
-            format!("JSON validation error: {}", serde_json_err.to_string(),),
+            format!("JSON validation error: {}", serde_json_err),
         )
     } else {
         (StatusCode::BAD_REQUEST, "Unknown error".to_string())
@@ -95,7 +95,7 @@ where
     {
         (
             StatusCode::BAD_REQUEST,
-            format!("Form validation error: {}", serde_err.to_string(),),
+            format!("Form validation error: {}", serde_err),
         )
     } else {
         (StatusCode::BAD_REQUEST, "Unknown error".to_string())
