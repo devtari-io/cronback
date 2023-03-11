@@ -1,13 +1,9 @@
-use std::collections::HashMap;
-
 use proto::scheduler_proto;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none};
 use validator::Validate;
 
-use shared::types::{CellId, OwnerId};
-
-use super::trigger::*;
+use shared::types::*;
 
 #[serde_as]
 #[skip_serializing_none]

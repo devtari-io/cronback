@@ -1,14 +1,18 @@
 use std::sync::{Arc, Mutex, RwLock};
 
+use chrono::Utc;
+use chrono_tz::UTC;
 use tracing::info;
 
 use super::{
     spinner::{Spinner, SpinnerHandle},
     triggers::{ActiveTriggerMap, TriggerError},
 };
-use proto::trigger_proto::Trigger;
+use proto::scheduler_proto::InstallTrigger;
 use shared::{
-    grpc_client_provider::DispatcherClientProvider, service::ServiceContext,
+    grpc_client_provider::DispatcherClientProvider,
+    service::ServiceContext,
+    types::{OwnerId, Status, Trigger, TriggerId},
 };
 
 /**
@@ -74,8 +78,23 @@ impl EventScheduler {
 
     pub async fn install_trigger(
         &self,
-        trigger: Trigger,
-    ) -> Result<(), TriggerError> {
+        install_trigger: InstallTrigger,
+    ) -> Result<Trigger, TriggerError> {
+        let id = TriggerId::new(&OwnerId(install_trigger.owner_id.clone()));
+
+        let trigger = Trigger {
+            id,
+            owner_id: install_trigger.owner_id.into(),
+            reference_id: install_trigger.reference_id,
+            name: install_trigger.name,
+            description: install_trigger.description,
+            created_at: Utc::now().with_timezone(&UTC),
+            emit: install_trigger.emit.map(|e| e.into()),
+            payload: install_trigger.payload.unwrap().into(),
+            schedule: install_trigger.schedule.map(|s| s.into()),
+            status: Status::Active,
+        };
+
         let triggers = self.triggers.clone();
         tokio::task::spawn_blocking(move || {
             let mut w = triggers.write().unwrap();
@@ -86,7 +105,7 @@ impl EventScheduler {
 
     pub async fn get_trigger(
         &self,
-        id: String,
+        id: TriggerId,
     ) -> Result<Trigger, TriggerError> {
         let triggers = self.triggers.clone();
         tokio::task::spawn_blocking(move || {

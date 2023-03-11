@@ -38,8 +38,15 @@ impl From<OwnerId> for String {
     }
 }
 
+impl From<String> for OwnerId {
+    fn from(value: String) -> Self {
+        Self(value)
+    }
+}
+
 #[derive(
     Debug,
+    Hash,
     Clone,
     Default,
     Serialize,
@@ -71,6 +78,12 @@ impl From<TriggerId> for String {
     }
 }
 
+impl From<String> for TriggerId {
+    fn from(value: String) -> Self {
+        Self(value)
+    }
+}
+
 #[derive(
     Debug,
     Clone,
@@ -96,6 +109,12 @@ impl EventId {
 impl From<EventId> for String {
     fn from(value: EventId) -> Self {
         value.0
+    }
+}
+
+impl From<String> for EventId {
+    fn from(value: String) -> Self {
+        Self(value)
     }
 }
 
@@ -135,5 +154,11 @@ impl Display for CellId {
 impl From<CellId> for u64 {
     fn from(value: CellId) -> Self {
         value.0
+    }
+}
+
+impl From<u64> for CellId {
+    fn from(value: u64) -> Self {
+        Self(value)
     }
 }

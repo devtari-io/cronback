@@ -2,17 +2,17 @@ use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 use std::time::Duration;
 
-use chrono::{DateTime, Utc};
+use chrono::DateTime;
 use chrono_tz::Tz;
 use cron::Schedule as CronSchedule;
-use proto::trigger_proto;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none, DurationSecondsWithFrac};
-use shared::timeutil::to_iso8601;
 use validator::{Validate, ValidationError};
 
-use shared::timeutil::iso8601_dateformat;
-use shared::types::{OwnerId, TriggerId};
+use crate::timeutil::iso8601_dateformat_serde;
+use crate::timeutil::iso8601_dateformat_vec_serde;
+
+use crate::types::{OwnerId, TriggerId};
 
 #[serde_as]
 #[skip_serializing_none]
@@ -23,15 +23,14 @@ pub struct Trigger {
     #[serde(skip_deserializing)]
     pub id: TriggerId,
 
-    #[serde(skip_deserializing)]
     pub owner_id: OwnerId,
 
     pub name: Option<String>,
 
     pub description: Option<String>,
 
-    #[serde(skip_deserializing)]
-    pub created_at: DateTime<Utc>,
+    #[serde(with = "iso8601_dateformat_serde")]
+    pub created_at: DateTime<Tz>,
 
     pub reference_id: Option<String>,
 
@@ -40,6 +39,8 @@ pub struct Trigger {
     pub schedule: Option<Schedule>,
 
     pub emit: Option<Emit>,
+
+    pub status: Status,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -79,8 +80,8 @@ pub struct RunAt {
         ),
         custom = "validate_run_at"
     )]
-    #[serde(with = "iso8601_dateformat")]
-    run_at: Vec<DateTime<Tz>>,
+    #[serde(with = "iso8601_dateformat_vec_serde")]
+    pub run_at: Vec<DateTime<Tz>>,
 }
 
 #[skip_serializing_none]
@@ -120,11 +121,12 @@ pub enum Emit {
 #[serde(rename_all = "UPPERCASE")]
 #[serde(deny_unknown_fields)]
 pub enum HttpMethod {
+    DELETE,
     GET,
+    HEAD,
+    PATCH,
     POST,
     PUT,
-    DELETE,
-    PATCH,
 }
 
 #[serde_as]
@@ -177,78 +179,6 @@ impl Default for Payload {
             content_type: "application/json; charset=utf-8".to_owned(),
             body: Default::default(),
         }
-    }
-}
-
-impl From<Payload> for proto::trigger_proto::Payload {
-    fn from(value: Payload) -> Self {
-        Self {
-            content_type: value.content_type,
-            headers: value.headers,
-            body: value.body.into(),
-        }
-    }
-}
-
-impl From<Schedule> for proto::trigger_proto::Schedule {
-    fn from(value: Schedule) -> Self {
-        let schedule = match value {
-            | Schedule::Recurring(cron) => {
-                proto::trigger_proto::schedule::Schedule::Cron(cron.into())
-            }
-            | Schedule::RunAt(run_at) => {
-                proto::trigger_proto::schedule::Schedule::RunAt(run_at.into())
-            }
-        };
-        Self {
-            schedule: Some(schedule),
-        }
-    }
-}
-
-impl From<Cron> for proto::trigger_proto::Cron {
-    fn from(value: Cron) -> Self {
-        Self {
-            cron: value.cron.unwrap(),
-            timezone: value.cron_timezone,
-            events_limit: value.cron_events_limit,
-        }
-    }
-}
-
-impl From<RunAt> for trigger_proto::RunAt {
-    fn from(value: RunAt) -> Self {
-        Self {
-            run_at: value.run_at.into_iter().map(|d| to_iso8601(&d)).collect(),
-        }
-    }
-}
-
-impl From<Emit> for proto::trigger_proto::Emit {
-    fn from(value: Emit) -> Self {
-        let emit = match value {
-            | Emit::Webhook(webhook) => {
-                trigger_proto::emit::Emit::Webhook(trigger_proto::Webhook {
-                    http_method: webhook.http_method.into(),
-                    url: webhook.url.unwrap(),
-                    timeout_s: webhook.timeout_s.as_secs_f64(),
-                })
-            }
-        };
-        trigger_proto::Emit { emit: Some(emit) }
-    }
-}
-
-impl From<HttpMethod> for i32 {
-    fn from(value: HttpMethod) -> Self {
-        let enum_value = match value {
-            | HttpMethod::GET => trigger_proto::HttpMethod::Get,
-            | HttpMethod::POST => trigger_proto::HttpMethod::Post,
-            | HttpMethod::PUT => trigger_proto::HttpMethod::Put,
-            | HttpMethod::DELETE => trigger_proto::HttpMethod::Delete,
-            | HttpMethod::PATCH => trigger_proto::HttpMethod::Patch,
-        };
-        enum_value as i32
     }
 }
 

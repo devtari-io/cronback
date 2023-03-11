@@ -11,8 +11,7 @@ use thiserror::Error;
 use tracing::info;
 
 use chrono::{DateTime, Utc};
-use proto::trigger_proto::{self, Trigger};
-use shared::timeutil::parse_iso8601;
+use shared::types::{Schedule, Trigger, TriggerId};
 
 #[derive(Error, Debug)]
 pub(crate) enum TriggerError {
@@ -21,9 +20,9 @@ pub(crate) enum TriggerError {
     #[error("Unrecognized timezone '{0}' was supplied, are you sure this is an IANA timezone?")]
     InvalidTimezone(String),
     #[error("Trigger '{0}' should not have passed validation!")]
-    MalformedTrigger(String),
+    MalformedTrigger(TriggerId),
     #[error("Trigger with Id '{0}' is unknown to this scheduler!")]
-    NotFound(String),
+    NotFound(TriggerId),
     //join error
     #[error("Internal async processing failure!")]
     JoinError(#[from] tokio::task::JoinError),
@@ -38,7 +37,7 @@ pub(crate) enum TriggerError {
 /// reloading.
 #[derive(Default)]
 pub(crate) struct ActiveTriggerMap {
-    state: HashMap<String, ActiveTrigger>,
+    state: HashMap<TriggerId, ActiveTrigger>,
     /// The set of trigger Ids that has been updated
     dirty: bool,
 }
@@ -48,12 +47,15 @@ impl ActiveTriggerMap {
     pub fn add_or_update(
         &mut self,
         trigger: Trigger,
-    ) -> Result<(), TriggerError> {
+    ) -> Result<Trigger, TriggerError> {
+        // TODO: We should instead convert active_trigger back to Trigger to
+        // get the updated status
+        let cloned_trigger = trigger.clone();
         let trigger_id = trigger.id.clone();
         let active_trigger = ActiveTrigger::try_from(trigger)?;
         self.state.insert(trigger_id, active_trigger);
         self.mark_dirty();
-        Ok(())
+        Ok(cloned_trigger)
     }
 
     pub fn is_dirty(&self) -> bool {
@@ -87,7 +89,7 @@ impl ActiveTriggerMap {
         self.reset_dirty();
         new_state
     }
-    pub fn get(&self, id: &str) -> Option<&Trigger> {
+    pub fn get(&self, id: &TriggerId) -> Option<&Trigger> {
         self.state.get(id).map(|t| t.get())
     }
 
@@ -105,7 +107,7 @@ impl ActiveTriggerMap {
      * - This also ensures that, for any reason, we skip duplicates in the run_at
      *   list if we didn't catch this in validation.
      */
-    pub fn advance(&mut self, trigger_id: &String) -> Option<DateTime<Tz>> {
+    pub fn advance(&mut self, trigger_id: &TriggerId) -> Option<DateTime<Tz>> {
         self.state
             .get_mut(trigger_id)
             .and_then(|trigger| trigger.advance())
@@ -128,7 +130,7 @@ impl ActiveTriggerMap {
 /// need to be evaluated at each loop.
 pub(crate) struct TriggerTemporalState {
     #[allow(unused)]
-    pub trigger_id: String,
+    pub trigger_id: TriggerId,
     // time of the next tick
     pub next_tick: DateTime<Tz>,
 }
@@ -165,21 +167,21 @@ pub(crate) enum TriggerFutureTicks {
 }
 
 impl TriggerFutureTicks {
-    pub fn from_proto(
-        schedule_proto: &trigger_proto::schedule::Schedule,
+    pub fn from_schedule(
+        schedule_raw: &Schedule,
     ) -> Result<Self, TriggerError> {
-        match schedule_proto {
-            | trigger_proto::schedule::Schedule::Cron(cron) => {
-                let raw_pattern = cron.cron.clone();
+        match schedule_raw {
+            | Schedule::Recurring(cron) => {
+                let raw_pattern = cron.cron.clone().unwrap();
                 let cron_schedule = CronSchedule::from_str(&raw_pattern)?;
-                let tz: Tz = cron.timezone.parse().map_err(|_| {
-                    TriggerError::InvalidTimezone(cron.timezone.clone())
+                let tz: Tz = cron.cron_timezone.parse().map_err(|_| {
+                    TriggerError::InvalidTimezone(cron.cron_timezone.clone())
                 })?;
                 let next_ticks = cron_schedule.upcoming_owned(tz).peekable();
                 // TODO: This should be remaining_events_limit, or instead,
                 // change the spec to set an end date.
-                let events_limit = if cron.events_limit > 0 {
-                    Some(cron.events_limit)
+                let events_limit = if cron.cron_events_limit > 0 {
+                    Some(cron.cron_events_limit)
                 } else {
                     None
                 };
@@ -188,16 +190,15 @@ impl TriggerFutureTicks {
                     remaining_events_limit: events_limit,
                 })
             }
-            | trigger_proto::schedule::Schedule::RunAt(run_at) => {
+            | Schedule::RunAt(run_at) => {
                 let mut ticks = BinaryHeap::new();
                 for ts in run_at.run_at.iter() {
-                    let parsed: DateTime<Tz> = parse_iso8601(ts).unwrap();
-                    if parsed < Utc::now() {
+                    if *ts < Utc::now() {
                         // TODO: Remove this log line
                         info!("Tick of trigger is in the past, skipping...");
                     } else {
                         // Reversed to make this min-heap
-                        ticks.push(Reverse(parsed));
+                        ticks.push(Reverse(ts.clone()));
                     }
                 }
                 Ok(TriggerFutureTicks::RunAt(ticks))
@@ -266,8 +267,7 @@ impl TryFrom<Trigger> for ActiveTrigger {
         let k = trigger.schedule.as_ref().ok_or_else(|| {
             TriggerError::MalformedTrigger(trigger.id.clone())
         })?;
-        let b = k.schedule.as_ref().unwrap();
-        let ticks = TriggerFutureTicks::from_proto(b)?;
+        let ticks = TriggerFutureTicks::from_schedule(k)?;
         // We assume that Trigger.schedule is never None
         Ok(Self {
             inner: trigger,

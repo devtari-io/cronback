@@ -94,7 +94,7 @@ message Trigger {
   optional string reference_id = 3;
   optional string name = 4;
   optional string description = 5;
-  google.protobuf.Timestamp created_at = 6;
+  string created_at = 6;
   // TODO: Explore having multiple endpoints with independent status
   Emit emit = 7;
   Payload payload = 8;

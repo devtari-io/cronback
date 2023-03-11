@@ -6,11 +6,11 @@ use std::{
 use proto::{
     dispatcher_proto::DispatchEventRequest,
     event_proto::{self, Event, EventStatus, Request},
-    trigger_proto::{self, EventRetryPolicy, OnStatusHandler, Trigger},
+    trigger_proto::{self, EventRetryPolicy, OnStatusHandler},
 };
 use shared::{
     grpc_client_provider::DispatcherClientProvider,
-    types::{EventId, OwnerId},
+    types::{EventId, Trigger},
 };
 use tracing::info;
 
@@ -31,18 +31,21 @@ impl DispatchedEvent {
     ) -> Self {
         DispatchedEvent {
             event: Event {
-                id: EventId::new(&OwnerId(trigger.owner_id)).into(),
-                trigger_id: trigger.id,
+                id: EventId::new(&trigger.owner_id).into(),
+                trigger_id: trigger.id.to_string(),
                 started_at: Some(SystemTime::now().into()),
                 request: Some(Request {
-                    emit: trigger.emit,
-                    request_payload: trigger.payload,
+                    emit: trigger.emit.map(|e| e.into()),
+                    request_payload: Some(trigger.payload.into()),
                 }),
                 status: EventStatus::New.into(),
             },
-            on_success: trigger.on_success,
-            on_failure: trigger.on_failure,
-            retry_policy: trigger.event_retry_policy,
+            // on_success: trigger.on_success,
+            // on_failure: trigger.on_failure,
+            // retry_policy: trigger.event_retry_policy,
+            on_success: None,
+            on_failure: None,
+            retry_policy: None,
             dispatcher_client_provider,
         }
     }

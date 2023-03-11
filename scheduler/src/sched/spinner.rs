@@ -15,6 +15,7 @@ use tracing::{info, trace, warn};
 
 use shared::{
     grpc_client_provider::DispatcherClientProvider, service::ServiceContext,
+    types::TriggerId,
 };
 
 use super::triggers::{ActiveTriggerMap, TriggerTemporalState};
@@ -242,7 +243,7 @@ impl Spinner {
         }
     }
 
-    fn dispatch(&self, trigger_id: &str) {
+    fn dispatch(&self, trigger_id: &TriggerId) {
         let event = {
             let r = self.triggers.read().unwrap();
             let Some(trigger) = r.get(trigger_id) else {

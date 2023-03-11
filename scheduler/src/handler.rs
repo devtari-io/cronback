@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use chrono::Utc;
+use chrono_tz::UTC;
 use tonic::{Request, Response, Status};
 use tracing::info;
 
@@ -10,7 +12,10 @@ use proto::scheduler_proto::{
     GetTriggerResponse, InstallTrigger, InstallTriggerRequest,
     InstallTriggerResponse,
 };
-use shared::service::ServiceContext;
+use shared::{
+    service::ServiceContext,
+    types::{OwnerId, Trigger, TriggerId},
+};
 
 pub(crate) struct SchedulerAPIHandler {
     #[allow(unused)]
@@ -43,11 +48,11 @@ impl Scheduler for SchedulerAPIHandler {
 
         info!("Installing trigger {:?}", install_trigger);
         // TODO: Instantiate a trigger, we will lookup the database to check for reference id
-        // TODO:
-        let trigger = todo!();
-        self.scheduler.install_trigger(trigger).await?;
+
+        // Creating a new trigger from install_trigger
+        let trigger = self.scheduler.install_trigger(install_trigger).await?;
         let reply = InstallTriggerResponse {
-            trigger: Some(trigger),
+            trigger: Some(trigger.into()),
         };
         Ok(Response::new(reply))
     }
@@ -68,9 +73,9 @@ impl Scheduler for SchedulerAPIHandler {
         if request.id.is_empty() {
             return Err(Status::invalid_argument("Id must be set"));
         }
-        let trigger = self.scheduler.get_trigger(request.id).await?;
+        let trigger = self.scheduler.get_trigger(request.id.into()).await?;
         let reply = GetTriggerResponse {
-            trigger: Some(trigger),
+            trigger: Some(trigger.into()),
         };
         Ok(Response::new(reply))
     }

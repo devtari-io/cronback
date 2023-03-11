@@ -33,8 +33,41 @@ pub fn to_iso8601(input: &DateTime<Tz>) -> String {
     input.format("%+").to_string()
 }
 
-pub mod iso8601_dateformat {
+pub mod iso8601_dateformat_serde {
     use super::parse_iso8601;
+    use chrono::DateTime;
+    use chrono_tz::Tz;
+    use serde::{self, Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S>(
+        input: &DateTime<Tz>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let s = format!("{}", input.format("%+"));
+        serializer.serialize_str(&s)
+    }
+
+    pub fn deserialize<'de, D>(
+        deserializer: D,
+    ) -> Result<DateTime<Tz>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        let dt = parse_iso8601(&s).ok_or_else(|| {
+            serde::de::Error::custom(
+                "Invalid datetime format. Only ISO-8601 is allowed.",
+            )
+        })?;
+        Ok(dt)
+    }
+}
+
+pub mod iso8601_dateformat_vec_serde {
+    use super::{parse_iso8601, to_iso8601};
     use chrono::DateTime;
     use chrono_tz::Tz;
     use serde::{self, Deserialize, Deserializer, Serializer};
@@ -46,12 +79,12 @@ pub mod iso8601_dateformat {
     where
         S: Serializer,
     {
-        let mut vec = Vec::new();
+        use serde::ser::SerializeSeq;
+        let mut seq = serializer.serialize_seq(Some(timepoints.len()))?;
         for t in timepoints {
-            let s = format!("{}", t.format("%+"));
-            vec.push(s);
+            seq.serialize_element(&to_iso8601(t))?;
         }
-        serializer.serialize_some(&vec)
+        seq.end()
     }
 
     pub fn deserialize<'de, D>(
@@ -60,6 +93,7 @@ pub mod iso8601_dateformat {
     where
         D: Deserializer<'de>,
     {
+        // TODO Can be refactored to use the iso8601_dateformat_serde
         let vec_de = Vec::<String>::deserialize(deserializer)?;
         let items: Result<Vec<DateTime<Tz>>, D::Error> = vec_de
             .into_iter()
