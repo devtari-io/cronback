@@ -323,7 +323,7 @@ mod tests {
             name: None,
             description: None,
             created_at: Utc::now().with_timezone(&UTC),
-            emit: None,
+            emit: Vec::default(),
             payload: Payload::default(),
             status: Status::Active,
             schedule: Some(sched),

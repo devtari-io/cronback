@@ -89,7 +89,7 @@ impl EventScheduler {
             name: install_trigger.name,
             description: install_trigger.description,
             created_at: Utc::now().with_timezone(&UTC),
-            emit: install_trigger.emit.map(|e| e.into()),
+            emit: install_trigger.emit.into_iter().map(|e| e.into()).collect(),
             payload: install_trigger.payload.unwrap().into(),
             schedule: install_trigger.schedule.map(|s| s.into()),
             status: Status::Active,

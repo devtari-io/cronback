@@ -58,7 +58,7 @@ async fn install_trigger_valid_test() {
         reference_id: None,
         name: None,
         description: None,
-        emit: None,
+        emit: Vec::default(),
         payload: Some(proto::trigger_proto::Payload {
             content_type: "application/json".to_owned(),
             headers: HashMap::new(),

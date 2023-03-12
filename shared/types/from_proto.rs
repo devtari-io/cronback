@@ -18,7 +18,7 @@ impl From<trigger_proto::Trigger> for Trigger {
             reference_id: value.reference_id,
             payload: value.payload.unwrap().into(),
             schedule: value.schedule.map(|s| s.into()),
-            emit: value.emit.map(|e| e.into()),
+            emit: value.emit.into_iter().map(|e| e.into()).collect(),
             status: value.status.into(),
         }
     }

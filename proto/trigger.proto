@@ -81,8 +81,7 @@ message Trigger {
   optional string name = 4;
   optional string description = 5;
   string created_at = 6;
-  // TODO: Support multiple emits.
-  Emit emit = 7;
+  repeated Emit emit = 7;
   Payload payload = 8;
   Schedule schedule = 10;
   TriggerStatus status = 11;

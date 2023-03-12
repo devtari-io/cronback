@@ -17,10 +17,7 @@ use crate::types::{OwnerId, TriggerId};
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "object")]
-#[serde(deny_unknown_fields)]
 pub struct Trigger {
-    #[serde(skip_deserializing)]
     pub id: TriggerId,
 
     pub owner_id: OwnerId,
@@ -38,7 +35,7 @@ pub struct Trigger {
 
     pub schedule: Option<Schedule>,
 
-    pub emit: Option<Emit>,
+    pub emit: Vec<Emit>,
 
     pub status: Status,
 }

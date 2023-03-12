@@ -27,10 +27,13 @@ pub struct InstallTrigger {
     #[validate]
     pub schedule: Option<Schedule>,
 
-    #[validate(required)]
+    #[validate(length(
+        min = 1,
+        message = "emit must contain at least one emit"
+    ))]
     // Necessary to perform nested validation.
     #[validate]
-    pub emit: Option<Emit>,
+    pub emit: Vec<Emit>,
 }
 
 impl InstallTrigger {
@@ -46,7 +49,7 @@ impl InstallTrigger {
             description: self.description,
             reference_id: self.reference_id,
             payload: Some(self.payload.into()),
-            emit: self.emit.map(|e| e.into()),
+            emit: self.emit.into_iter().map(|e| e.into()).collect(),
             schedule: self.schedule.map(|s| s.into()),
         }
     }

@@ -35,7 +35,7 @@ impl DispatchedEvent {
                 trigger_id: trigger.id.to_string(),
                 started_at: Some(SystemTime::now().into()),
                 request: Some(Request {
-                    emit: trigger.emit.map(|e| e.into()),
+                    emit: None, /* trigger.emit.map(|e| e.into())*/
                     request_payload: Some(trigger.payload.into()),
                 }),
                 status: EventStatus::New.into(),

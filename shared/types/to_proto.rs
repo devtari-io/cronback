@@ -18,7 +18,7 @@ impl From<Trigger> for trigger_proto::Trigger {
             reference_id: value.reference_id,
             payload: Some(value.payload.into()),
             schedule: value.schedule.map(|s| s.into()),
-            emit: value.emit.map(|e| e.into()),
+            emit: value.emit.into_iter().map(|e| e.into()).collect(),
             status: value.status.into(),
             on_success: None,
             on_failure: None,
