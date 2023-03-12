@@ -13,6 +13,8 @@ use tracing::info;
 use chrono::{DateTime, Utc};
 use shared::types::{Schedule, Trigger, TriggerId};
 
+use super::trigger_store::TriggerStoreError;
+
 #[derive(Error, Debug)]
 pub(crate) enum TriggerError {
     #[error("Cannot parse cron expression")]
@@ -26,6 +28,8 @@ pub(crate) enum TriggerError {
     //join error
     #[error("Internal async processing failure!")]
     JoinError(#[from] tokio::task::JoinError),
+    #[error("Operation on underlying trigger store failed: {0}")]
+    TriggerStoreError(#[from] TriggerStoreError),
 }
 
 ///

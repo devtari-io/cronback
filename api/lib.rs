@@ -58,7 +58,9 @@ impl AppState {
 }
 
 #[tracing::instrument(skip_all, fields(service = context.service_name()))]
-pub async fn start_api_server(mut context: service::ServiceContext) {
+pub async fn start_api_server(
+    mut context: service::ServiceContext,
+) -> anyhow::Result<()> {
     let config = context.load_config();
     let addr =
         netutils::parse_addr(&config.api.address, config.api.port).unwrap();
@@ -81,19 +83,9 @@ pub async fn start_api_server(mut context: service::ServiceContext) {
 
     let mut context_clone = context.clone();
     info!("Starting '{}' on {:?}", context.service_name(), addr);
-    let server = axum::Server::try_bind(&addr);
-    if let Err(e) = server {
-        error!(
-            "Service '{}' failed to start and will trigger system shutdown: {}",
-            context.service_name(),
-            e
-        );
-        context.broadcast_shutdown();
-        return;
-    }
+    let server = axum::Server::try_bind(&addr)?;
 
     let server = server
-        .unwrap()
         .serve(app.into_make_service())
         .with_graceful_shutdown(context.recv_shutdown_signal());
 
@@ -112,6 +104,7 @@ pub async fn start_api_server(mut context: service::ServiceContext) {
         }
         }
     };
+    Ok(())
 }
 
 // basic handler that responds with a static string

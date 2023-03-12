@@ -9,7 +9,9 @@ use shared::netutils;
 use shared::service;
 
 #[tracing::instrument(skip_all, fields(service = context.service_name()))]
-pub async fn start_dispatcher_server(mut context: service::ServiceContext) {
+pub async fn start_dispatcher_server(
+    mut context: service::ServiceContext,
+) -> anyhow::Result<()> {
     let config = context.load_config();
     let addr = netutils::parse_addr(
         &config.dispatcher.address,
@@ -30,4 +32,6 @@ pub async fn start_dispatcher_server(mut context: service::ServiceContext) {
         config.dispatcher.request_processing_timeout_s,
     )
     .await;
+
+    Ok(())
 }

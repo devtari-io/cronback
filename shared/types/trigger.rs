@@ -16,7 +16,7 @@ use crate::types::{OwnerId, TriggerId};
 
 #[serde_as]
 #[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Trigger {
     pub id: TriggerId,
 
@@ -40,7 +40,7 @@ pub struct Trigger {
     pub status: Status,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum Status {
     Active,
@@ -55,7 +55,7 @@ impl Default for Status {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 #[serde(deny_unknown_fields)]
 pub enum Schedule {
@@ -65,7 +65,7 @@ pub enum Schedule {
 
 #[skip_serializing_none]
 #[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, PartialEq)]
 #[serde(deny_unknown_fields)]
 #[serde(transparent)]
 pub struct RunAt {
@@ -83,7 +83,7 @@ pub struct RunAt {
 
 #[skip_serializing_none]
 #[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, PartialEq)]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct Cron {
@@ -106,7 +106,7 @@ impl Default for Cron {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum Emit {
     Webhook(Webhook),
@@ -114,7 +114,7 @@ pub enum Emit {
     //Event(Event),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "UPPERCASE")]
 #[serde(deny_unknown_fields)]
 pub enum HttpMethod {
@@ -127,7 +127,7 @@ pub enum HttpMethod {
 }
 
 #[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, PartialEq)]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct Payload {
@@ -146,7 +146,7 @@ pub struct Payload {
 }
 
 #[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize, Validate)]
+#[derive(Debug, Clone, Serialize, Deserialize, Validate, PartialEq)]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct Webhook {

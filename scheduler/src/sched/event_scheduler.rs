@@ -6,6 +6,7 @@ use tracing::info;
 
 use super::{
     spinner::{Spinner, SpinnerHandle},
+    trigger_store::TriggerStore,
     triggers::{ActiveTriggerMap, TriggerError},
 };
 use proto::scheduler_proto::InstallTrigger;
@@ -45,35 +46,43 @@ pub(crate) struct EventScheduler {
     context: ServiceContext,
     triggers: Arc<RwLock<ActiveTriggerMap>>,
     spinner: Mutex<Option<SpinnerHandle>>,
+    store: Box<dyn TriggerStore + Send + Sync>,
 }
 
 impl EventScheduler {
-    pub fn new(context: ServiceContext) -> Self {
+    pub fn new(
+        context: ServiceContext,
+        store: Box<dyn TriggerStore + Send + Sync>,
+    ) -> Self {
         Self {
             context,
             triggers: Arc::default(),
             spinner: Mutex::default(),
+            store,
         }
     }
 
-    pub fn start(
+    pub async fn start(
         &self,
         dispatcher_client_provider: Arc<DispatcherClientProvider>,
-    ) {
-        let mut spinner = self.spinner.lock().unwrap();
-        if spinner.is_some() {
-            info!("EventScheduler has already started!");
-            return;
+    ) -> Result<(), TriggerError> {
+        {
+            let mut spinner = self.spinner.lock().unwrap();
+            if spinner.is_some() {
+                info!("EventScheduler has already started!");
+                return Ok(());
+            }
+            *spinner = Some(
+                Spinner::new(
+                    self.context.clone(),
+                    self.triggers.clone(),
+                    dispatcher_client_provider,
+                )
+                .start(),
+            );
         }
-        // TODO: Load state from database
-        *spinner = Some(
-            Spinner::new(
-                self.context.clone(),
-                self.triggers.clone(),
-                dispatcher_client_provider,
-            )
-            .start(),
-        );
+
+        self.load_triggers_from_database().await
     }
 
     pub async fn install_trigger(
@@ -94,6 +103,8 @@ impl EventScheduler {
             schedule: install_trigger.schedule.map(|s| s.into()),
             status: Status::Active,
         };
+
+        self.store.install_trigger(&trigger).await?;
 
         let triggers = self.triggers.clone();
         tokio::task::spawn_blocking(move || {
@@ -128,5 +139,17 @@ impl EventScheduler {
             info!("EventScheduler has already been shutdown!");
         }
         // TODO: Do we need to flush anything to the database/filesystem?
+    }
+
+    async fn load_triggers_from_database(&self) -> Result<(), TriggerError> {
+        let triggers = self.store.get_all_active_triggers().await?;
+
+        info!("Found {} active triggers in the database", triggers.len());
+
+        let mut map = self.triggers.write().unwrap();
+        for trigger in triggers {
+            map.add_or_update(trigger)?;
+        }
+        Ok(())
     }
 }

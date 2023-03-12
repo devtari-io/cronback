@@ -1,4 +1,5 @@
 pub mod config;
+pub mod database;
 pub mod grpc_client_provider;
 pub mod model_util;
 pub mod netutils;

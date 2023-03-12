@@ -104,26 +104,39 @@ async fn main() -> Result<()> {
 async fn spawn_service(
     role: Role,
     config_loader: Arc<ConfigLoader>,
-    shutdown: Shutdown,
+    mut shutdown: Shutdown,
 ) {
     let service_name = format!("{role:?}");
     info!(service = service_name, "Starting service '{service_name}'");
 
     let join_handle = match role {
-        | Role::Api => tokio::spawn(api::start_api_server(
-            ServiceContext::new(service_name.clone(), config_loader, shutdown),
-        )),
+        | Role::Api => {
+            tokio::spawn(api::start_api_server(ServiceContext::new(
+                service_name.clone(),
+                config_loader,
+                shutdown.clone(),
+            )))
+        }
         | Role::Scheduler => tokio::spawn(scheduler::start_scheduler_server(
-            ServiceContext::new(service_name.clone(), config_loader, shutdown),
+            ServiceContext::new(
+                service_name.clone(),
+                config_loader,
+                shutdown.clone(),
+            ),
         )),
         | Role::Dispatcher => tokio::spawn(
             dispatcher::start_dispatcher_server(ServiceContext::new(
                 service_name.clone(),
                 config_loader,
-                shutdown,
+                shutdown.clone(),
             )),
         ),
     };
-    join_handle.await.unwrap_or_default();
-    info!("Service '{service_name}' terminated!");
+    match join_handle.await.unwrap() {
+        | Ok(_) => info!("Service '{service_name}' terminated!"),
+        | Err(e) => {
+            error!("Failed to start '{service_name}': {e}");
+            shutdown.broadcast_shutdown();
+        }
+    }
 }

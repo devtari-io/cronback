@@ -6,6 +6,8 @@ use std::sync::Arc;
 
 use handler::SchedulerAPIHandler;
 use proto::scheduler_proto::scheduler_server::SchedulerServer;
+use sched::trigger_store::SqlTriggerStore;
+use shared::database::SqliteDatabase;
 use shared::grpc_client_provider::DispatcherClientProvider;
 
 use sched::event_scheduler::EventScheduler;
@@ -13,9 +15,18 @@ use shared::netutils;
 use shared::service;
 
 #[tracing::instrument(skip_all, fields(service = context.service_name()))]
-pub async fn start_scheduler_server(mut context: service::ServiceContext) {
+pub async fn start_scheduler_server(
+    mut context: service::ServiceContext,
+) -> anyhow::Result<()> {
     let config = context.load_config();
-    let event_scheduler = Arc::new(EventScheduler::new(context.clone()));
+
+    let db = SqliteDatabase::connect(&config.scheduler.database_uri).await?;
+    let trigger_store = SqlTriggerStore::create(db).await?;
+
+    let event_scheduler = Arc::new(EventScheduler::new(
+        context.clone(),
+        Box::new(trigger_store),
+    ));
 
     let dispatcher_client_provider = Arc::new(DispatcherClientProvider::new(
         config.scheduler.dispatcher_uri.clone(),
@@ -24,7 +35,7 @@ pub async fn start_scheduler_server(mut context: service::ServiceContext) {
     let addr =
         netutils::parse_addr(&config.scheduler.address, config.scheduler.port)
             .unwrap();
-    event_scheduler.start(dispatcher_client_provider);
+    event_scheduler.start(dispatcher_client_provider).await?;
 
     let handler =
         SchedulerAPIHandler::new(context.clone(), event_scheduler.clone());
@@ -40,12 +51,14 @@ pub async fn start_scheduler_server(mut context: service::ServiceContext) {
     .await;
 
     event_scheduler.shutdown();
+    Ok(())
 }
 
 pub mod test_helpers {
     use std::future::Future;
     use std::sync::Arc;
 
+    use shared::database::SqliteDatabase;
     use shared::grpc_client_provider::DispatcherClientProvider;
     use tempfile::NamedTempFile;
     use tokio::net::{UnixListener, UnixStream};
@@ -55,6 +68,7 @@ pub mod test_helpers {
 
     use crate::handler::SchedulerAPIHandler;
     use crate::sched::event_scheduler::EventScheduler;
+    use crate::sched::trigger_store::SqlTriggerStore;
     use proto::scheduler_proto::scheduler_client::SchedulerClient;
     use proto::scheduler_proto::scheduler_server::SchedulerServer;
     use shared::service::ServiceContext;
@@ -74,8 +88,17 @@ pub mod test_helpers {
                 context.load_config().scheduler.dispatcher_uri,
             ));
 
-        let event_scheduler = Arc::new(EventScheduler::new(context.clone()));
-        event_scheduler.start(dispatcher_client_provider);
+        let db = SqliteDatabase::in_memory().await.unwrap();
+        let trigger_store = SqlTriggerStore::create(db).await.unwrap();
+        let event_scheduler = Arc::new(EventScheduler::new(
+            context.clone(),
+            Box::new(trigger_store),
+        ));
+        event_scheduler
+            .start(dispatcher_client_provider)
+            .await
+            .unwrap();
+
         let handler =
             SchedulerAPIHandler::new(context.clone(), event_scheduler.clone());
         let svc = SchedulerServer::new(handler);
