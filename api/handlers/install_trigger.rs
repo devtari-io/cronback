@@ -11,7 +11,7 @@ use proto::scheduler_proto::InstallTriggerRequest;
 
 use crate::api_model::InstallTrigger;
 use crate::{errors::ApiError, AppState};
-use shared::types::OwnerId;
+use shared::types::{OwnerId, Trigger};
 
 use super::ValidatedJson;
 
@@ -30,11 +30,15 @@ pub(crate) async fn install_trigger(
     // Pick cell.
     let (cell_id, mut scheduler) = state.pick_scheduler("".to_string()).await?;
     // Send the request to the scheduler
-    let _response = scheduler
+    let trigger = scheduler
         .install_trigger(InstallTriggerRequest {
             install_trigger: Some(request.into_proto(owner_id, cell_id)),
         })
-        .await?;
+        .await?
+        .into_inner()
+        .trigger
+        .unwrap();
+    let trigger: Trigger = trigger.into();
 
-    Ok((StatusCode::CREATED, response_headers, Json(Some("{}"))))
+    Ok((StatusCode::CREATED, response_headers, Json(trigger)))
 }

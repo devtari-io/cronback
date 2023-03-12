@@ -8,8 +8,10 @@ use anyhow::{anyhow, Result};
 use proto::{
     dispatcher_proto::DispatchEventResponse,
     event_proto::Response,
-    trigger_proto::{HttpMethod, Payload, Webhook},
+    trigger_proto::Payload,
+    webhook_proto::{HttpMethod, Webhook},
 };
+
 use reqwest::Method;
 
 use proto::event_proto::EventInstanceStatus;

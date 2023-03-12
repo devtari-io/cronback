@@ -1,7 +1,8 @@
 use std::net::ToSocketAddrs;
 
 use anyhow::{anyhow, Result};
-use proto::trigger_proto::{emit::Emit, Webhook};
+use proto::trigger_proto::emit::Emit;
+use proto::webhook_proto::Webhook;
 use url::Url;
 
 fn validate_endpoint_url_parsable(url: &String) -> Result<Url> {

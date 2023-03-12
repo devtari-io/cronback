@@ -1,19 +1,10 @@
 syntax = "proto3";
 
-import "google/protobuf/timestamp.proto";
+import "webhook.proto";
+
 import "google/protobuf/duration.proto";
 
 package trigger_proto;
-
-enum HttpMethod {
-  HttpMethod_UNKNOWN = 0;
-  HttpMethod_GET = 1;
-  HttpMethod_POST = 2;
-  HttpMethod_PUT = 3;
-  HttpMethod_DELETE = 4;
-  HttpMethod_HEAD = 5;
-  HttpMethod_PATCH = 6;
-}
 
 enum TriggerStatus {
   TriggerStatus_UNKNOWN = 0;
@@ -41,6 +32,7 @@ enum NotificationType {
   Notifications_SLACK = 1;
 }
 
+// use enum instead
 message EventRetryPolicy {
   optional RetryPolicy policy = 1;
   int32 limit = 2;
@@ -57,12 +49,6 @@ message OnStatusHandler {
   int32 auto_cancel_after = 2;
 }
 
-message Webhook {
-  HttpMethod http_method = 1;
-  string url = 2;
-  double timeout_s = 3;
-}
-
 message Payload {
   string content_type = 1;
   map<string, string> headers = 2;
@@ -71,7 +57,7 @@ message Payload {
 
 message Emit {
   oneof emit {
-    Webhook webhook = 1;
+    webhook_proto.Webhook webhook = 1;
     //Tunnel tunnel = 2;
   }
 }
@@ -95,13 +81,12 @@ message Trigger {
   optional string name = 4;
   optional string description = 5;
   string created_at = 6;
-  // TODO: Explore having multiple endpoints with independent status
+  // TODO: Support multiple emits.
   Emit emit = 7;
   Payload payload = 8;
   Schedule schedule = 10;
   TriggerStatus status = 11;
   OnStatusHandler on_success = 12;
   OnStatusHandler on_failure = 13;
-  EventRetryPolicy event_retry_policy = 14;
 }
 

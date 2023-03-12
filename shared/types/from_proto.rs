@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use proto::trigger_proto;
+use proto::webhook_proto;
 
 use crate::timeutil::parse_iso8601;
 
@@ -99,17 +100,17 @@ impl From<i32> for Status {
 
 impl From<i32> for HttpMethod {
     fn from(value: i32) -> Self {
-        let enum_value = trigger_proto::HttpMethod::from_i32(value).unwrap();
+        let enum_value = webhook_proto::HttpMethod::from_i32(value).unwrap();
         match enum_value {
-            | trigger_proto::HttpMethod::Unknown => {
+            | webhook_proto::HttpMethod::Unknown => {
                 panic!("We should never see HttpMethod::Unknown")
             }
-            | trigger_proto::HttpMethod::Get => HttpMethod::GET,
-            | trigger_proto::HttpMethod::Post => HttpMethod::POST,
-            | trigger_proto::HttpMethod::Put => HttpMethod::PUT,
-            | trigger_proto::HttpMethod::Delete => HttpMethod::DELETE,
-            | trigger_proto::HttpMethod::Patch => HttpMethod::PATCH,
-            | trigger_proto::HttpMethod::Head => HttpMethod::HEAD,
+            | webhook_proto::HttpMethod::Get => HttpMethod::GET,
+            | webhook_proto::HttpMethod::Post => HttpMethod::POST,
+            | webhook_proto::HttpMethod::Put => HttpMethod::PUT,
+            | webhook_proto::HttpMethod::Delete => HttpMethod::DELETE,
+            | webhook_proto::HttpMethod::Patch => HttpMethod::PATCH,
+            | webhook_proto::HttpMethod::Head => HttpMethod::HEAD,
         }
     }
 }

@@ -8,10 +8,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .file_descriptor_set_path(out_dir.join("file_descriptor.bin"))
         .compile(
             &[
+                "../proto/webhook.proto",
                 "../proto/scheduler.proto",
                 "../proto/dispatcher.proto",
                 "../proto/trigger.proto",
                 "../proto/event.proto",
+                "../proto/invocation.proto",
+                "../proto/attempt.proto",
             ],
             &["../proto"],
         )?;

@@ -1,4 +1,5 @@
 use proto::trigger_proto;
+use proto::webhook_proto;
 
 use crate::timeutil::to_iso8601;
 
@@ -21,11 +22,9 @@ impl From<Trigger> for trigger_proto::Trigger {
             status: value.status.into(),
             on_success: None,
             on_failure: None,
-            event_retry_policy: None,
             /*
             on_success: todo!(),
             on_failure: todo!(),
-            event_retry_policy: todo!(),
             */
         }
     }
@@ -79,7 +78,7 @@ impl From<Emit> for trigger_proto::Emit {
     fn from(value: Emit) -> Self {
         let emit = match value {
             | Emit::Webhook(webhook) => {
-                trigger_proto::emit::Emit::Webhook(trigger_proto::Webhook {
+                trigger_proto::emit::Emit::Webhook(webhook_proto::Webhook {
                     http_method: webhook.http_method.into(),
                     url: webhook.url.unwrap(),
                     timeout_s: webhook.timeout_s.as_secs_f64(),
@@ -105,12 +104,12 @@ impl From<Status> for i32 {
 impl From<HttpMethod> for i32 {
     fn from(value: HttpMethod) -> Self {
         let enum_value = match value {
-            | HttpMethod::GET => trigger_proto::HttpMethod::Get,
-            | HttpMethod::POST => trigger_proto::HttpMethod::Post,
-            | HttpMethod::PUT => trigger_proto::HttpMethod::Put,
-            | HttpMethod::DELETE => trigger_proto::HttpMethod::Delete,
-            | HttpMethod::PATCH => trigger_proto::HttpMethod::Patch,
-            | HttpMethod::HEAD => trigger_proto::HttpMethod::Head,
+            | HttpMethod::GET => webhook_proto::HttpMethod::Get,
+            | HttpMethod::POST => webhook_proto::HttpMethod::Post,
+            | HttpMethod::PUT => webhook_proto::HttpMethod::Put,
+            | HttpMethod::DELETE => webhook_proto::HttpMethod::Delete,
+            | HttpMethod::PATCH => webhook_proto::HttpMethod::Patch,
+            | HttpMethod::HEAD => webhook_proto::HttpMethod::Head,
         };
         enum_value as i32
     }

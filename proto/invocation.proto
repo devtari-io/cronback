@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+import "webhook.proto";
+import "trigger.proto";
+
+package invocation_proto;
+
+message Invocation {
+  string id = 1;
+  string trigger_id = 2;
+  string owner_id = 3;
+  string created_at = 4;
+  trigger_proto.Payload payload = 5;
+  // One invocation status per emit. If the trigger has a single emit
+  // then we would expect a single invocation_status to be set.
+  repeated InvocationStatus invocation_status = 6;
+}
+
+enum WebhookDeliveryStatus {
+    WebhookDeliveryStatus_UNKNOWN = 0;
+    // We are attempting or retrying the webhook
+    WebhookDeliveryStatus_ATTEMPTING = 1;
+    // Webhook delivery succeeded.
+    WebhookDeliveryStatus_SUCCEEDED = 2;
+    // Webhook delivery failed and we gave up.
+    WebhookDeliveryStatus_FAILED = 3;
+}
+
+message WebhookStatus {
+  webhook_proto.Webhook webhook = 1;
+  WebhookDeliveryStatus delivery_status = 2;
+  optional string latest_attempt = 3;
+}
+
+message InvocationStatus {
+  oneof status {
+    WebhookStatus webhook = 1;
+  }
+}

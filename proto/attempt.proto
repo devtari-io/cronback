@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+import "trigger.proto";
+
+package attempt_proto;
+
+enum AttemptStatus {
+  AttemptStatus_UNKNOWN = 0;
+  AttemptStatus_SUCCEEDED = 1;
+  AttemptStatus_FAILED = 2;
+}
+
+message AttemptDetails {
+  oneof details {
+    WebhookAttemptDetails webhook_details = 1;
+  }
+}
+
+// Can be extended later as needed.
+message EmitAttemptLog {
+  string id = 1;
+  string invocation_id = 2;
+  string trigger_id = 3;
+  string owner_id = 4;
+  AttemptStatus status = 5;
+  AttemptDetails details = 6;
+}
+
+message WebhookAttemptDetails {
+  int32 attempt_count = 1;
+  // We consider any 2xx status code as success.
+  int32 response_code = 2;
+  double response_latency_s = 3;
+  optional trigger_proto.Payload response_payload = 4;
+}
