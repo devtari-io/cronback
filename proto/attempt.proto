@@ -24,6 +24,7 @@ message EmitAttemptLog {
   string owner_id = 4;
   AttemptStatus status = 5;
   AttemptDetails details = 6;
+  string created_at = 7;
 }
 
 message WebhookAttemptDetails {

@@ -187,6 +187,7 @@ impl From<attempt_proto::EmitAttemptLog> for EmitAttemptLog {
             owner_id: value.owner_id.into(),
             status: value.status.into(),
             details: value.details.unwrap().into(),
+            created_at: parse_iso8601(&value.created_at).unwrap(),
         }
     }
 }

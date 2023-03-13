@@ -225,6 +225,7 @@ impl From<EmitAttemptLog> for attempt_proto::EmitAttemptLog {
             owner_id: value.owner_id.into(),
             status: value.status.into(),
             details: Some(value.details.into()),
+            created_at: to_iso8601(&value.created_at),
         }
     }
 }
