@@ -35,3 +35,4 @@ url = { version = "2.3.1", features = ["serde"] }
 cron = "0.12"
 sqlx = {version= "0.6.2", features = ["runtime-tokio-native-tls", "sqlite"] }
 thiserror = "1.0.39"
+derive_more = "0.99.17"

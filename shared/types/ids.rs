@@ -1,8 +1,8 @@
-use std::fmt::Display;
-
 use serde::{Deserialize, Serialize};
 
 use crate::model_util::{generate_model_id, generate_owner_id};
+
+use derive_more::{Display, From, Into};
 
 #[derive(
     Debug,
@@ -14,6 +14,9 @@ use crate::model_util::{generate_model_id, generate_owner_id};
     PartialEq,
     PartialOrd,
     Ord,
+    Display,
+    From,
+    Into,
 )]
 #[serde(transparent)]
 pub struct OwnerId(pub String);
@@ -23,23 +26,6 @@ impl OwnerId {
         Self(generate_owner_id("acc"))
     }
     pub fn from(value: String) -> Self {
-        Self(value)
-    }
-}
-
-impl Display for OwnerId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-impl From<OwnerId> for String {
-    fn from(value: OwnerId) -> Self {
-        value.0
-    }
-}
-
-impl From<String> for OwnerId {
-    fn from(value: String) -> Self {
         Self(value)
     }
 }
@@ -55,6 +41,9 @@ impl From<String> for OwnerId {
     PartialEq,
     PartialOrd,
     Ord,
+    Display,
+    From,
+    Into,
 )]
 #[serde(transparent)]
 pub struct TriggerId(pub String);
@@ -63,23 +52,6 @@ impl TriggerId {
         Self(generate_model_id("trig", owner))
     }
     pub fn from(value: String) -> Self {
-        Self(value)
-    }
-}
-
-impl Display for TriggerId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-impl From<TriggerId> for String {
-    fn from(value: TriggerId) -> Self {
-        value.0
-    }
-}
-
-impl From<String> for TriggerId {
-    fn from(value: String) -> Self {
         Self(value)
     }
 }
@@ -94,6 +66,9 @@ impl From<String> for TriggerId {
     PartialEq,
     PartialOrd,
     Ord,
+    Display,
+    From,
+    Into,
 )]
 #[serde(transparent)]
 pub struct EventId(pub String);
@@ -103,24 +78,6 @@ impl EventId {
     }
     pub fn from(value: String) -> Self {
         Self(value)
-    }
-}
-
-impl From<EventId> for String {
-    fn from(value: EventId) -> Self {
-        value.0
-    }
-}
-
-impl From<String> for EventId {
-    fn from(value: String) -> Self {
-        Self(value)
-    }
-}
-
-impl Display for EventId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
     }
 }
 
@@ -135,6 +92,9 @@ impl Display for EventId {
     PartialEq,
     PartialOrd,
     Ord,
+    Display,
+    From,
+    Into,
 )]
 #[serde(transparent)]
 pub struct CellId(pub u64);
@@ -145,24 +105,6 @@ impl CellId {
     }
 }
 
-impl Display for CellId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl From<CellId> for u64 {
-    fn from(value: CellId) -> Self {
-        value.0
-    }
-}
-
-impl From<u64> for CellId {
-    fn from(value: u64) -> Self {
-        Self(value)
-    }
-}
-
 #[derive(
     Debug,
     Hash,
@@ -174,6 +116,9 @@ impl From<u64> for CellId {
     PartialEq,
     PartialOrd,
     Ord,
+    Display,
+    From,
+    Into,
 )]
 #[serde(transparent)]
 pub struct InvocationId(pub String);
@@ -181,26 +126,6 @@ impl InvocationId {
     pub fn new(OwnerId(owner): &OwnerId) -> Self {
         Self(generate_model_id("inv", owner))
     }
-    pub fn from(value: String) -> Self {
-        Self(value)
-    }
-}
-
-impl Display for InvocationId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-impl From<InvocationId> for String {
-    fn from(value: InvocationId) -> Self {
-        value.0
-    }
-}
-
-impl From<String> for InvocationId {
-    fn from(value: String) -> Self {
-        Self(value)
-    }
 }
 
 #[derive(
@@ -214,6 +139,9 @@ impl From<String> for InvocationId {
     PartialEq,
     PartialOrd,
     Ord,
+    Display,
+    From,
+    Into,
 )]
 #[serde(transparent)]
 pub struct AttemptLogId(pub String);
@@ -222,23 +150,6 @@ impl AttemptLogId {
         Self(generate_model_id("att", owner))
     }
     pub fn from(value: String) -> Self {
-        Self(value)
-    }
-}
-
-impl Display for AttemptLogId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-impl From<AttemptLogId> for String {
-    fn from(value: AttemptLogId) -> Self {
-        value.0
-    }
-}
-
-impl From<String> for AttemptLogId {
-    fn from(value: String) -> Self {
         Self(value)
     }
 }
