@@ -13,12 +13,12 @@ enum HttpMethod {
 }
 
 message SimpleRetry {
-  int32 max_num_attempts = 1;
+  uint32 max_num_attempts = 1;
   double delay_s = 2;
 }
 
 message ExponentialBackoffRetry {
-  int32 max_num_attempts = 1;
+  uint32 max_num_attempts = 1;
   double delay_s = 2;
   double max_delay_s = 3;
 }
@@ -34,5 +34,5 @@ message Webhook {
   HttpMethod http_method = 1;
   string url = 2;
   double timeout_s = 3;
-  //RetryConfig retry = 4;
+  RetryConfig retry = 4;
 }

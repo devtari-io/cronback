@@ -13,7 +13,7 @@ message Invocation {
   trigger_proto.Payload payload = 5;
   // One invocation status per emit. If the trigger has a single emit
   // then we would expect a single invocation_status to be set.
-  repeated InvocationStatus invocation_status = 6;
+  repeated InvocationStatus status = 6;
 }
 
 enum WebhookDeliveryStatus {
@@ -29,7 +29,7 @@ enum WebhookDeliveryStatus {
 message WebhookStatus {
   webhook_proto.Webhook webhook = 1;
   WebhookDeliveryStatus delivery_status = 2;
-  optional string latest_attempt = 3;
+  // optional string latest_attempt = 3;
 }
 
 message InvocationStatus {

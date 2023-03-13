@@ -137,6 +137,7 @@ mod tests {
                 url: Some("http://test".to_string()),
                 http_method: shared::types::HttpMethod::GET,
                 timeout_s: Duration::from_secs(5),
+                retry: None,
             })],
             status,
             reference_id: None,

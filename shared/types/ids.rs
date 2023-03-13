@@ -162,3 +162,83 @@ impl From<u64> for CellId {
         Self(value)
     }
 }
+
+#[derive(
+    Debug,
+    Hash,
+    Clone,
+    Default,
+    Serialize,
+    Deserialize,
+    Eq,
+    PartialEq,
+    PartialOrd,
+    Ord,
+)]
+#[serde(transparent)]
+pub struct InvocationId(pub String);
+impl InvocationId {
+    pub fn new(OwnerId(owner): &OwnerId) -> Self {
+        Self(generate_model_id("inv", owner))
+    }
+    pub fn from(value: String) -> Self {
+        Self(value)
+    }
+}
+
+impl Display for InvocationId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+impl From<InvocationId> for String {
+    fn from(value: InvocationId) -> Self {
+        value.0
+    }
+}
+
+impl From<String> for InvocationId {
+    fn from(value: String) -> Self {
+        Self(value)
+    }
+}
+
+#[derive(
+    Debug,
+    Hash,
+    Clone,
+    Default,
+    Serialize,
+    Deserialize,
+    Eq,
+    PartialEq,
+    PartialOrd,
+    Ord,
+)]
+#[serde(transparent)]
+pub struct AttemptLogId(pub String);
+impl AttemptLogId {
+    pub fn new(OwnerId(owner): &OwnerId) -> Self {
+        Self(generate_model_id("att", owner))
+    }
+    pub fn from(value: String) -> Self {
+        Self(value)
+    }
+}
+
+impl Display for AttemptLogId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+impl From<AttemptLogId> for String {
+    fn from(value: AttemptLogId) -> Self {
+        value.0
+    }
+}
+
+impl From<String> for AttemptLogId {
+    fn from(value: String) -> Self {
+        Self(value)
+    }
+}

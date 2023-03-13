@@ -1,11 +1,18 @@
 use std::time::Duration;
 
+use super::AttemptDetails;
+use super::AttemptStatus;
+use super::EmitAttemptLog;
+use super::ExponentialBackoffRetry;
+use super::RetryConfig;
+use super::SimpleRetry;
+use super::Webhook;
+use super::WebhookAttemptDetails;
+use super::{Emit, HttpMethod, Payload, Schedule, Status, Trigger};
+use crate::timeutil::parse_iso8601;
+use proto::attempt_proto;
 use proto::trigger_proto;
 use proto::webhook_proto;
-
-use crate::timeutil::parse_iso8601;
-
-use super::{Emit, HttpMethod, Payload, Schedule, Status, Trigger};
 
 impl From<trigger_proto::Trigger> for Trigger {
     fn from(value: trigger_proto::Trigger) -> Self {
@@ -24,15 +31,22 @@ impl From<trigger_proto::Trigger> for Trigger {
     }
 }
 
+impl From<webhook_proto::Webhook> for Webhook {
+    fn from(webhook: webhook_proto::Webhook) -> Self {
+        Self {
+            http_method: webhook.http_method.into(),
+            url: Some(webhook.url),
+            timeout_s: Duration::from_secs_f64(webhook.timeout_s),
+            retry: webhook.retry.map(|r| r.into()),
+        }
+    }
+}
+
 impl From<trigger_proto::Emit> for Emit {
     fn from(value: trigger_proto::Emit) -> Self {
         match value.emit.unwrap() {
             | trigger_proto::emit::Emit::Webhook(webhook) => {
-                Self::Webhook(super::Webhook {
-                    http_method: webhook.http_method.into(),
-                    url: Some(webhook.url),
-                    timeout_s: Duration::from_secs_f64(webhook.timeout_s),
-                })
+                Self::Webhook(webhook.into())
             }
         }
     }
@@ -111,6 +125,91 @@ impl From<i32> for HttpMethod {
             | webhook_proto::HttpMethod::Delete => HttpMethod::DELETE,
             | webhook_proto::HttpMethod::Patch => HttpMethod::PATCH,
             | webhook_proto::HttpMethod::Head => HttpMethod::HEAD,
+        }
+    }
+}
+
+impl From<webhook_proto::RetryConfig> for RetryConfig {
+    fn from(value: webhook_proto::RetryConfig) -> Self {
+        match value.policy.unwrap() {
+            | webhook_proto::retry_config::Policy::Simple(simple) => {
+                Self::SimpleRetry(simple.into())
+            }
+            | webhook_proto::retry_config::Policy::ExponentialBackoff(
+                exponential,
+            ) => Self::ExponentialBackoffRetry(exponential.into()),
+        }
+    }
+}
+
+impl From<webhook_proto::SimpleRetry> for SimpleRetry {
+    fn from(retry: webhook_proto::SimpleRetry) -> Self {
+        Self {
+            max_num_attempts: retry.max_num_attempts,
+            delay_s: Duration::from_secs_f64(retry.delay_s),
+        }
+    }
+}
+
+impl From<webhook_proto::ExponentialBackoffRetry> for ExponentialBackoffRetry {
+    fn from(retry: webhook_proto::ExponentialBackoffRetry) -> Self {
+        Self {
+            max_num_attempts: retry.max_num_attempts,
+            delay_s: Duration::from_secs_f64(retry.delay_s),
+            max_delay_s: Duration::from_secs_f64(retry.max_delay_s),
+        }
+    }
+}
+
+// AttemptLog
+
+impl From<i32> for AttemptStatus {
+    fn from(value: i32) -> Self {
+        let enum_value = attempt_proto::AttemptStatus::from_i32(value).unwrap();
+        match enum_value {
+            | attempt_proto::AttemptStatus::Unknown => {
+                panic!("We should never see AttemptStatus::Unknown")
+            }
+            | attempt_proto::AttemptStatus::Failed => AttemptStatus::Failed,
+            | attempt_proto::AttemptStatus::Succeeded => {
+                AttemptStatus::Succeeded
+            }
+        }
+    }
+}
+
+impl From<attempt_proto::EmitAttemptLog> for EmitAttemptLog {
+    fn from(value: attempt_proto::EmitAttemptLog) -> Self {
+        Self {
+            id: value.id.into(),
+            invocation_id: value.invocation_id.into(),
+            trigger_id: value.trigger_id.into(),
+            owner_id: value.owner_id.into(),
+            status: value.status.into(),
+            details: value.details.unwrap().into(),
+        }
+    }
+}
+
+impl From<attempt_proto::WebhookAttemptDetails> for WebhookAttemptDetails {
+    fn from(value: attempt_proto::WebhookAttemptDetails) -> Self {
+        Self {
+            attempt_count: value.attempt_count,
+            response_code: value.response_code,
+            response_latency_s: Duration::from_secs_f64(
+                value.response_latency_s,
+            ),
+            response_payload: value.response_payload.unwrap().into(),
+        }
+    }
+}
+
+impl From<attempt_proto::AttemptDetails> for AttemptDetails {
+    fn from(value: attempt_proto::AttemptDetails) -> Self {
+        match value.details.unwrap() {
+            | attempt_proto::attempt_details::Details::WebhookDetails(
+                details,
+            ) => Self::WebhookAttemptDetails(details.into()),
         }
     }
 }

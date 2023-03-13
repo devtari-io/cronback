@@ -27,7 +27,7 @@ message EmitAttemptLog {
 }
 
 message WebhookAttemptDetails {
-  int32 attempt_count = 1;
+  uint32 attempt_count = 1;
   // We consider any 2xx status code as success.
   int32 response_code = 2;
   double response_latency_s = 3;

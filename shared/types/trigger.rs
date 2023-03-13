@@ -1,22 +1,25 @@
 use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
-use std::time::Duration;
 
 use chrono::DateTime;
 use chrono_tz::Tz;
 use cron::Schedule as CronSchedule;
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, skip_serializing_none, DurationSecondsWithFrac};
+use serde_with::{serde_as, skip_serializing_none};
 use validator::{Validate, ValidationError};
 
 use crate::timeutil::iso8601_dateformat_serde;
 use crate::timeutil::iso8601_dateformat_vec_serde;
+use crate::validation::{validate_timezone, validation_error};
 
 use crate::types::{OwnerId, TriggerId};
+
+use super::webhook::Webhook;
 
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct Trigger {
     pub id: TriggerId,
 
@@ -42,6 +45,7 @@ pub struct Trigger {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
+#[serde(deny_unknown_fields)]
 pub enum Status {
     Active,
     Expired,
@@ -114,18 +118,6 @@ pub enum Emit {
     //Event(Event),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "UPPERCASE")]
-#[serde(deny_unknown_fields)]
-pub enum HttpMethod {
-    DELETE,
-    GET,
-    HEAD,
-    PATCH,
-    POST,
-    PUT,
-}
-
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, PartialEq)]
 #[serde(default)]
@@ -143,30 +135,6 @@ pub struct Payload {
         message = "Payload must be under 1MiB"
     ))]
     pub body: String,
-}
-
-#[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize, Validate, PartialEq)]
-#[serde(default)]
-#[serde(deny_unknown_fields)]
-pub struct Webhook {
-    // TODO validate as url
-    #[validate(required)]
-    pub url: Option<String>,
-    pub http_method: HttpMethod,
-    #[validate(custom = "validate_timeout")]
-    #[serde_as(as = "DurationSecondsWithFrac")]
-    pub timeout_s: std::time::Duration,
-}
-
-impl Default for Webhook {
-    fn default() -> Self {
-        Self {
-            url: None,
-            http_method: HttpMethod::POST,
-            timeout_s: Duration::from_secs(5),
-        }
-    }
 }
 
 impl Default for Payload {
@@ -222,34 +190,4 @@ fn validate_run_at(run_at: &Vec<DateTime<Tz>>) -> Result<(), ValidationError> {
         }
     }
     Ok(())
-}
-
-fn validate_timezone(cron_timezone: &String) -> Result<(), ValidationError> {
-    // validate timezone
-    let tz: Result<Tz, _> = cron_timezone.parse();
-    if tz.is_err() {
-        return Err(validation_error(
-            "unrecognized_cron_timezone",
-            format!(
-                "Timezone unrecognized '{cron_timezone}'. A valid IANA timezone string is required",
-            )
-        ));
-    };
-    Ok(())
-}
-
-fn validate_timeout(timeout: &Duration) -> Result<(), ValidationError> {
-    if timeout.as_secs_f64() < 1.0 || timeout.as_secs_f64() > 30.0 {
-        return Err(validation_error(
-            "invalid_timeout",
-            "Timeout must be between 1.0 and 30.0 seconds".to_string(),
-        ));
-    };
-    Ok(())
-}
-
-fn validation_error(code: &'static str, message: String) -> ValidationError {
-    let mut validation_e = ValidationError::new(code);
-    validation_e.message = Some(message.into());
-    validation_e
 }
