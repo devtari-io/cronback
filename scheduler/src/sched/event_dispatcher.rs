@@ -3,6 +3,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
+use metrics::increment_counter;
 use proto::{
     dispatcher_proto::DispatchEventRequest,
     event_proto::{self, Event, EventStatus, Request},
@@ -53,6 +54,8 @@ impl DispatchedEvent {
     }
 
     pub async fn run(self) {
+        increment_counter!("scheduler.invocations_total");
+
         // TODO: How to handle infra failures?
         let mut client = self
             .dispatcher_client_provider
@@ -67,6 +70,8 @@ impl DispatchedEvent {
             .unwrap_or_else(RetryPolicy::no_retry);
 
         loop {
+            increment_counter!("scheduler.attempts_total");
+
             let response = client
                 .dispatch_event(DispatchEventRequest {
                     event: Some(self.event.clone()),

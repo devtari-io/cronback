@@ -78,7 +78,7 @@ where
         let service_name = self.service_name.clone();
         let start = Instant::now();
         increment_counter!(
-            "cronback.rpc.requests_total",
+            "rpc.requests_total",
             "service" => service_name.clone(),
             "endpoint" => endpoint.clone()
         );
@@ -86,7 +86,7 @@ where
             let response = inner.call(req).await?;
             let latency_s = (Instant::now() - start).as_secs_f64();
             histogram!(
-                "cronback.rpc.duration_seconds",
+                "rpc.duration_seconds",
                 latency_s,
                 "service" => service_name.clone(),
                 "endpoint" => endpoint.clone(),

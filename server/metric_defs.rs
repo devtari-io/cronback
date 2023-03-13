@@ -3,40 +3,52 @@ use metrics::{describe_counter, describe_gauge, describe_histogram, Unit};
 /// Optional but adds description/help message to the metrics emitted to metric sink.
 pub(crate) fn install_metrics() {
     describe_counter!(
-        "cronback.rpc.requests_total",
+        "rpc.requests_total",
         Unit::Count,
         "Total RPC requests processed"
     );
     describe_histogram!(
-        "cronback.rpc.duration_seconds",
+        "rpc.duration_seconds",
         Unit::Seconds,
         "Total latency of RPC processing in seconds"
     );
     describe_histogram!(
-        "cronback.spinner.yield_duration_ms",
+        "spinner.yield_duration_ms",
         Unit::Milliseconds,
         "The time where the spinner gets to sleep until next tick"
     );
     describe_histogram!(
-        "cronback.spinner.dispatch_lag_seconds",
+        "spinner.dispatch_lag_seconds",
         Unit::Seconds,
         "How many seconds the spinner is lagging from trigger ticks"
     );
     describe_gauge!(
-        "cronback.spinner.active_triggers_total",
+        "spinner.active_triggers_total",
         Unit::Count,
         "How many active triggers are loaded into the spinner"
     );
 
     // API Server
     describe_counter!(
-        "cronback.api.http_requests_total",
+        "api.http_requests_total",
         Unit::Count,
         "Total HTTP API requests processed"
     );
     describe_histogram!(
-        "cronback.api.http_requests_duration_seconds",
+        "api.http_requests_duration_seconds",
         Unit::Seconds,
         "Total HTTP API processing in seconds"
+    );
+
+    // Scheduler
+    describe_counter!(
+        "scheduler.invocations_total",
+        Unit::Count,
+        "Total number of invocations invoked by the scheduler"
+    );
+    describe_counter!(
+        "scheduler.attempts_total",
+        Unit::Count,
+        "Total number of attempts attempted by the scheduler"
     );
 }

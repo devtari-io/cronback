@@ -176,10 +176,7 @@ impl Spinner {
                 let lag = Utc::now()
                     .signed_duration_since(scheduled_time)
                     .num_milliseconds() as f64;
-                histogram!(
-                    "cronback.spinner.dispatch_lag_seconds",
-                    lag / 1000.0
-                );
+                histogram!("spinner.dispatch_lag_seconds", lag / 1000.0);
                 if lag > 10_000.0 {
                     warn!("Spinner lag has exceeded 10s, you might need to increase \
                           `max_triggers_per_tick` (current '{max_triggers_per_tick}') \
@@ -220,7 +217,7 @@ impl Spinner {
                 let mut w = self.triggers.write().unwrap();
                 temporal_states = w.build_temporal_state();
                 gauge!(
-                    "cronback.spinner.active_triggers_total",
+                    "spinner.active_triggers_total",
                     temporal_states.len() as f64
                 );
             }
@@ -234,7 +231,7 @@ impl Spinner {
             let remaining =
                 yield_max_duration.saturating_sub(instant.elapsed());
             histogram!(
-                "cronback.spinner.yield_duration_ms",
+                "spinner.yield_duration_ms",
                 remaining.as_millis() as f64,
             );
             if remaining != Duration::ZERO {
