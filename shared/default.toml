@@ -1,6 +1,6 @@
 [main]
 roles = ["api", "dispatcher", "scheduler"]
-prometheus_address = "127.0.0.1"
+prometheus_address = "0.0.0.0"
 prometheus_port = 9000
 
 [api]
