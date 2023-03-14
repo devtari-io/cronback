@@ -10,14 +10,13 @@ use axum::{
 use proto::scheduler_proto::InstallTriggerRequest;
 
 use crate::api_model::InstallTrigger;
+use crate::extractors::ValidatedJson;
 use crate::{errors::ApiError, AppState};
 use shared::types::{OwnerId, Trigger};
 
-use super::ValidatedJson;
-
 #[tracing::instrument(skip_all)]
 #[debug_handler]
-pub(crate) async fn install_trigger(
+pub(crate) async fn install(
     state: State<Arc<AppState>>,
     ValidatedJson(request): ValidatedJson<InstallTrigger>,
 ) -> Result<impl IntoResponse, ApiError> {

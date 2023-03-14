@@ -4,6 +4,10 @@ use crate::model_util::{generate_model_id, generate_owner_id};
 
 use derive_more::{Display, From, Into};
 
+pub trait ValidId {
+    fn is_valid(&self) -> bool;
+}
+
 #[derive(
     Debug,
     Clone,
@@ -30,6 +34,12 @@ impl OwnerId {
     }
 }
 
+impl ValidId for OwnerId {
+    fn is_valid(&self) -> bool {
+        self.0.starts_with("acc_")
+    }
+}
+
 #[derive(
     Debug,
     Hash,
@@ -53,6 +63,12 @@ impl TriggerId {
     }
     pub fn from(value: String) -> Self {
         Self(value)
+    }
+}
+
+impl ValidId for TriggerId {
+    fn is_valid(&self) -> bool {
+        self.0.starts_with("trig_")
     }
 }
 

@@ -1,5 +1,6 @@
 mod api_model;
 pub mod errors;
+pub(crate) mod extractors;
 mod handlers;
 
 use std::{sync::Arc, time::Instant};
@@ -18,11 +19,9 @@ use axum::{
     middleware::{self, Next},
     response::IntoResponse,
     routing::get,
-    routing::post,
     Router,
 };
 
-use handlers::install_trigger::install_trigger;
 use shared::{config::Config, netutils};
 use shared::{service, types::CellId};
 
@@ -30,11 +29,13 @@ use shared::{service, types::CellId};
 pub enum AppStateError {
     #[error(transparent)]
     ConnectError(#[from] tonic::transport::Error),
+    #[error("Internal data routing error: {0}")]
+    RoutingError(String),
 }
 
 pub(crate) struct AppState {
-    context: service::ServiceContext,
-    config: Config,
+    pub context: service::ServiceContext,
+    pub config: Config,
 }
 pub type SchedulerClient = GenSchedulerClient<tonic::transport::Channel>;
 
@@ -44,7 +45,24 @@ impl AppState {
         _owner_id: String,
     ) -> Result<(CellId, SchedulerClient), AppStateError> {
         let (cell_id, address) = self.pick_random_scheduler();
-        Ok((cell_id, SchedulerClient::connect(address).await.unwrap()))
+        Ok((cell_id, SchedulerClient::connect(address).await?))
+    }
+
+    pub async fn scheduler(
+        &self,
+        cell_id: CellId,
+    ) -> Result<SchedulerClient, AppStateError> {
+        let address = self
+            .config
+            .api
+            .scheduler_cell_map
+            .get(&cell_id.0)
+            .ok_or_else(|| {
+                AppStateError::RoutingError(format!(
+                    "No scheduler with cell_id: {cell_id}"
+                ))
+            })?;
+        Ok(SchedulerClient::connect(address.clone()).await?)
     }
 
     fn pick_random_scheduler(&self) -> (CellId, String) {
@@ -55,6 +73,10 @@ impl AppState {
         info!("Picked scheduler cell {} at {}", cell_id, address);
         (CellId::from(**cell_id), address.to_string())
     }
+}
+
+async fn fallback() -> (StatusCode, &'static str) {
+    (StatusCode::NOT_FOUND, "Not Found")
 }
 
 #[tracing::instrument(skip_all, fields(service = context.service_name()))]
@@ -74,9 +96,9 @@ pub async fn start_api_server(
     let app = Router::new()
         // `GET /` goes to `root`
         .route("/", get(root))
-        .route("/v1/triggers", post(install_trigger))
+        .nest("/v1", handlers::routes(shared_state.clone()))
         .route_layer(middleware::from_fn(track_metrics))
-        .with_state(shared_state);
+        .fallback(fallback);
 
     // Handle 404
     let app = app.fallback(handler_404);
