@@ -20,7 +20,7 @@ use shared::{
 
 use super::triggers::{ActiveTriggerMap, TriggerTemporalState};
 
-use super::event_dispatcher::DispatchedEvent;
+use super::event_dispatcher::DispatchJob;
 
 pub(crate) struct Spinner {
     tokio_handle: Handle,
@@ -248,7 +248,7 @@ impl Spinner {
                 // ignore it.
                 return;
             };
-            DispatchedEvent::from_trigger(
+            DispatchJob::from_trigger(
                 trigger.clone(),
                 self.dispatcher_client_provider.clone(),
             )

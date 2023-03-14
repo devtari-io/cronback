@@ -28,9 +28,9 @@ message EmitAttemptLog {
 }
 
 message WebhookAttemptDetails {
-  uint32 attempt_count = 1;
   // We consider any 2xx status code as success.
-  int32 response_code = 2;
-  double response_latency_s = 3;
-  optional trigger_proto.Payload response_payload = 4;
+  optional int32 response_code = 1;
+  double response_latency_s = 2;
+  optional trigger_proto.Payload response_payload = 3;
+  optional string error_msg = 4;
 }

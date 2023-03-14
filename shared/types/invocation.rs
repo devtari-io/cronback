@@ -36,7 +36,7 @@ pub struct WebhookStatus {
     pub delivery_status: WebhookDeliveryStatus,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub enum WebhookDeliveryStatus {
     Attempting,

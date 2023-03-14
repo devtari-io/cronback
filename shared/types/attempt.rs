@@ -30,11 +30,26 @@ pub struct EmitAttemptLog {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct WebhookAttemptDetails {
-    pub attempt_count: u32,
-    pub response_code: i32,
+    pub response_code: Option<i32>,
     #[serde_as(as = "DurationSecondsWithFrac")]
     pub response_latency_s: Duration,
-    pub response_payload: Payload,
+    pub response_payload: Option<Payload>,
+    pub error_msg: Option<String>,
+}
+
+impl WebhookAttemptDetails {
+    pub fn is_success(&self) -> bool {
+        (200..=299).contains(&self.response_code.unwrap_or(500))
+    }
+
+    pub fn with_error(err: String) -> Self {
+        Self {
+            response_code: None,
+            response_latency_s: Duration::default(),
+            response_payload: None,
+            error_msg: Some(err),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

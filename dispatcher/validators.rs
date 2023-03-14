@@ -1,14 +1,9 @@
 use std::net::ToSocketAddrs;
 
 use anyhow::{anyhow, Result};
-use proto::trigger_proto::emit::Emit;
-use proto::webhook_proto::Webhook;
 use url::Url;
 
-fn validate_endpoint_url_parsable(url: &String) -> Result<Url> {
-    Url::parse(url)
-        .map_err(|e| anyhow!("Failed to parse endpoint URL '{}': {} ", url, e))
-}
+use shared::types::{Emit, Webhook};
 
 fn validate_endpoint_scheme(scheme: &str) -> Result<()> {
     if scheme == "http" || scheme == "https" {
@@ -50,15 +45,14 @@ fn validate_endpoint_url_public_ip(host: Option<&str>) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn validate_dispatch_request(
-    request: &proto::event_proto::Request,
-) -> Result<()> {
-    let url_string = match request.emit.as_ref().unwrap().emit.as_ref().unwrap()
-    {
-        | Emit::Webhook(Webhook { url, .. }) => url,
+pub(crate) fn validate_dispatch_request(emit: Emit) -> Result<()> {
+    let url_string = match emit {
+        | Emit::Webhook(Webhook { url, .. }) => url.unwrap(),
     };
 
-    let url = validate_endpoint_url_parsable(url_string)?;
+    let url = Url::parse(&url_string).map_err(|e| {
+        anyhow!("Failed to parse endpoint URL '{}': {} ", url_string, e)
+    })?;
     validate_endpoint_scheme(url.scheme())?;
     validate_endpoint_url_public_ip(url.host_str())?;
 

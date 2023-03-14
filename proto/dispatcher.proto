@@ -1,21 +1,23 @@
 syntax = "proto3";
 
-import "event.proto";
+import "invocation.proto";
+import "trigger.proto";
 
 package dispatcher_proto;
 
 service Dispatcher {
-  rpc DispatchEvent (DispatchEventRequest) returns (DispatchEventResponse);
+  rpc Dispatch (DispatchRequest) returns (DispatchResponse);
 }
 
-message DispatchEventRequest {
-  event_proto.Event event = 1;
+message DispatchRequest {
+  string trigger_id = 1;
+  string owner_id = 2;
+  repeated trigger_proto.Emit emits = 3;
+  trigger_proto.Payload payload = 4;
+  trigger_proto.OnStatusHandler on_success = 5;
+  trigger_proto.OnStatusHandler on_failure = 6;
 }
 
-message DispatchEventResponse {
-  event_proto.EventInstanceStatus status = 1;
-  // Only set if status is SUCCESS
-  optional event_proto.Response response = 2;
-  // Only set if status is not SUCCESS
-  optional string error_message = 3;
+message DispatchResponse {
+  string invocation_id = 1;
 }

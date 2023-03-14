@@ -1,61 +1,79 @@
+use chrono::Utc;
+use metrics::counter;
 use tonic::{Request, Response, Status};
 
-use crate::{validators, webhook};
-use proto::{
-    dispatcher_proto::{
-        dispatcher_server::Dispatcher, DispatchEventRequest,
-        DispatchEventResponse,
-    },
-    event_proto::EventInstanceStatus,
-    trigger_proto::emit::Emit,
+use chrono_tz::UTC;
+use proto::dispatcher_proto::{
+    dispatcher_server::Dispatcher, DispatchRequest, DispatchResponse,
 };
-use shared::service::ServiceContext;
+use shared::{
+    service::ServiceContext,
+    types::{
+        Emit, Invocation, InvocationId, InvocationStatus, OwnerId, TriggerId,
+        WebhookStatus,
+    },
+};
+
+use crate::dispatch_manager::DispatchManager;
 
 pub(crate) struct DispatcherAPIHandler {
     #[allow(unused)]
     context: ServiceContext,
+    dispatch_manager: DispatchManager,
 }
 
 impl DispatcherAPIHandler {
-    pub fn new(context: ServiceContext) -> Self {
-        Self { context }
+    pub fn new(
+        context: ServiceContext,
+        dispatch_manager: DispatchManager,
+    ) -> Self {
+        Self {
+            context,
+            dispatch_manager,
+        }
     }
 }
 
 #[tonic::async_trait]
 impl Dispatcher for DispatcherAPIHandler {
-    async fn dispatch_event(
+    async fn dispatch(
         &self,
-        request: Request<DispatchEventRequest>,
-    ) -> Result<Response<DispatchEventResponse>, Status> {
+        request: Request<DispatchRequest>,
+    ) -> Result<Response<DispatchResponse>, Status> {
         let (_metadata, _extensions, request) = request.into_parts();
 
-        let event = request.event.expect("event must be set to a value");
-        let event_request =
-            event.request.expect("An event must have a request set");
+        let owner_id = OwnerId::from(request.owner_id);
+        let invocation_id = InvocationId::new(&owner_id);
 
-        if let Err(e) = validators::validate_dispatch_request(&event_request) {
-            return Ok(Response::new(DispatchEventResponse {
-                status: EventInstanceStatus::InvalidRequest.into(),
-                response: None,
-                error_message: Some(format!("Invalid request: {e}")),
-            }));
-        }
-
-        let endpoint =
-            event_request.emit.as_ref().unwrap().emit.as_ref().unwrap();
-
-        let response = match endpoint {
-            | Emit::Webhook(w) => {
-                webhook::dispatch_webhook(
-                    w,
-                    event_request.request_payload.as_ref().unwrap(),
+        let invocation = Invocation {
+            id: invocation_id.clone(),
+            trigger_id: request.trigger_id.into(),
+            owner_id,
+            created_at: Utc::now().with_timezone(&UTC),
+            payload: request.payload.unwrap().into(),
+            status: request
+                .emits
+                .into_iter()
+                .map(|e|
+                    match Emit::from(e) {
+                        | Emit::Webhook(webhook) => {
+                            InvocationStatus::WebhookStatus(WebhookStatus {
+                                webhook,
+                                delivery_status: shared::types::WebhookDeliveryStatus::Attempting,
+                            })
+                        }
+                    }
                 )
-                .await
-            }
+                .collect(),
         };
-        // TODO: Send notifications here
 
-        Ok(Response::new(response))
+        counter!("dispatcher.invocations_total", 1);
+        self.dispatch_manager
+            .register_invocation(invocation)
+            .unwrap();
+
+        Ok(Response::new(DispatchResponse {
+            invocation_id: invocation_id.to_string(),
+        }))
     }
 }

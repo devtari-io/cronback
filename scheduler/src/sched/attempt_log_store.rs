@@ -142,14 +142,14 @@ mod tests {
             status: shared::types::AttemptStatus::Succeeded,
             details: shared::types::AttemptDetails::WebhookAttemptDetails(
                 WebhookAttemptDetails {
-                    attempt_count: 1,
-                    response_code: 404,
+                    response_code: Some(404),
                     response_latency_s: Duration::from_secs(10),
-                    response_payload: Payload {
+                    response_payload: Some(Payload {
                         headers: HashMap::new(),
                         content_type: "application/json".to_string(),
                         body: "body".to_string(),
-                    },
+                    }),
+                    error_msg: None,
                 },
             ),
             created_at: now,

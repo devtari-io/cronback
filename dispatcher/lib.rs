@@ -1,12 +1,16 @@
+mod dispatch_manager;
+mod emits;
 mod handler;
+mod retry;
 mod validators;
-mod webhook;
 
 use proto::dispatcher_proto::dispatcher_server::DispatcherServer;
 use tracing::info;
 
 use shared::netutils;
 use shared::service;
+
+use crate::dispatch_manager::DispatchManager;
 
 #[tracing::instrument(skip_all, fields(service = context.service_name()))]
 pub async fn start_dispatcher_server(
@@ -18,7 +22,10 @@ pub async fn start_dispatcher_server(
         config.dispatcher.port,
     )
     .unwrap();
-    let handler = handler::DispatcherAPIHandler::new(context.clone());
+
+    let dispatch_manager = DispatchManager::create_and_start(context.clone());
+    let handler =
+        handler::DispatcherAPIHandler::new(context.clone(), dispatch_manager);
     let svc = DispatcherServer::new(handler);
 
     // grpc server

@@ -40,15 +40,21 @@ pub(crate) fn install_metrics() {
         "Total HTTP API processing in seconds"
     );
 
-    // Scheduler
+    // Dipatcher
     describe_counter!(
-        "scheduler.invocations_total",
+        "dispatcher.invocations_total",
         Unit::Count,
-        "Total number of invocations invoked by the scheduler"
+        "Total number of invocations invoked by the dispatcher"
     );
     describe_counter!(
-        "scheduler.attempts_total",
+        "dispatcher.attempts_total",
         Unit::Count,
-        "Total number of attempts attempted by the scheduler"
+        "Total number of attempts attempted by the dispatcher"
+    );
+
+    describe_gauge!(
+        "dispatcher.inflight_invocations_total",
+        Unit::Count,
+        "Total number of inflight invocations in the dispatcher"
     );
 }

@@ -195,12 +195,12 @@ impl From<attempt_proto::EmitAttemptLog> for EmitAttemptLog {
 impl From<attempt_proto::WebhookAttemptDetails> for WebhookAttemptDetails {
     fn from(value: attempt_proto::WebhookAttemptDetails) -> Self {
         Self {
-            attempt_count: value.attempt_count,
             response_code: value.response_code,
             response_latency_s: Duration::from_secs_f64(
                 value.response_latency_s,
             ),
-            response_payload: value.response_payload.unwrap().into(),
+            response_payload: value.response_payload.map(|p| p.into()),
+            error_msg: value.error_msg,
         }
     }
 }
