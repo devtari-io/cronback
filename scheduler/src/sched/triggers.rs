@@ -13,7 +13,9 @@ use tracing::info;
 use chrono::{DateTime, Utc};
 use shared::types::{Schedule, Trigger, TriggerId};
 
-use super::trigger_store::TriggerStoreError;
+use super::{
+    event_dispatcher::DispatchError, trigger_store::TriggerStoreError,
+};
 
 #[derive(Error, Debug)]
 pub(crate) enum TriggerError {
@@ -30,6 +32,8 @@ pub(crate) enum TriggerError {
     JoinError(#[from] tokio::task::JoinError),
     #[error("Operation on underlying trigger store failed: {0}")]
     TriggerStoreError(#[from] TriggerStoreError),
+    #[error("Cannot dispatch an invocation for this trigger")]
+    InvocationError(#[from] DispatchError),
 }
 
 ///

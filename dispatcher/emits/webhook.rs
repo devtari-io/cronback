@@ -38,7 +38,11 @@ pub struct WebhookEmitJob {
 }
 
 impl WebhookEmitJob {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, fields(
+            invocation_id = %self.invocation_id,
+            trigger_id = %self.trigger_id,
+            webhook_url = self.webhook.url
+            ))]
     pub async fn run(&self) -> WebhookDeliveryStatus {
         let mut retry_policy = if let Some(config) = &self.webhook.retry {
             RetryPolicy::with_config(config.clone())
@@ -72,7 +76,11 @@ impl WebhookEmitJob {
                 created_at: attempt_start_time,
             };
 
-            info!("Dispatch Attempt: {:?}", attempt_log);
+            info!(
+            attempt_id = %attempt_log.id,
+            status = ?attempt_log.status,
+            "dispatch-attempt"
+            );
 
             if let Err(e) = self.attempt_store.log_attempt(&attempt_log).await {
                 error!("Failed to log attempt {attempt_id} to database: {}", e);
@@ -84,9 +92,17 @@ impl WebhookEmitJob {
 
             match retry_policy.next_sleep_duration() {
                 | Some(dur) => {
+                    debug!(
+                    attempt_id = %attempt_log.id,
+                    "dispatch-attempt: will retry in {dur:?}"
+                    );
                     tokio::time::sleep(dur).await;
                 }
                 | None => {
+                    debug!(
+                    attempt_id = %attempt_log.id,
+                    "dispatch-attempt: no more retries left, marking the invocation as failed"
+                    );
                     return WebhookDeliveryStatus::Failed;
                 }
             }

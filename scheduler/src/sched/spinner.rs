@@ -11,16 +11,20 @@ use std::{
 use chrono::Utc;
 use metrics::{gauge, histogram};
 use tokio::runtime::Handle;
-use tracing::{info, trace, warn};
+use tracing::{info, trace, warn, Instrument};
 
 use shared::{
-    grpc_client_provider::DispatcherClientProvider, service::ServiceContext,
-    types::TriggerId,
+    grpc_client_provider::DispatcherClientProvider,
+    service::ServiceContext,
+    types::{Invocation, TriggerId},
 };
 
-use super::triggers::{ActiveTriggerMap, TriggerTemporalState};
+use crate::sched::dispatch;
 
-use super::event_dispatcher::DispatchJob;
+use super::{
+    event_dispatcher::DispatchError,
+    triggers::{ActiveTriggerMap, TriggerTemporalState},
+};
 
 pub(crate) struct Spinner {
     tokio_handle: Handle,
@@ -240,28 +244,36 @@ impl Spinner {
         }
     }
 
-    fn dispatch(&self, trigger_id: &TriggerId) {
-        let event = {
+    fn dispatch(
+        &self,
+        trigger_id: &TriggerId,
+    ) -> Option<tokio::task::JoinHandle<Result<Invocation, DispatchError>>>
+    {
+        let trigger = {
             let r = self.triggers.read().unwrap();
             let Some(trigger) = r.get(trigger_id) else {
                 // The trigger could have been removed from the active trigger maps, let's just
                 // ignore it.
-                return;
+                return None;
             };
-            DispatchJob::from_trigger(
-                trigger.clone(),
-                self.dispatcher_client_provider.clone(),
-            )
+            trigger.clone()
         };
-
-        let dispatch_instant = Instant::now();
-        self.tokio_handle.spawn(async move {
-            info!(
-                "async-dispatch event: {} - async dispatch delay: {:?}",
-                event.id(),
-                Instant::now().duration_since(dispatch_instant),
-            );
-            event.run().await;
-        });
+        // TODO:
+        // Can't we dispatch? if we can't, we should retry a few times, then we drop into
+        //  failsafe mode.
+        // In failsafe mode:
+        //  - Stop the if spinner
+        //  - Run a health check loop to find alive dispatchers.
+        //  - Once a live dispatcher is found, re-init the spinner and continue.
+        let provider = self.dispatcher_client_provider.clone();
+        // TODO: Think about when should we persist the fact that we dispatched.
+        let handle = self.tokio_handle.spawn(
+            async move {
+                // TODO add a few retries if not logic error.
+                dispatch::dispatch(trigger, provider).await
+            }
+            .instrument(tracing::Span::current()),
+        );
+        Some(handle)
     }
 }

@@ -19,5 +19,5 @@ message DispatchRequest {
 }
 
 message DispatchResponse {
-  string invocation_id = 1;
+  invocation_proto.Invocation invocation = 1;
 }

@@ -8,11 +8,6 @@ use std::{sync::Arc, time::Instant};
 use metrics::{histogram, increment_counter};
 use proto::scheduler_proto::scheduler_client::SchedulerClient as GenSchedulerClient;
 
-use rand::seq::SliceRandom;
-use thiserror::Error;
-use tokio::select;
-use tracing::{error, info, warn};
-
 use axum::{
     extract::MatchedPath,
     http::{Request, StatusCode},
@@ -21,8 +16,12 @@ use axum::{
     routing::get,
     Router,
 };
+use rand::seq::SliceRandom;
+use thiserror::Error;
+use tokio::select;
+use tracing::{error, info, warn};
 
-use shared::{config::Config, netutils};
+use shared::{config::Config, netutils, types::TriggerId};
 use shared::{service, types::CellId};
 
 #[derive(Debug, Error)]
@@ -34,7 +33,7 @@ pub enum AppStateError {
 }
 
 pub(crate) struct AppState {
-    pub context: service::ServiceContext,
+    pub _context: service::ServiceContext,
     pub config: Config,
 }
 pub type SchedulerClient = GenSchedulerClient<tonic::transport::Channel>;
@@ -65,6 +64,17 @@ impl AppState {
         Ok(SchedulerClient::connect(address.clone()).await?)
     }
 
+    pub async fn scheduler_for_trigger(
+        &self,
+        _trigger_id: &TriggerId,
+    ) -> Result<SchedulerClient, AppStateError> {
+        // Decide the scheduler cell
+        // TODO: Now, how do we figure which scheduler has this trigger?
+        // For now, we'll assume all triggers are on Cell 0
+        let cell_id = CellId::from(0);
+        self.scheduler(cell_id).await
+    }
+
     fn pick_random_scheduler(&self) -> (CellId, String) {
         let mut rng = rand::thread_rng();
         // // pick random entry from hashmap self.config.api.scheduler_cell_map
@@ -88,7 +98,7 @@ pub async fn start_api_server(
         netutils::parse_addr(&config.api.address, config.api.port).unwrap();
 
     let shared_state = Arc::new(AppState {
-        context: context.clone(),
+        _context: context.clone(),
         config: config.clone(),
     });
 

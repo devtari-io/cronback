@@ -5,10 +5,9 @@ use tracing::info;
 
 use crate::sched::event_scheduler::EventScheduler;
 use proto::scheduler_proto::{
-    scheduler_server::Scheduler, ExecuteTriggerRequest, ExecuteTriggerResponse,
-    FindTriggersRequest, FindTriggersResponse, GetTriggerRequest,
-    GetTriggerResponse, InstallTrigger, InstallTriggerRequest,
-    InstallTriggerResponse,
+    scheduler_server::Scheduler, FindTriggersRequest, FindTriggersResponse,
+    GetTriggerRequest, GetTriggerResponse, InstallTriggerRequest,
+    InstallTriggerResponse, InvokeTriggerRequest, InvokeTriggerResponse,
 };
 use shared::service::ServiceContext;
 
@@ -35,28 +34,32 @@ impl Scheduler for SchedulerAPIHandler {
         info!("Got a request: {request:?}");
 
         let (_metadata, _ext, request) = request.into_parts();
-        // basic validation for sanity
-        let install_trigger: InstallTrigger =
-            request.install_trigger.ok_or_else(|| {
-                Status::invalid_argument("Missing install_trigger in request!")
-            })?;
-
-        info!("Installing trigger {:?}", install_trigger);
+        info!("Installing trigger {:?}", request);
         // TODO: Instantiate a trigger, we will lookup the database to check for reference id
 
         // Creating a new trigger from install_trigger
-        let trigger = self.scheduler.install_trigger(install_trigger).await?;
+        let trigger = self.scheduler.install_trigger(request).await?;
         let reply = InstallTriggerResponse {
             trigger: Some(trigger.into()),
         };
         Ok(Response::new(reply))
     }
 
-    async fn execute_trigger(
+    async fn invoke_trigger(
         &self,
-        _request: Request<ExecuteTriggerRequest>,
-    ) -> Result<Response<ExecuteTriggerResponse>, Status> {
-        todo!()
+        request: Request<InvokeTriggerRequest>,
+    ) -> Result<Response<InvokeTriggerResponse>, Status> {
+        // check if trigger exists
+        // A trigger that exists will be invoked regardless of its state
+        // manual invocation has nothing to do with the spinner or event scheduler
+        //
+        let (_metadata, _ext, request) = request.into_parts();
+        info!(request.id, "Invoking trigger");
+        let invocation =
+            self.scheduler.invoke_trigger(request.id.into()).await?;
+        Ok(Response::new(InvokeTriggerResponse {
+            invocation: Some(invocation.into()),
+        }))
     }
 
     async fn get_trigger(

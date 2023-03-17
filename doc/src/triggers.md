@@ -1,28 +1,38 @@
 # Triggers
 
-Endpoint: `/v1/triggers`
+Endpoint: GET `/v1/triggers/:id`
 
 
 ```javascript
 {
   "id": "trg_2345923hbdhbfiqwerbwer",
-  "object": "trigger",
+  "owner_id": "acc_2342495239423423423",
   "reference_id": "user-supplied-id",
   // optional
   "name": "Remind user to finish sign-up",
   "description": "Something something something", 
   "created_at": "1997-07-16T19:20:30.45Z",
-  "emit": {
-    "webhook": {
-      "url": "https://google.com/something",
-      "http_method": "https://google.com/something",
-      "content_type": "application/json; charset=utf-8",
-      "timeout_s": 5,
-    },
-  },
-  "payload": "anything",
-  "headers": {
-    "Something": "5"
+  "emit": [
+      {
+        "webhook": {
+          "url": "https://google.com/something",
+          "http_method": "https://google.com/something",
+          "timeout_s": 5.0,
+          "retry": {
+            "simple_retry": {
+              "max_num_attempts": 10,
+              "delay_s": 10.0
+            }
+          }
+        }
+      }
+  ],
+  "payload": {
+    "body": "anything",
+    "content_type": "application/json; charset=utf-8",
+    "headers": {
+      "Something": "5"
+    }
   },
   "schedule": {
     "recurring": {
@@ -33,37 +43,13 @@ Endpoint: `/v1/triggers`
     },
     // OR
     "run_at": [
-    // can have up to 100 points, has timezone in iso 8601 format.
-    "1997-07-16T19:20:30.45Z",
-    // Supports ISO-8601 durations as well (e.g. PT5M)
-    "1997-07-16T19:20:30.45Z",
+      // can have uP to 100 points, has timezone in iso 8601 format.
+      "1997-07-16T19:20:30.45Z",
+      // Supports ISO-8601 durations as well (e.g. PT5M)
+      "1997-07-16T19:20:30.45Z",
     ],
   },
   "status": "active" | "expired" | "paused" | "canceled",
-  "last_event_details": {  // optional
-    "id": "evt_89425729345bbwfywerxxx",
-    "status": "succeeded" | "failed".
-    "finished_at": "1997-07-16T19:20:30.45Z"
-  },
-  // max_in_flight
-  "on_success": {
-    "notifications": ["slack"],
-    // 3 auto cancel cron if last 3 events succeeded [optional, never auto cancel]
-    "auto_cancel_after": "3", 
-  },
-  "event_retry_policy": {
-    // null means no retries, event will be marked failed.
-    "policy": null | "exponential" | "simple",  
-    "limit":"5", 
-    "delay_s": "2",
-    "max_delay_s": "2", // only if exponential
-    "notifications": ["slack"],
-  },
-  "on_failure": {
-    "notifications": ["slack"],
-    // 3 auto cancel cron if last 3 events failed
-    "auto_cancel_after": "3", 
-  },
 }
 
 ```

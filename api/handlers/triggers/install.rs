@@ -23,16 +23,17 @@ pub(crate) async fn install(
     let mut response_headers = HeaderMap::new();
     response_headers
         .insert("cronback-trace-id", "SOMETHING SOMETHING".parse().unwrap());
+
     // TODO: Get owner id
     let owner_id = OwnerId::from("ab1".to_owned());
     // Decide the scheduler cell
     // Pick cell.
     let (cell_id, mut scheduler) = state.pick_scheduler("".to_string()).await?;
     // Send the request to the scheduler
+    let install_request: InstallTriggerRequest =
+        request.into_proto(owner_id, cell_id);
     let trigger = scheduler
-        .install_trigger(InstallTriggerRequest {
-            install_trigger: Some(request.into_proto(owner_id, cell_id)),
-        })
+        .install_trigger(install_request)
         .await?
         .into_inner()
         .trigger

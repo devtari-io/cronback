@@ -23,19 +23,20 @@ pub async fn start_scheduler_server(
     let db = SqliteDatabase::connect(&config.scheduler.database_uri).await?;
     let trigger_store = SqlTriggerStore::create(db).await?;
 
+    let dispatcher_client_provider = Arc::new(DispatcherClientProvider::new(
+        config.scheduler.dispatcher_uri.clone(),
+    ));
+
     let event_scheduler = Arc::new(EventScheduler::new(
         context.clone(),
         Box::new(trigger_store),
-    ));
-
-    let dispatcher_client_provider = Arc::new(DispatcherClientProvider::new(
-        config.scheduler.dispatcher_uri.clone(),
+        dispatcher_client_provider,
     ));
 
     let addr =
         netutils::parse_addr(&config.scheduler.address, config.scheduler.port)
             .unwrap();
-    event_scheduler.start(dispatcher_client_provider).await?;
+    event_scheduler.start().await?;
 
     let handler =
         SchedulerAPIHandler::new(context.clone(), event_scheduler.clone());
@@ -93,11 +94,9 @@ pub mod test_helpers {
         let event_scheduler = Arc::new(EventScheduler::new(
             context.clone(),
             Box::new(trigger_store),
+            dispatcher_client_provider,
         ));
-        event_scheduler
-            .start(dispatcher_client_provider)
-            .await
-            .unwrap();
+        event_scheduler.start().await.unwrap();
 
         let handler =
             SchedulerAPIHandler::new(context.clone(), event_scheduler.clone());

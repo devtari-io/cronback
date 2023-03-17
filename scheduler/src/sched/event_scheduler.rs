@@ -5,15 +5,16 @@ use chrono_tz::UTC;
 use tracing::info;
 
 use super::{
+    dispatch::dispatch,
     spinner::{Spinner, SpinnerHandle},
     trigger_store::TriggerStore,
     triggers::{ActiveTriggerMap, TriggerError},
 };
-use proto::scheduler_proto::InstallTrigger;
+use proto::scheduler_proto::InstallTriggerRequest;
 use shared::{
     grpc_client_provider::DispatcherClientProvider,
     service::ServiceContext,
-    types::{OwnerId, Status, Trigger, TriggerId},
+    types::{Invocation, OwnerId, Status, Trigger, TriggerId},
 };
 
 /**
@@ -47,25 +48,25 @@ pub(crate) struct EventScheduler {
     triggers: Arc<RwLock<ActiveTriggerMap>>,
     spinner: Mutex<Option<SpinnerHandle>>,
     store: Box<dyn TriggerStore + Send + Sync>,
+    dispatcher_client_provider: Arc<DispatcherClientProvider>,
 }
 
 impl EventScheduler {
     pub fn new(
         context: ServiceContext,
         store: Box<dyn TriggerStore + Send + Sync>,
+        dispatcher_client_provider: Arc<DispatcherClientProvider>,
     ) -> Self {
         Self {
             context,
             triggers: Arc::default(),
             spinner: Mutex::default(),
             store,
+            dispatcher_client_provider,
         }
     }
 
-    pub async fn start(
-        &self,
-        dispatcher_client_provider: Arc<DispatcherClientProvider>,
-    ) -> Result<(), TriggerError> {
+    pub async fn start(&self) -> Result<(), TriggerError> {
         {
             let mut spinner = self.spinner.lock().unwrap();
             if spinner.is_some() {
@@ -76,7 +77,7 @@ impl EventScheduler {
                 Spinner::new(
                     self.context.clone(),
                     self.triggers.clone(),
-                    dispatcher_client_provider,
+                    self.dispatcher_client_provider.clone(),
                 )
                 .start(),
             );
@@ -87,7 +88,7 @@ impl EventScheduler {
 
     pub async fn install_trigger(
         &self,
-        install_trigger: InstallTrigger,
+        install_trigger: InstallTriggerRequest,
     ) -> Result<Trigger, TriggerError> {
         let id = TriggerId::new(&OwnerId(install_trigger.owner_id.clone()));
 
@@ -126,6 +127,20 @@ impl EventScheduler {
                 .cloned()
         })
         .await?
+    }
+
+    #[tracing::instrument(skip_all, fields(trigger_id = %id))]
+    pub async fn invoke_trigger(
+        &self,
+        id: TriggerId,
+    ) -> Result<Invocation, TriggerError> {
+        let trigger = self.store.get_trigger(&id).await?;
+        let Some(trigger) = trigger else {
+            return Err(TriggerError::NotFound(id));
+        };
+        let invocation =
+            dispatch(trigger, self.dispatcher_client_provider.clone()).await?;
+        Ok(invocation)
     }
 
     pub fn shutdown(&self) {

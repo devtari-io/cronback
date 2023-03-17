@@ -69,11 +69,11 @@ impl Dispatcher for DispatcherAPIHandler {
 
         counter!("dispatcher.invocations_total", 1);
         self.dispatch_manager
-            .register_invocation(invocation)
+            .register_invocation(invocation.clone())
             .unwrap();
 
         Ok(Response::new(DispatchResponse {
-            invocation_id: invocation_id.to_string(),
+            invocation: Some(invocation.into()),
         }))
     }
 }

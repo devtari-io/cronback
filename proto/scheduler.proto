@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 import "trigger.proto";
+import "invocation.proto";
 
 package scheduler_proto;
 
@@ -8,14 +9,14 @@ service Scheduler {
   /// Install or update a trigger onto the scheduler
   rpc InstallTrigger (InstallTriggerRequest)  returns (InstallTriggerResponse);
   /// Manually run a trigger
-  rpc ExecuteTrigger (ExecuteTriggerRequest)  returns (ExecuteTriggerResponse);
+  rpc InvokeTrigger (InvokeTriggerRequest)  returns (InvokeTriggerResponse);
   /// Get a trigger by id
   rpc GetTrigger (GetTriggerRequest)  returns (GetTriggerResponse);
   /// Retrieve a trigger by token
   rpc FindTriggers (FindTriggersRequest)  returns (FindTriggersResponse);
 }
 
-message InstallTrigger {
+message InstallTriggerRequest {
   string owner_id = 1;
   uint64 cell_id = 2;
   /// [Future] User supplied identifier, unique per owner account
@@ -31,19 +32,17 @@ message InstallTrigger {
 }
 
 // == INSTALL OR UPDATE EXISTING TRIGGER ==
-message InstallTriggerRequest {
-  InstallTrigger install_trigger = 1;
-}
-
 message InstallTriggerResponse {
   trigger_proto.Trigger trigger = 1;
 }
 
 // == EXECUTE TRIGGER MANUALLY ==
-message ExecuteTriggerRequest {
+message InvokeTriggerRequest {
+  string id = 1;
 }
 
-message ExecuteTriggerResponse {
+message InvokeTriggerResponse {
+  invocation_proto.Invocation invocation = 1;
 }
 
 // == GET TRIGGER ==

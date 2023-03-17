@@ -1,7 +1,19 @@
 use std::sync::Arc;
 
 use proto::dispatcher_proto::DispatchRequest;
-use shared::{grpc_client_provider::DispatcherClientProvider, types::Trigger};
+use shared::{
+    grpc_client_provider::DispatcherClientProvider,
+    types::{Invocation, Trigger},
+};
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub(crate) enum DispatchError {
+    #[error("Failed while attempting to communicate with dispatcher")]
+    TransportError(#[from] tonic::transport::Error),
+    #[error("Dispatcher returned an error, this is unexpected!")]
+    LogicalError(#[from] tonic::Status),
+}
 
 pub(crate) struct DispatchJob {
     dispatch_request: DispatchRequest,
@@ -30,26 +42,16 @@ impl DispatchJob {
         }
     }
 
-    pub fn id(&self) -> &str {
+    pub fn trigger_id(&self) -> &str {
         &self.dispatch_request.trigger_id
     }
 
-    pub async fn run(self) {
-        // TODO: How to handle infra failures?
-        let mut client = self
-            .dispatcher_client_provider
-            .get_or_create()
-            .await
-            .unwrap();
+    pub async fn run(&mut self) -> Result<Invocation, DispatchError> {
+        let mut client =
+            self.dispatcher_client_provider.get_or_create().await?;
 
-        loop {
-            // Retry forever until the dispatcher accepts our message.
-            // TODO: Obviously that's not ideal
-
-            let resp = client.dispatch(self.dispatch_request.clone()).await;
-            if resp.is_ok() {
-                break;
-            }
-        }
+        let resp = client.dispatch(self.dispatch_request.clone()).await?;
+        let invocation = resp.into_inner().invocation.unwrap();
+        Ok(invocation.into())
     }
 }

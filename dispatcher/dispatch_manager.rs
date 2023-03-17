@@ -5,7 +5,7 @@ use shared::service::ServiceContext;
 use shared::types::{Invocation, InvocationStatus, WebhookDeliveryStatus};
 use tokio::sync::mpsc;
 use tokio::task::{JoinHandle, JoinSet};
-use tracing::info;
+use tracing::Instrument;
 
 use crate::attempt_log_store::AttemptLogStore;
 use crate::emits;
@@ -94,11 +94,8 @@ impl InvocationJob {
     ) -> Self {
         Self { invocation, store }
     }
+    #[tracing::instrument(skip(self))]
     async fn run(mut self) {
-        info!(
-            "Executing invocation {} for trigger {}",
-            self.invocation.id, self.invocation.trigger_id
-        );
         let mut join_set = JoinSet::new();
         for (idx, emit) in self.invocation.status.iter().enumerate() {
             match emit.clone() {
@@ -112,18 +109,21 @@ impl InvocationJob {
                     let tid = self.invocation.trigger_id.clone();
                     let oid = self.invocation.owner_id.clone();
                     let attempt_store = Arc::clone(&self.store);
-                    join_set.spawn(async move {
-                        let e = emits::webhook::WebhookEmitJob {
-                            webhook: web.webhook.clone(),
-                            payload: p,
-                            invocation_id: id,
-                            trigger_id: tid,
-                            owner_id: oid,
-                            attempt_store,
-                        };
-                        web.delivery_status = e.run().await;
-                        (idx, InvocationStatus::WebhookStatus(web))
-                    });
+                    join_set.spawn(
+                        async move {
+                            let e = emits::webhook::WebhookEmitJob {
+                                webhook: web.webhook.clone(),
+                                payload: p,
+                                invocation_id: id,
+                                trigger_id: tid,
+                                owner_id: oid,
+                                attempt_store,
+                            };
+                            web.delivery_status = e.run().await;
+                            (idx, InvocationStatus::WebhookStatus(web))
+                        }
+                        .instrument(tracing::Span::current()),
+                    );
                 }
             }
         }

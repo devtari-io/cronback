@@ -4,13 +4,18 @@ use super::AttemptDetails;
 use super::AttemptStatus;
 use super::EmitAttemptLog;
 use super::ExponentialBackoffRetry;
+use super::Invocation;
+use super::InvocationStatus;
 use super::RetryConfig;
 use super::SimpleRetry;
 use super::Webhook;
 use super::WebhookAttemptDetails;
+use super::WebhookDeliveryStatus;
+use super::WebhookStatus;
 use super::{Emit, HttpMethod, Payload, Schedule, Status, Trigger};
 use crate::timeutil::parse_iso8601;
 use proto::attempt_proto;
+use proto::invocation_proto;
 use proto::trigger_proto;
 use proto::webhook_proto;
 
@@ -211,6 +216,57 @@ impl From<attempt_proto::AttemptDetails> for AttemptDetails {
             | attempt_proto::attempt_details::Details::WebhookDetails(
                 details,
             ) => Self::WebhookAttemptDetails(details.into()),
+        }
+    }
+}
+
+impl From<invocation_proto::Invocation> for Invocation {
+    fn from(value: invocation_proto::Invocation) -> Self {
+        Self {
+            id: value.id.into(),
+            trigger_id: value.trigger_id.into(),
+            owner_id: value.owner_id.into(),
+            created_at: parse_iso8601(&value.created_at).unwrap(),
+            payload: value.payload.unwrap().into(),
+            status: value.status.into_iter().map(|v| v.into()).collect(),
+        }
+    }
+}
+
+impl From<invocation_proto::InvocationStatus> for InvocationStatus {
+    fn from(value: invocation_proto::InvocationStatus) -> Self {
+        match value.status.unwrap() {
+            | invocation_proto::invocation_status::Status::Webhook(
+                webhook_status,
+            ) => Self::WebhookStatus(webhook_status.into()),
+        }
+    }
+}
+
+impl From<invocation_proto::WebhookStatus> for WebhookStatus {
+    fn from(value: invocation_proto::WebhookStatus) -> Self {
+        Self {
+            webhook: value.webhook.unwrap().into(),
+            delivery_status: value.delivery_status.into(),
+        }
+    }
+}
+
+impl From<i32> for WebhookDeliveryStatus {
+    fn from(value: i32) -> Self {
+        let enum_value =
+            invocation_proto::WebhookDeliveryStatus::from_i32(value).unwrap();
+        match enum_value {
+            | invocation_proto::WebhookDeliveryStatus::Unknown => {
+                panic!("We should never see WebhookDelivery::Unknown")
+            }
+            | invocation_proto::WebhookDeliveryStatus::Attempting => {
+                Self::Attempting
+            }
+            | invocation_proto::WebhookDeliveryStatus::Succeeded => {
+                Self::Succeeded
+            }
+            | invocation_proto::WebhookDeliveryStatus::Failed => Self::Failed,
         }
     }
 }

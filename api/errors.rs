@@ -9,6 +9,7 @@ use axum::{
 
 use thiserror::Error;
 use tonic::Status;
+use tracing::error;
 
 use crate::AppStateError;
 
@@ -32,6 +33,7 @@ pub enum ApiError {
 }
 
 impl IntoResponse for ApiError {
+    #[tracing::instrument]
     fn into_response(self) -> Response {
         match self {
             | ApiError::ValidationError(_) => {
@@ -62,7 +64,16 @@ impl IntoResponse for ApiError {
             }
             | ApiError::SchedulerError(e) => {
                 // TODO: Ship GRPC errors better
-                (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+                error!(
+                    message = e.to_string(),
+                    message = e.to_string(),
+                    "A scheduler communication error has been reported.",
+                );
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Something went terribly wrong here, please report a bug!"
+                        .to_owned(),
+                )
             }
         }
         .into_response()

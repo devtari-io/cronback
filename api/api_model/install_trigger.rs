@@ -41,8 +41,8 @@ impl InstallTrigger {
         self,
         owner_id: OwnerId,
         cell_id: CellId,
-    ) -> scheduler_proto::InstallTrigger {
-        scheduler_proto::InstallTrigger {
+    ) -> scheduler_proto::InstallTriggerRequest {
+        scheduler_proto::InstallTriggerRequest {
             owner_id: owner_id.into(),
             cell_id: cell_id.into(),
             name: self.name,

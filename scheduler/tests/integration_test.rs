@@ -4,42 +4,12 @@ use std::sync::Arc;
 use proto::trigger_proto::{self, Cron, Schedule};
 use tonic::{Request, Status};
 
-use proto::scheduler_proto::{
-    GetTriggerRequest, InstallTrigger, InstallTriggerRequest,
-};
+use proto::scheduler_proto::{GetTriggerRequest, InstallTriggerRequest};
 use scheduler::test_helpers;
 use shared::config::{ConfigLoader, Role};
 use shared::service::ServiceContext;
 use shared::shutdown::Shutdown;
 use shared::types::*;
-
-#[tokio::test]
-async fn install_trigger_invalid_test() {
-    let shutdown = Shutdown::default();
-    let config_loader = Arc::new(ConfigLoader::from_path(&None));
-    let context = ServiceContext::new(
-        format!("{:?}", Role::Scheduler),
-        config_loader,
-        shutdown,
-    );
-    let (serve_future, mut client) =
-        test_helpers::test_server_and_client(context).await;
-
-    let request_future = async {
-        let response = client
-            .install_trigger(Request::new(InstallTriggerRequest {
-                install_trigger: None,
-            }))
-            .await;
-        assert!(matches!(response, Err(Status { .. })));
-    };
-
-    // Wait for completion, when the client request future completes
-    tokio::select! {
-        _ = serve_future => panic!("server returned first"),
-        _ = request_future => (),
-    }
-}
 
 #[tokio::test]
 async fn install_trigger_valid_test() {
@@ -52,7 +22,7 @@ async fn install_trigger_valid_test() {
     );
     let (serve_future, mut client) =
         test_helpers::test_server_and_client(context).await;
-    let install_trigger = Some(InstallTrigger {
+    let install_trigger = InstallTriggerRequest {
         cell_id: 0,
         owner_id: "asoli".to_owned(),
         reference_id: None,
@@ -71,12 +41,10 @@ async fn install_trigger_valid_test() {
                 events_limit: 4,
             })),
         }),
-    });
+    };
     let request_future = async {
         let installed_trigger = client
-            .install_trigger(Request::new(InstallTriggerRequest {
-                install_trigger: install_trigger.clone(),
-            }))
+            .install_trigger(Request::new(install_trigger.into()))
             .await
             .unwrap()
             .into_inner();
