@@ -88,7 +88,7 @@ impl ConfigLoader {
         let raw = include_str!("default.toml");
         let mut builder = ConfigRaw::builder()
             .add_source(File::from_str(raw, FileFormat::Toml))
-            .add_source(Environment::with_prefix("CRONBACK").separator("_"));
+            .add_source(Environment::with_prefix("CRONBACK").separator("__"));
         if let Some(path) = path {
             builder = builder.add_source(File::with_name(path));
         }
