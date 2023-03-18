@@ -31,6 +31,7 @@ pub struct DispatcherConfig {
     pub address: String,
     pub port: u16,
     pub request_processing_timeout_s: u64,
+    pub database_uri: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]

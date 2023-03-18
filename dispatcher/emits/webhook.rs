@@ -1,4 +1,4 @@
-use std::{collections::HashMap, time::Instant};
+use std::{collections::HashMap, sync::Arc, time::Instant};
 
 use chrono::Utc;
 use chrono_tz::UTC;
@@ -11,9 +11,9 @@ use shared::types::{
 };
 
 use reqwest::{header::HeaderValue, Method};
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
-use crate::retry::RetryPolicy;
+use crate::{attempt_log_store::AttemptLogStore, retry::RetryPolicy};
 
 fn to_reqwest_http_method(method: &HttpMethod) -> reqwest::Method {
     match method {
@@ -33,6 +33,8 @@ pub struct WebhookEmitJob {
 
     pub webhook: Webhook,
     pub payload: Payload,
+
+    pub attempt_store: Arc<dyn AttemptLogStore + Send + Sync>,
 }
 
 impl WebhookEmitJob {
@@ -55,7 +57,7 @@ impl WebhookEmitJob {
                     .await;
 
             let attempt_log = EmitAttemptLog {
-                id: attempt_id,
+                id: attempt_id.clone(),
                 invocation_id: self.invocation_id.clone(),
                 trigger_id: self.trigger_id.clone(),
                 owner_id: self.owner_id.clone(),
@@ -72,7 +74,9 @@ impl WebhookEmitJob {
 
             info!("Dispatch Attempt: {:?}", attempt_log);
 
-            // TODO Log attempt to database
+            if let Err(e) = self.attempt_store.log_attempt(&attempt_log).await {
+                error!("Failed to log attempt {attempt_id} to database: {}", e);
+            }
 
             if response.is_success() {
                 return WebhookDeliveryStatus::Succeeded;

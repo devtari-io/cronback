@@ -9,7 +9,7 @@ use proto::dispatcher_proto::{
 use shared::{
     service::ServiceContext,
     types::{
-        Emit, Invocation, InvocationId, InvocationStatus, OwnerId, TriggerId,
+        Emit, Invocation, InvocationId, InvocationStatus, OwnerId,
         WebhookStatus,
     },
 };
