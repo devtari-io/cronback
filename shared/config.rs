@@ -2,11 +2,11 @@
 
 use std::collections::{HashMap, HashSet};
 
-use config::FileFormat;
 use config::{
     builder::DefaultState, Config as ConfigRaw, ConfigBuilder, ConfigError,
     File,
 };
+use config::{Environment, FileFormat};
 use serde::Deserialize;
 use valuable::Valuable;
 
@@ -86,7 +86,8 @@ impl ConfigLoader {
     pub fn from_path(path: &Option<String>) -> ConfigLoader {
         let raw = include_str!("default.toml");
         let mut builder = ConfigRaw::builder()
-            .add_source(File::from_str(raw, FileFormat::Toml));
+            .add_source(File::from_str(raw, FileFormat::Toml))
+            .add_source(Environment::with_prefix("CRONBACK").separator("_"));
         if let Some(path) = path {
             builder = builder.add_source(File::with_name(path));
         }
