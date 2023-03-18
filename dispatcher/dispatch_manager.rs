@@ -46,7 +46,7 @@ impl DispatchManager {
                     break;
                 }
 
-                _ = join_set.join_next() => {
+                _ = join_set.join_next(), if !join_set.is_empty() => {
                     decrement_gauge!("dispatcher.inflight_invocations_total", 1.0);
                     continue;
                 }
