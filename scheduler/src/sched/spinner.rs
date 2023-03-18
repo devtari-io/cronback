@@ -270,7 +270,12 @@ impl Spinner {
         let handle = self.tokio_handle.spawn(
             async move {
                 // TODO add a few retries if not logic error.
-                dispatch::dispatch(trigger, provider).await
+                dispatch::dispatch(
+                    trigger,
+                    provider,
+                    super::event_dispatcher::DispatchMode::Async,
+                )
+                .await
             }
             .instrument(tracing::Span::current()),
         );

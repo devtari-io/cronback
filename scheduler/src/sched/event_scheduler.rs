@@ -138,8 +138,12 @@ impl EventScheduler {
         let Some(trigger) = trigger else {
             return Err(TriggerError::NotFound(id));
         };
-        let invocation =
-            dispatch(trigger, self.dispatcher_client_provider.clone()).await?;
+        let invocation = dispatch(
+            trigger,
+            self.dispatcher_client_provider.clone(),
+            super::event_dispatcher::DispatchMode::Sync,
+        )
+        .await?;
         Ok(invocation)
     }
 

@@ -9,6 +9,11 @@ service Dispatcher {
   rpc Dispatch (DispatchRequest) returns (DispatchResponse);
 }
 
+enum DispatchMode {
+  DispatchMode_ASYNC = 0;
+  DispatchMode_SYNC = 1;
+}
+
 message DispatchRequest {
   string trigger_id = 1;
   string owner_id = 2;
@@ -16,6 +21,7 @@ message DispatchRequest {
   trigger_proto.Payload payload = 4;
   trigger_proto.OnStatusHandler on_success = 5;
   trigger_proto.OnStatusHandler on_failure = 6;
+  DispatchMode mode = 7;
 }
 
 message DispatchResponse {

@@ -8,7 +8,7 @@ use crate::timeutil::iso8601_dateformat_serde;
 
 #[serde_as]
 #[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Invocation {
     pub id: InvocationId,
@@ -20,7 +20,7 @@ pub struct Invocation {
     pub status: Vec<InvocationStatus>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 #[serde(deny_unknown_fields)]
 pub enum InvocationStatus {
@@ -28,7 +28,7 @@ pub enum InvocationStatus {
 }
 
 #[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct WebhookStatus {

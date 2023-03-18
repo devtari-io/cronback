@@ -42,6 +42,7 @@ impl Dispatcher for DispatcherAPIHandler {
     ) -> Result<Response<DispatchResponse>, Status> {
         let (_metadata, _extensions, request) = request.into_parts();
 
+        let dispatch_mode = request.mode().clone();
         let owner_id = OwnerId::from(request.owner_id);
         let invocation_id = InvocationId::new(&owner_id);
 
@@ -68,9 +69,11 @@ impl Dispatcher for DispatcherAPIHandler {
         };
 
         counter!("dispatcher.invocations_total", 1);
-        self.dispatch_manager
-            .register_invocation(invocation.clone())
-            .unwrap();
+        let invocation = self
+            .dispatch_manager
+            .invoke(invocation, dispatch_mode)
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?;
 
         Ok(Response::new(DispatchResponse {
             invocation: Some(invocation.into()),

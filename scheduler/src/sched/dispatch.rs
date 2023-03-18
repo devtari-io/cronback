@@ -9,13 +9,15 @@ use tracing::info;
 use crate::sched::event_dispatcher::DispatchJob;
 
 use super::event_dispatcher::DispatchError;
+use super::event_dispatcher::DispatchMode;
 
 #[tracing::instrument(skip_all, fields(trigger_id = %trigger.id))]
 pub(crate) async fn dispatch(
     trigger: Trigger,
     dispatcher_provider: Arc<DispatcherClientProvider>,
+    mode: DispatchMode,
 ) -> Result<Invocation, DispatchError> {
-    let mut job = DispatchJob::from_trigger(trigger, dispatcher_provider);
+    let mut job = DispatchJob::from_trigger(trigger, dispatcher_provider, mode);
 
     let dispatch_instant = Instant::now();
     info!(

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use proto::dispatcher_proto::DispatchRequest;
+use proto::dispatcher_proto::{self, DispatchRequest};
 use shared::{
     grpc_client_provider::DispatcherClientProvider,
     types::{Invocation, Trigger},
@@ -15,6 +15,20 @@ pub(crate) enum DispatchError {
     LogicalError(#[from] tonic::Status),
 }
 
+pub(crate) enum DispatchMode {
+    Sync,
+    Async,
+}
+
+impl From<DispatchMode> for dispatcher_proto::DispatchMode {
+    fn from(value: DispatchMode) -> Self {
+        match value {
+            | DispatchMode::Sync => dispatcher_proto::DispatchMode::Sync,
+            | DispatchMode::Async => dispatcher_proto::DispatchMode::Async,
+        }
+    }
+}
+
 pub(crate) struct DispatchJob {
     dispatch_request: DispatchRequest,
     dispatcher_client_provider: Arc<DispatcherClientProvider>,
@@ -24,6 +38,7 @@ impl DispatchJob {
     pub fn from_trigger(
         trigger: Trigger,
         dispatcher_client_provider: Arc<DispatcherClientProvider>,
+        mode: DispatchMode,
     ) -> Self {
         Self {
             dispatch_request: DispatchRequest {
@@ -37,6 +52,7 @@ impl DispatchJob {
                 payload: Some(trigger.payload.into()),
                 on_success: None, // TODO
                 on_failure: None, // TODO
+                mode: dispatcher_proto::DispatchMode::from(mode).into(),
             },
             dispatcher_client_provider,
         }
