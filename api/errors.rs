@@ -6,7 +6,6 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-
 use thiserror::Error;
 use tonic::Status;
 use tracing::error;

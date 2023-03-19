@@ -1,3 +1,4 @@
 match_arm_leading_pipes = "Always"
+group_imports = "StdExternalCrate"
 max_width = 80
 edition = "2021"

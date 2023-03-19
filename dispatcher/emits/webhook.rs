@@ -3,14 +3,12 @@ use std::{collections::HashMap, sync::Arc, time::Instant};
 use chrono::Utc;
 use chrono_tz::UTC;
 use metrics::counter;
-
+use reqwest::{header::HeaderValue, Method};
 use shared::types::{
     AttemptDetails, AttemptLogId, AttemptStatus, EmitAttemptLog, HttpMethod,
     InvocationId, OwnerId, Payload, TriggerId, Webhook, WebhookAttemptDetails,
     WebhookDeliveryStatus,
 };
-
-use reqwest::{header::HeaderValue, Method};
 use tracing::{debug, error, info};
 
 use crate::{attempt_log_store::AttemptLogStore, retry::RetryPolicy};

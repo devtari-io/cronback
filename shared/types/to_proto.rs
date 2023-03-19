@@ -3,8 +3,6 @@ use proto::invocation_proto;
 use proto::trigger_proto;
 use proto::webhook_proto;
 
-use crate::timeutil::to_iso8601;
-
 use super::AttemptDetails;
 use super::AttemptStatus;
 use super::EmitAttemptLog;
@@ -17,6 +15,7 @@ use super::WebhookStatus;
 use super::{
     Cron, Emit, HttpMethod, Payload, RunAt, Schedule, Status, Trigger,
 };
+use crate::timeutil::to_iso8601;
 
 impl From<Trigger> for trigger_proto::Trigger {
     fn from(value: Trigger) -> Self {

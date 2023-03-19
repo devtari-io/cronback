@@ -5,9 +5,6 @@ mod handlers;
 
 use std::{sync::Arc, time::Instant};
 
-use metrics::{histogram, increment_counter};
-use proto::scheduler_proto::scheduler_client::SchedulerClient as GenSchedulerClient;
-
 use axum::{
     extract::MatchedPath,
     http::{Request, StatusCode},
@@ -16,13 +13,14 @@ use axum::{
     routing::get,
     Router,
 };
+use metrics::{histogram, increment_counter};
+use proto::scheduler_proto::scheduler_client::SchedulerClient as GenSchedulerClient;
 use rand::seq::SliceRandom;
+use shared::{config::Config, netutils, types::TriggerId};
+use shared::{service, types::CellId};
 use thiserror::Error;
 use tokio::select;
 use tracing::{error, info, warn};
-
-use shared::{config::Config, netutils, types::TriggerId};
-use shared::{service, types::CellId};
 
 #[derive(Debug, Error)]
 pub enum AppStateError {

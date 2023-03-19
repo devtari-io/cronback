@@ -1,8 +1,7 @@
+use derive_more::{Display, From, Into};
 use serde::{Deserialize, Serialize};
 
 use crate::model_util::{generate_model_id, generate_owner_id};
-
-use derive_more::{Display, From, Into};
 
 pub trait ValidId {
     fn is_valid(&self) -> bool;

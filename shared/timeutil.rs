@@ -44,10 +44,11 @@ pub fn to_iso8601(input: &DateTime<Tz>) -> String {
 }
 
 pub mod iso8601_dateformat_serde {
-    use super::parse_iso8601;
     use chrono::DateTime;
     use chrono_tz::Tz;
     use serde::{self, Deserialize, Deserializer, Serializer};
+
+    use super::parse_iso8601;
 
     pub fn serialize<S>(
         input: &DateTime<Tz>,
@@ -77,10 +78,11 @@ pub mod iso8601_dateformat_serde {
 }
 
 pub mod iso8601_dateformat_vec_serde {
-    use super::{parse_iso8601, to_iso8601};
     use chrono::DateTime;
     use chrono_tz::Tz;
     use serde::{self, Deserialize, Deserializer, Serializer};
+
+    use super::{parse_iso8601, to_iso8601};
 
     pub fn serialize<S>(
         timepoints: &Vec<DateTime<Tz>>,

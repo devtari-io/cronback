@@ -2,7 +2,6 @@ use async_trait::async_trait;
 use shared::{
     database::SqliteDatabase, types::Invocation, types::InvocationId,
 };
-
 use sqlx::Row;
 use thiserror::Error;
 
@@ -96,7 +95,6 @@ impl InvocationStore for SqlInvocationStore {
 mod tests {
     use std::time::Duration;
 
-    use super::InvocationStore;
     use chrono::{Timelike, Utc};
     use chrono_tz::UTC;
     use shared::{
@@ -107,6 +105,7 @@ mod tests {
         },
     };
 
+    use super::InvocationStore;
     use super::SqlInvocationStore;
 
     fn build_invocation() -> Invocation {

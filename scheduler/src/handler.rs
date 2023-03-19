@@ -1,15 +1,15 @@
 use std::sync::Arc;
 
-use tonic::{Request, Response, Status};
-use tracing::info;
-
-use crate::sched::event_scheduler::EventScheduler;
 use proto::scheduler_proto::{
     scheduler_server::Scheduler, FindTriggersRequest, FindTriggersResponse,
     GetTriggerRequest, GetTriggerResponse, InstallTriggerRequest,
     InstallTriggerResponse, InvokeTriggerRequest, InvokeTriggerResponse,
 };
 use shared::service::ServiceContext;
+use tonic::{Request, Response, Status};
+use tracing::info;
+
+use crate::sched::event_scheduler::EventScheduler;
 
 pub(crate) struct SchedulerAPIHandler {
     #[allow(unused)]

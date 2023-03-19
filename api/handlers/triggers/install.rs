@@ -8,11 +8,11 @@ use axum::{
     Json,
 };
 use proto::scheduler_proto::InstallTriggerRequest;
+use shared::types::{OwnerId, Trigger};
 
 use crate::api_model::InstallTrigger;
 use crate::extractors::ValidatedJson;
 use crate::{errors::ApiError, AppState};
-use shared::types::{OwnerId, Trigger};
 
 #[tracing::instrument(skip_all)]
 #[debug_handler]

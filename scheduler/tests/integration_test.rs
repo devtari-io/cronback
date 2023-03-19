@@ -1,15 +1,14 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use proto::trigger_proto::{self, Cron, Schedule};
-use tonic::{Request, Status};
-
 use proto::scheduler_proto::{GetTriggerRequest, InstallTriggerRequest};
+use proto::trigger_proto::{self, Cron, Schedule};
 use scheduler::test_helpers;
 use shared::config::{ConfigLoader, Role};
 use shared::service::ServiceContext;
 use shared::shutdown::Shutdown;
 use shared::types::*;
+use tonic::{Request, Status};
 
 #[tokio::test]
 async fn install_trigger_valid_test() {

@@ -1,9 +1,8 @@
 use std::net::ToSocketAddrs;
 
 use anyhow::{anyhow, Result};
-use url::Url;
-
 use shared::types::{Emit, Webhook};
+use url::Url;
 
 fn validate_endpoint_scheme(scheme: &str) -> Result<()> {
     if scheme == "http" || scheme == "https" {

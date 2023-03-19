@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 use shared::{database::SqliteDatabase, types::Trigger, types::TriggerId};
-
 use sqlx::Row;
 use thiserror::Error;
 
@@ -108,7 +107,6 @@ impl TriggerStore for SqlTriggerStore {
 mod tests {
     use std::time::Duration;
 
-    use super::TriggerStore;
     use chrono::{Timelike, Utc};
     use chrono_tz::UTC;
     use shared::{
@@ -117,6 +115,7 @@ mod tests {
     };
 
     use super::SqlTriggerStore;
+    use super::TriggerStore;
 
     fn build_trigger(name: &str, status: Status) -> Trigger {
         // Serialization drops nanoseconds, so to let's zero it here for easier equality comparisons

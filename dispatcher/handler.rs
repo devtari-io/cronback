@@ -1,8 +1,6 @@
 use chrono::Utc;
-use metrics::counter;
-use tonic::{Request, Response, Status};
-
 use chrono_tz::UTC;
+use metrics::counter;
 use proto::dispatcher_proto::{
     dispatcher_server::Dispatcher, DispatchRequest, DispatchResponse,
 };
@@ -13,6 +11,7 @@ use shared::{
         WebhookStatus,
     },
 };
+use tonic::{Request, Response, Status};
 
 use crate::dispatch_manager::DispatchManager;
 

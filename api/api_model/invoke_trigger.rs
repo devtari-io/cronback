@@ -1,9 +1,8 @@
 use proto::scheduler_proto;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none};
-use validator::Validate;
-
 use shared::types::*;
+use validator::Validate;
 
 #[serde_as]
 #[skip_serializing_none]

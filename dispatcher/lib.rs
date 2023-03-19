@@ -10,10 +10,9 @@ use std::sync::Arc;
 
 use proto::dispatcher_proto::dispatcher_server::DispatcherServer;
 use shared::database::SqliteDatabase;
-use tracing::info;
-
 use shared::netutils;
 use shared::service;
+use tracing::info;
 
 use crate::attempt_log_store::AttemptLogStore;
 use crate::attempt_log_store::SqlAttemptLogStore;

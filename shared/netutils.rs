@@ -1,6 +1,7 @@
-use anyhow::Result;
 use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
+
+use anyhow::Result;
 
 pub fn parse_addr<A>(address: A, port: u16) -> Result<SocketAddr>
 where

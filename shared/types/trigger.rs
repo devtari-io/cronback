@@ -8,13 +8,11 @@ use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none};
 use validator::{Validate, ValidationError};
 
+use super::webhook::Webhook;
 use crate::timeutil::iso8601_dateformat_serde;
 use crate::timeutil::iso8601_dateformat_vec_serde;
-use crate::validation::{validate_timezone, validation_error};
-
 use crate::types::{OwnerId, TriggerId};
-
-use super::webhook::Webhook;
+use crate::validation::{validate_timezone, validation_error};
 
 #[serde_as]
 #[skip_serializing_none]

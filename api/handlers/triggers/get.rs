@@ -8,10 +8,10 @@ use axum::{
     Json,
 };
 use proto::scheduler_proto::GetTriggerRequest;
+use shared::types::{OwnerId, Trigger, TriggerId, ValidId};
 use tracing::info;
 
 use crate::{errors::ApiError, AppState};
-use shared::types::{OwnerId, Trigger, TriggerId, ValidId};
 
 #[tracing::instrument(skip(state))]
 #[debug_handler]

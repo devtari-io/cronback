@@ -10,21 +10,19 @@ use std::{
 
 use chrono::Utc;
 use metrics::{gauge, histogram};
-use tokio::runtime::Handle;
-use tracing::{info, trace, warn, Instrument};
-
 use shared::{
     grpc_client_provider::DispatcherClientProvider,
     service::ServiceContext,
     types::{Invocation, TriggerId},
 };
-
-use crate::sched::dispatch;
+use tokio::runtime::Handle;
+use tracing::{info, trace, warn, Instrument};
 
 use super::{
     event_dispatcher::DispatchError,
     triggers::{ActiveTriggerMap, TriggerTemporalState},
 };
+use crate::sched::dispatch;
 
 pub(crate) struct Spinner {
     tokio_handle: Handle,

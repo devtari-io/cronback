@@ -2,6 +2,12 @@ use std::sync::{Arc, Mutex, RwLock};
 
 use chrono::Utc;
 use chrono_tz::UTC;
+use proto::scheduler_proto::InstallTriggerRequest;
+use shared::{
+    grpc_client_provider::DispatcherClientProvider,
+    service::ServiceContext,
+    types::{Invocation, OwnerId, Status, Trigger, TriggerId},
+};
 use tracing::info;
 
 use super::{
@@ -9,12 +15,6 @@ use super::{
     spinner::{Spinner, SpinnerHandle},
     trigger_store::TriggerStore,
     triggers::{ActiveTriggerMap, TriggerError},
-};
-use proto::scheduler_proto::InstallTriggerRequest;
-use shared::{
-    grpc_client_provider::DispatcherClientProvider,
-    service::ServiceContext,
-    types::{Invocation, OwnerId, Status, Trigger, TriggerId},
 };
 
 /**

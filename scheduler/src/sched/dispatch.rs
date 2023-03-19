@@ -6,10 +6,9 @@ use shared::{
 };
 use tracing::info;
 
-use crate::sched::event_dispatcher::DispatchJob;
-
 use super::event_dispatcher::DispatchError;
 use super::event_dispatcher::DispatchMode;
+use crate::sched::event_dispatcher::DispatchJob;
 
 #[tracing::instrument(skip_all, fields(trigger_id = %trigger.id))]
 pub(crate) async fn dispatch(

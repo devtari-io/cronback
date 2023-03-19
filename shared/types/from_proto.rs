@@ -1,5 +1,10 @@
 use std::time::Duration;
 
+use proto::attempt_proto;
+use proto::invocation_proto;
+use proto::trigger_proto;
+use proto::webhook_proto;
+
 use super::AttemptDetails;
 use super::AttemptStatus;
 use super::EmitAttemptLog;
@@ -14,10 +19,6 @@ use super::WebhookDeliveryStatus;
 use super::WebhookStatus;
 use super::{Emit, HttpMethod, Payload, Schedule, Status, Trigger};
 use crate::timeutil::parse_iso8601;
-use proto::attempt_proto;
-use proto::invocation_proto;
-use proto::trigger_proto;
-use proto::webhook_proto;
 
 impl From<trigger_proto::Trigger> for Trigger {
     fn from(value: trigger_proto::Trigger) -> Self {

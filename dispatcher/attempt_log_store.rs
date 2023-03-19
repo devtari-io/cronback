@@ -3,7 +3,6 @@ use shared::{
     database::SqliteDatabase,
     types::{AttemptLogId, EmitAttemptLog, InvocationId},
 };
-
 use sqlx::Row;
 use thiserror::Error;
 
@@ -116,7 +115,6 @@ impl AttemptLogStore for SqlAttemptLogStore {
 mod tests {
     use std::{collections::HashMap, time::Duration};
 
-    use super::AttemptLogStore;
     use chrono::{Timelike, Utc};
     use chrono_tz::UTC;
     use shared::{
@@ -127,6 +125,7 @@ mod tests {
         },
     };
 
+    use super::AttemptLogStore;
     use super::SqlAttemptLogStore;
 
     fn build_attempt(invocation_id: &InvocationId) -> EmitAttemptLog {

@@ -5,13 +5,12 @@ use std::{
     str::FromStr,
 };
 
+use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
 use cron::{OwnedScheduleIterator, Schedule as CronSchedule};
+use shared::types::{Schedule, Trigger, TriggerId};
 use thiserror::Error;
 use tracing::info;
-
-use chrono::{DateTime, Utc};
-use shared::types::{Schedule, Trigger, TriggerId};
 
 use super::{
     event_dispatcher::DispatchError, trigger_store::TriggerStoreError,
@@ -301,7 +300,6 @@ mod tests {
     use std::time::Duration;
 
     use chrono_tz::UTC;
-
     use shared::timeutil::parse_iso8601;
     use shared::types::{
         Cron, OwnerId, Payload, RunAt, Schedule, Status, Trigger, TriggerId,

@@ -8,9 +8,9 @@ use axum::{
     Json,
 };
 use proto::scheduler_proto::InvokeTriggerRequest;
+use shared::types::{Invocation, TriggerId, ValidId};
 
 use crate::{api_model::InvokeTrigger, errors::ApiError, AppState};
-use shared::types::{Invocation, TriggerId, ValidId};
 
 #[tracing::instrument(skip(state))]
 #[debug_handler]

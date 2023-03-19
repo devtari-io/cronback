@@ -6,11 +6,10 @@ use std::sync::Arc;
 
 use handler::SchedulerAPIHandler;
 use proto::scheduler_proto::scheduler_server::SchedulerServer;
+use sched::event_scheduler::EventScheduler;
 use sched::trigger_store::SqlTriggerStore;
 use shared::database::SqliteDatabase;
 use shared::grpc_client_provider::DispatcherClientProvider;
-
-use sched::event_scheduler::EventScheduler;
 use shared::netutils;
 use shared::service;
 
@@ -59,8 +58,11 @@ pub mod test_helpers {
     use std::future::Future;
     use std::sync::Arc;
 
+    use proto::scheduler_proto::scheduler_client::SchedulerClient;
+    use proto::scheduler_proto::scheduler_server::SchedulerServer;
     use shared::database::SqliteDatabase;
     use shared::grpc_client_provider::DispatcherClientProvider;
+    use shared::service::ServiceContext;
     use tempfile::NamedTempFile;
     use tokio::net::{UnixListener, UnixStream};
     use tokio_stream::wrappers::UnixListenerStream;
@@ -70,9 +72,6 @@ pub mod test_helpers {
     use crate::handler::SchedulerAPIHandler;
     use crate::sched::event_scheduler::EventScheduler;
     use crate::sched::trigger_store::SqlTriggerStore;
-    use proto::scheduler_proto::scheduler_client::SchedulerClient;
-    use proto::scheduler_proto::scheduler_server::SchedulerServer;
-    use shared::service::ServiceContext;
 
     pub async fn test_server_and_client(
         context: ServiceContext,
