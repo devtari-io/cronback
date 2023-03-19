@@ -15,6 +15,11 @@ brew install protobuf
 # Run
 ```
 cargo run -- -c <config-file>
+
+# Skip missed invocations by 
+
+CRONBACK__SCHEDULER__DANGEROUS_FAST_FORWARD=true cargo run
+
 ```
 
 # Prometheus

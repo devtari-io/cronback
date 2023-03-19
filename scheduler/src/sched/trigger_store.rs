@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use shared::{database::SqliteDatabase, types::Trigger, types::TriggerId};
 use sqlx::Row;
 use thiserror::Error;
+use tracing::debug;
 
 #[derive(Error, Debug)]
 pub enum TriggerStoreError {
@@ -72,10 +73,12 @@ impl TriggerStore for SqlTriggerStore {
     async fn get_all_active_triggers(
         &self,
     ) -> Result<Vec<Trigger>, TriggerStoreError> {
-        let results = sqlx::query("SELECT value FROM triggers where JSON_EXTRACT(value, '$.status') = 'active'")
+        let results = sqlx::query("SELECT id, value FROM triggers where JSON_EXTRACT(value, '$.status') = 'active'")
             .fetch_all(&self.db.pool)
             .await?
             .into_iter().map(|r| {
+                let id = r.get::<String, _>("id");
+                debug!(trigger_id = %id, "Loading trigger from database");
                 let j = r.get::<String, _>("value");
                 serde_json::from_str::<Trigger>(&j)
             })

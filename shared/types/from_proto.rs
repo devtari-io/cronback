@@ -1,5 +1,7 @@
 use std::time::Duration;
 
+use chrono::DateTime;
+use chrono::Utc;
 use proto::attempt_proto;
 use proto::invocation_proto;
 use proto::trigger_proto;
@@ -27,12 +29,16 @@ impl From<trigger_proto::Trigger> for Trigger {
             owner_id: value.owner_id.into(),
             name: value.name,
             description: value.description,
-            created_at: parse_iso8601(&value.created_at).unwrap(),
+            created_at: DateTime::parse_from_rfc3339(&value.created_at)
+                .unwrap()
+                .with_timezone(&Utc),
             reference_id: value.reference_id,
             payload: value.payload.unwrap().into(),
             schedule: value.schedule.map(|s| s.into()),
             emit: value.emit.into_iter().map(|e| e.into()).collect(),
             status: value.status.into(),
+            // We are not supposed to send this to other services, it is internal.
+            hidden_last_invoked_at: None,
         }
     }
 }

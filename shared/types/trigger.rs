@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 
-use chrono::DateTime;
+use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
 use cron::Schedule as CronSchedule;
 use serde::{Deserialize, Serialize};
@@ -9,7 +9,6 @@ use serde_with::{serde_as, skip_serializing_none};
 use validator::{Validate, ValidationError};
 
 use super::webhook::Webhook;
-use crate::timeutil::iso8601_dateformat_serde;
 use crate::timeutil::iso8601_dateformat_vec_serde;
 use crate::types::{OwnerId, TriggerId};
 use crate::validation::{validate_timezone, validation_error};
@@ -27,8 +26,7 @@ pub struct Trigger {
 
     pub description: Option<String>,
 
-    #[serde(with = "iso8601_dateformat_serde")]
-    pub created_at: DateTime<Tz>,
+    pub created_at: DateTime<Utc>,
 
     pub reference_id: Option<String>,
 
@@ -39,6 +37,9 @@ pub struct Trigger {
     pub emit: Vec<Emit>,
 
     pub status: Status,
+
+    pub hidden_last_invoked_at: Option<DateTime<Utc>>,
+    //pub hidden_remaining_cron_events: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

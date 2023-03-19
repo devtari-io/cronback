@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Instant};
+use std::sync::Arc;
 
 use shared::{
     grpc_client_provider::DispatcherClientProvider,
@@ -17,12 +17,6 @@ pub(crate) async fn dispatch(
     mode: DispatchMode,
 ) -> Result<Invocation, DispatchError> {
     let mut job = DispatchJob::from_trigger(trigger, dispatcher_provider, mode);
-
-    let dispatch_instant = Instant::now();
-    info!(
-        trigger = job.trigger_id(),
-        delay = ?Instant::now().duration_since(dispatch_instant),
-        "async-dispatch",
-    );
+    info!(trigger = job.trigger_id(), "async-dispatch");
     job.run().await
 }

@@ -8,12 +8,11 @@ use std::{
     vec,
 };
 
-use chrono::Utc;
-use metrics::{gauge, histogram};
+use chrono::{DateTime, Utc};
+use metrics::{counter, gauge, histogram};
 use shared::{
-    grpc_client_provider::DispatcherClientProvider,
-    service::ServiceContext,
-    types::{Invocation, TriggerId},
+    grpc_client_provider::DispatcherClientProvider, service::ServiceContext,
+    types::TriggerId,
 };
 use tokio::runtime::Handle;
 use tracing::{info, trace, warn, Instrument};
@@ -35,6 +34,12 @@ pub(crate) struct Spinner {
 pub(crate) struct SpinnerHandle {
     join: JoinHandle<()>,
     shutdown_signal: Arc<RwLock<bool>>,
+}
+
+struct InflightDispatch {
+    pub trigger_id: TriggerId,
+    pub invoked_at: DateTime<Utc>,
+    pub handle: tokio::task::JoinHandle<Result<(), DispatchError>>,
 }
 
 impl SpinnerHandle {
@@ -122,6 +127,7 @@ impl Spinner {
     fn run_forever(self) {
         let mut temporal_states: BinaryHeap<Reverse<TriggerTemporalState>> =
             Default::default();
+        let mut inflight_dispatches: Vec<InflightDispatch> = Vec::new();
         let config = self.context.load_config();
         let yield_max_duration =
             Duration::from_millis(config.scheduler.spinner_yield_max_ms);
@@ -133,6 +139,46 @@ impl Spinner {
                     break 'tick_loop;
                 }
             }
+
+            // Successful dispatches should update the last_invoked_at in ActiveTriggerMap
+            // and compacted.
+            {
+                // Scoped to drop memory asap.
+                let mut pending_dispatches =
+                    Vec::with_capacity(inflight_dispatches.len());
+                let mut success_dispatches =
+                    Vec::with_capacity(inflight_dispatches.len());
+                for inflight in inflight_dispatches.drain(..) {
+                    if inflight.handle.is_finished() {
+                        // Success? This is quick since it's already finished.
+                        if let Ok(_) =
+                            self.tokio_handle.block_on(inflight.handle).unwrap()
+                        {
+                            success_dispatches.push((
+                                inflight.trigger_id,
+                                inflight.invoked_at,
+                            ));
+                        }
+                    } else {
+                        // keep it around, we are still waiting for them.
+                        pending_dispatches.push(inflight);
+                    }
+                }
+                // continue tracking those who didn't finish yet.
+                inflight_dispatches = pending_dispatches;
+                {
+                    // Those who succeeded should be updated in the active map
+                    let mut w = self.triggers.write().unwrap();
+                    for (trigger_id, invoked_at) in success_dispatches {
+                        w.update_last_invoked_at(&trigger_id, invoked_at);
+                    }
+                }
+            }
+            counter!(
+                "inflight_dispatches_total",
+                inflight_dispatches.len() as u64
+            );
+
             /*
              * The rough plan:
              *
@@ -184,7 +230,14 @@ impl Spinner {
                           `max_triggers_per_tick` (current '{max_triggers_per_tick}') \
                           or reduce `spinner_yield_max_ms` (current '{}')", config.scheduler.spinner_yield_max_ms);
                 }
-                self.dispatch(&id);
+
+                if let Some(handle) = self.dispatch(&id) {
+                    inflight_dispatches.push(InflightDispatch {
+                        trigger_id: id.clone(),
+                        invoked_at: Utc::now(),
+                        handle,
+                    });
+                }
             }
             /*
              * 3. Write-Lock TriggerMap
@@ -245,8 +298,7 @@ impl Spinner {
     fn dispatch(
         &self,
         trigger_id: &TriggerId,
-    ) -> Option<tokio::task::JoinHandle<Result<Invocation, DispatchError>>>
-    {
+    ) -> Option<tokio::task::JoinHandle<Result<(), DispatchError>>> {
         let trigger = {
             let r = self.triggers.read().unwrap();
             let Some(trigger) = r.get(trigger_id) else {
@@ -268,12 +320,15 @@ impl Spinner {
         let handle = self.tokio_handle.spawn(
             async move {
                 // TODO add a few retries if not logic error.
+                // We are throwing away the returned Invocation object to save memory
+                // we are only interested in knowing if we errored or not.
                 dispatch::dispatch(
                     trigger,
                     provider,
                     super::event_dispatcher::DispatchMode::Async,
                 )
                 .await
+                .map(|_| ())
             }
             .instrument(tracing::Span::current()),
         );

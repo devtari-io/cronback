@@ -24,7 +24,7 @@ impl From<Trigger> for trigger_proto::Trigger {
             owner_id: value.owner_id.into(),
             name: value.name,
             description: value.description,
-            created_at: to_iso8601(&value.created_at),
+            created_at: value.created_at.to_rfc3339(),
             reference_id: value.reference_id,
             payload: Some(value.payload.into()),
             schedule: value.schedule.map(|s| s.into()),

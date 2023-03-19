@@ -3,6 +3,7 @@ pub(crate) mod handler;
 pub(crate) mod sched;
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use handler::SchedulerAPIHandler;
 use proto::scheduler_proto::scheduler_server::SchedulerServer;
@@ -37,6 +38,16 @@ pub async fn start_scheduler_server(
             .unwrap();
     event_scheduler.start().await?;
 
+    let async_es = event_scheduler.clone();
+    let db_flush_s = config.scheduler.db_flush_s;
+    tokio::spawn(async move {
+        let sleep = Duration::from_secs(db_flush_s);
+        loop {
+            tokio::time::sleep(sleep).await;
+            async_es.perform_checkpoint().await;
+        }
+    });
+
     let handler =
         SchedulerAPIHandler::new(context.clone(), event_scheduler.clone());
     let svc = SchedulerServer::new(handler);
@@ -50,7 +61,7 @@ pub async fn start_scheduler_server(
     )
     .await;
 
-    event_scheduler.shutdown();
+    event_scheduler.shutdown().await;
     Ok(())
 }
 
@@ -106,7 +117,7 @@ pub mod test_helpers {
                 .add_service(svc)
                 .serve_with_incoming(stream)
                 .await;
-            event_scheduler.shutdown();
+            event_scheduler.shutdown().await;
             // Validate that server is running fine...
             assert!(result.is_ok());
         };

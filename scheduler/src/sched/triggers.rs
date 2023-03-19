@@ -1,12 +1,12 @@
 use std::{
     cmp::Reverse,
-    collections::{BinaryHeap, HashMap},
+    collections::{BinaryHeap, HashMap, HashSet},
     iter::Peekable,
     str::FromStr,
 };
 
 use chrono::{DateTime, Utc};
-use chrono_tz::Tz;
+use chrono_tz::{Tz, UTC};
 use cron::{OwnedScheduleIterator, Schedule as CronSchedule};
 use shared::types::{Schedule, Trigger, TriggerId};
 use thiserror::Error;
@@ -47,6 +47,7 @@ pub(crate) struct ActiveTriggerMap {
     state: HashMap<TriggerId, ActiveTrigger>,
     /// The set of trigger Ids that has been updated
     dirty: bool,
+    awaiting_db_flush: HashSet<TriggerId>,
 }
 
 impl ActiveTriggerMap {
@@ -54,12 +55,13 @@ impl ActiveTriggerMap {
     pub fn add_or_update(
         &mut self,
         trigger: Trigger,
+        fast_forward: bool,
     ) -> Result<Trigger, TriggerError> {
         // TODO: We should instead convert active_trigger back to Trigger to
         // get the updated status
         let cloned_trigger = trigger.clone();
         let trigger_id = trigger.id.clone();
-        let active_trigger = ActiveTrigger::try_from(trigger)?;
+        let active_trigger = ActiveTrigger::try_from(trigger, fast_forward)?;
         self.state.insert(trigger_id, active_trigger);
         self.mark_dirty();
         Ok(cloned_trigger)
@@ -67,6 +69,14 @@ impl ActiveTriggerMap {
 
     pub fn is_dirty(&self) -> bool {
         self.dirty
+    }
+
+    pub fn awaiting_db_flush(&self) -> HashSet<TriggerId> {
+        self.awaiting_db_flush.clone()
+    }
+
+    pub fn clear_db_flush(&mut self) {
+        self.awaiting_db_flush.clear();
     }
 
     pub fn clear(&mut self) {
@@ -118,6 +128,30 @@ impl ActiveTriggerMap {
         self.state
             .get_mut(trigger_id)
             .and_then(|trigger| trigger.advance())
+    }
+
+    pub fn update_last_invoked_at(
+        &mut self,
+        trigger_id: &TriggerId,
+        invoked_at: DateTime<Utc>,
+    ) {
+        self.state.get_mut(trigger_id).map(|f| {
+            // Keep the last known invocation time (if set) unless we are seeing
+            // a more recent one.
+            let new_val = match f.last_invoked_at() {
+                | None => Some(invoked_at),
+                | Some(last_known) if invoked_at > last_known => {
+                    Some(invoked_at)
+                }
+                | Some(last_known) => Some(last_known),
+            };
+
+            if f.inner.hidden_last_invoked_at != new_val {
+                f.inner.hidden_last_invoked_at = new_val;
+                // Mark this trigger as dirty so that we can persist it
+                self.awaiting_db_flush.insert(trigger_id.clone());
+            }
+        });
     }
 
     //// PRIVATE
@@ -176,6 +210,7 @@ pub(crate) enum TriggerFutureTicks {
 impl TriggerFutureTicks {
     pub fn from_schedule(
         schedule_raw: &Schedule,
+        last_invoked_at: Option<DateTime<Utc>>,
     ) -> Result<Self, TriggerError> {
         match schedule_raw {
             | Schedule::Recurring(cron) => {
@@ -184,7 +219,14 @@ impl TriggerFutureTicks {
                 let tz: Tz = cron.cron_timezone.parse().map_err(|_| {
                     TriggerError::InvalidTimezone(cron.cron_timezone.clone())
                 })?;
-                let next_ticks = cron_schedule.upcoming_owned(tz).peekable();
+                let next_ticks = if let Some(last_invoked_at) = last_invoked_at
+                {
+                    cron_schedule
+                        .after_owned(last_invoked_at.with_timezone(&UTC))
+                        .peekable()
+                } else {
+                    cron_schedule.upcoming_owned(tz).peekable()
+                };
                 // TODO: This should be remaining_events_limit, or instead,
                 // change the spec to set an end date.
                 let events_limit = if cron.cron_events_limit > 0 {
@@ -199,11 +241,10 @@ impl TriggerFutureTicks {
             }
             | Schedule::RunAt(run_at) => {
                 let mut ticks = BinaryHeap::new();
+                let last_invoked_at =
+                    last_invoked_at.unwrap_or(Utc::now()).with_timezone(&UTC);
                 for ts in run_at.run_at.iter() {
-                    if *ts < Utc::now() {
-                        // TODO: Remove this log line
-                        info!("Tick of trigger is in the past, skipping...");
-                    } else {
+                    if *ts > last_invoked_at {
                         // Reversed to make this min-heap
                         ticks.push(Reverse(*ts));
                     }
@@ -266,24 +307,28 @@ pub(crate) struct ActiveTrigger {
     ticks: TriggerFutureTicks,
 }
 
-impl TryFrom<Trigger> for ActiveTrigger {
-    type Error = TriggerError;
-
-    fn try_from(trigger: Trigger) -> Result<Self, Self::Error> {
+impl ActiveTrigger {
+    fn try_from(
+        trigger: Trigger,
+        fast_forward: bool,
+    ) -> Result<Self, TriggerError> {
         // Do we have a cron pattern or a set of time points?
         let k = trigger.schedule.as_ref().ok_or_else(|| {
             TriggerError::MalformedTrigger(trigger.id.clone())
         })?;
-        let ticks = TriggerFutureTicks::from_schedule(k)?;
+        // On fast forward, we ignore the last invocation time.
+        let last_invoked_at = if fast_forward {
+            None
+        } else {
+            trigger.hidden_last_invoked_at
+        };
+        let ticks = TriggerFutureTicks::from_schedule(k, last_invoked_at)?;
         // We assume that Trigger.schedule is never None
         Ok(Self {
             inner: trigger,
             ticks,
         })
     }
-}
-
-impl ActiveTrigger {
     pub fn get(&self) -> &Trigger {
         &self.inner
     }
@@ -292,6 +337,9 @@ impl ActiveTrigger {
     }
     pub fn advance(&mut self) -> Option<DateTime<Tz>> {
         self.ticks.advance_and_peek()
+    }
+    pub fn last_invoked_at(&self) -> Option<DateTime<Utc>> {
+        self.inner.hidden_last_invoked_at
     }
 }
 

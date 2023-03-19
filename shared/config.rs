@@ -45,6 +45,8 @@ pub struct SchedulerConfig {
     pub max_triggers_per_tick: u64,
     pub dispatcher_uri: String,
     pub database_uri: String,
+    pub db_flush_s: u64,
+    pub dangerous_fast_forward: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
