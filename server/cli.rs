@@ -1,5 +1,12 @@
 use clap::Parser;
 
+#[derive(clap::ValueEnum, Clone)]
+pub enum LogFormat {
+    Pretty,
+    Compact,
+    Json,
+}
+
 #[derive(Parser)]
 #[command(version = "0.1")]
 pub struct CliOpts {
@@ -10,4 +17,7 @@ pub struct CliOpts {
     /// Turn debugging information on
     #[arg(short, long, action = clap::ArgAction::Count)]
     debug: u8,
+
+    #[arg(short, long, default_value = "pretty")]
+    pub log_format: LogFormat,
 }

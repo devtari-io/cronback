@@ -6,6 +6,7 @@ use std::time::Duration;
 
 use anyhow::{bail, Result};
 use clap::Parser;
+use cli::LogFormat;
 use colored::Colorize;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use metrics_util::MetricKindMask;
@@ -16,25 +17,37 @@ use shared::{
     shutdown::Shutdown,
 };
 use tokio::{select, task::JoinSet, time};
-use tracing::{debug, error, info, trace, warn};
-use tracing_subscriber::Layer;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use tracing::{debug, error, info, trace, warn, Subscriber};
+use tracing_subscriber::FmtSubscriber;
+
+fn setup_logging_subscriber(
+    f: &LogFormat,
+) -> Box<dyn Subscriber + Send + Sync> {
+    let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| "cronbackd=debug,scheduler=debug,api=debug,dispatcher=debug,tower_http=debug".into());
+
+    let sub = FmtSubscriber::builder()
+        .with_thread_names(true)
+        // TODO: Configure logging from command line
+        .with_max_level(tracing::Level::INFO)
+        .with_env_filter(env_filter);
+
+    match f {
+        | cli::LogFormat::Pretty => Box::new(sub.pretty().finish()),
+        | cli::LogFormat::Compact => Box::new(sub.compact().finish()),
+        | cli::LogFormat::Json => Box::new(sub.json().finish()),
+    }
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
     // Shutdown broadcast channel first
     let opts = cli::CliOpts::parse();
     let mut shutdown = Shutdown::default();
-    let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| "cronbackd=debug,scheduler=debug,api=debug,dispatcher=debug,tower_http=debug".into());
 
-    let stdout_log = tracing_subscriber::fmt::layer()
-        .pretty()
-        .with_thread_names(true);
-
-    tracing_subscriber::registry()
-        .with(stdout_log.with_filter(env_filter))
-        .init();
+    tracing::subscriber::set_global_default(setup_logging_subscriber(
+        &opts.log_format,
+    ))?;
 
     debug!("** {} **", "CronBack.me".magenta());
     trace!(config = opts.config, "Loading configuration");
