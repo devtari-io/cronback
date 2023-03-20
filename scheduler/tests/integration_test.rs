@@ -8,7 +8,7 @@ use shared::config::{ConfigLoader, Role};
 use shared::service::ServiceContext;
 use shared::shutdown::Shutdown;
 use shared::types::*;
-use tonic::{Request, Status};
+use tonic::Request;
 
 #[tokio::test]
 async fn install_trigger_valid_test() {

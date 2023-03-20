@@ -41,7 +41,7 @@ impl Dispatcher for DispatcherAPIHandler {
     ) -> Result<Response<DispatchResponse>, Status> {
         let (_metadata, _extensions, request) = request.into_parts();
 
-        let dispatch_mode = request.mode().clone();
+        let dispatch_mode = request.mode();
         let owner_id = OwnerId::from(request.owner_id);
         let invocation_id = InvocationId::new(&owner_id);
 

@@ -111,7 +111,6 @@ mod tests {
     use std::time::Duration;
 
     use chrono::{Timelike, Utc};
-    use chrono_tz::UTC;
     use shared::{
         database::SqliteDatabase,
         types::{Emit, OwnerId, Payload, Status, Trigger, TriggerId, Webhook},
@@ -122,7 +121,7 @@ mod tests {
 
     fn build_trigger(name: &str, status: Status) -> Trigger {
         // Serialization drops nanoseconds, so to let's zero it here for easier equality comparisons
-        let now = Utc::now().with_timezone(&UTC).with_nanosecond(0).unwrap();
+        let now = Utc::now().with_nanosecond(0).unwrap();
 
         let owner = OwnerId::new();
         Trigger {
@@ -143,6 +142,7 @@ mod tests {
             })],
             status,
             reference_id: None,
+            hidden_last_invoked_at: None,
         }
     }
 

@@ -151,8 +151,11 @@ impl Spinner {
                 for inflight in inflight_dispatches.drain(..) {
                     if inflight.handle.is_finished() {
                         // Success? This is quick since it's already finished.
-                        if let Ok(_) =
-                            self.tokio_handle.block_on(inflight.handle).unwrap()
+                        if self
+                            .tokio_handle
+                            .block_on(inflight.handle)
+                            .unwrap()
+                            .is_ok()
                         {
                             success_dispatches.push((
                                 inflight.trigger_id,

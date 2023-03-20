@@ -135,23 +135,27 @@ impl ActiveTriggerMap {
         trigger_id: &TriggerId,
         invoked_at: DateTime<Utc>,
     ) {
-        self.state.get_mut(trigger_id).map(|f| {
-            // Keep the last known invocation time (if set) unless we are seeing
-            // a more recent one.
-            let new_val = match f.last_invoked_at() {
-                | None => Some(invoked_at),
-                | Some(last_known) if invoked_at > last_known => {
-                    Some(invoked_at)
-                }
-                | Some(last_known) => Some(last_known),
-            };
+        let Some(trigger) = self.state.get_mut(trigger_id) else {
+             return;
+        };
+        // Keep the last known invocation time (if set) unless we are seeing
+        // a more recent one.
+        let new_val = match trigger.last_invoked_at() {
+            // If we have never seen an invocation time, set it
+            | None => Some(invoked_at),
+            // If we are seeing a more recent invocation time, update it
+            | Some(last_known) if invoked_at > last_known => Some(invoked_at),
+            // Use the last known invocation time
+            | Some(last_known) => Some(last_known),
+        };
 
-            if f.inner.hidden_last_invoked_at != new_val {
-                f.inner.hidden_last_invoked_at = new_val;
-                // Mark this trigger as dirty so that we can persist it
-                self.awaiting_db_flush.insert(trigger_id.clone());
-            }
-        });
+        // We are guarding this because we should not add this trigger to `awaiting_db_flush`
+        // if we didn't really update it.
+        if trigger.inner.hidden_last_invoked_at != new_val {
+            trigger.inner.hidden_last_invoked_at = new_val;
+            // Mark this trigger as dirty so that we can persist it
+            self.awaiting_db_flush.insert(trigger_id.clone());
+        }
     }
 
     //// PRIVATE
@@ -347,7 +351,6 @@ impl ActiveTrigger {
 mod tests {
     use std::time::Duration;
 
-    use chrono_tz::UTC;
     use shared::timeutil::parse_iso8601;
     use shared::types::{
         Cron, OwnerId, Payload, RunAt, Schedule, Status, Trigger, TriggerId,
@@ -376,11 +379,12 @@ mod tests {
             reference_id: None,
             name: None,
             description: None,
-            created_at: Utc::now().with_timezone(&UTC),
+            created_at: Utc::now(),
             emit: Vec::default(),
             payload: Payload::default(),
             status: Status::Active,
             schedule: Some(sched),
+            hidden_last_invoked_at: None,
         }
     }
 
@@ -389,7 +393,7 @@ mod tests {
         let cron_pattern = "0 5 * * * *"; // fifth minute of every hour
         let schedule = create_cron_schedule(cron_pattern, 0);
 
-        let mut result = TriggerFutureTicks::from_schedule(&schedule)?;
+        let mut result = TriggerFutureTicks::from_schedule(&schedule, None)?;
         assert!(matches!(result, TriggerFutureTicks::CronPattern { .. }));
 
         assert!(result.peek().is_some());
@@ -415,7 +419,7 @@ mod tests {
         let cron_pattern = "0 5 4 2 6 * 2040"; // fifth minute of every hour
         let schedule = create_cron_schedule(cron_pattern, 4);
 
-        let mut result = TriggerFutureTicks::from_schedule(&schedule)?;
+        let mut result = TriggerFutureTicks::from_schedule(&schedule, None)?;
         assert!(matches!(result, TriggerFutureTicks::CronPattern { .. }));
 
         if let TriggerFutureTicks::CronPattern {
@@ -444,7 +448,7 @@ mod tests {
 
         let schedule = create_run_at(timepoints);
 
-        let mut result = TriggerFutureTicks::from_schedule(&schedule)?;
+        let mut result = TriggerFutureTicks::from_schedule(&schedule, None)?;
         assert!(matches!(result, TriggerFutureTicks::RunAt { .. }));
 
         if let TriggerFutureTicks::RunAt(ref points) = result {
@@ -468,7 +472,7 @@ mod tests {
         let trigger = create_trigger(cron);
         let trigger_id = trigger.id.clone();
         let mut map = ActiveTriggerMap::default();
-        map.add_or_update(trigger)?;
+        map.add_or_update(trigger, false)?;
         let mut temporal_states = map.build_temporal_state();
         assert_eq!(1, temporal_states.len());
         let tick1 = temporal_states.pop().unwrap().0.next_tick;
