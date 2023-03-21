@@ -71,12 +71,17 @@ impl ActiveTriggerMap {
         self.dirty
     }
 
-    pub fn awaiting_db_flush(&self) -> HashSet<TriggerId> {
-        self.awaiting_db_flush.clone()
+    pub fn awaiting_db_flush(&self) -> &HashSet<TriggerId> {
+        &self.awaiting_db_flush
     }
 
     pub fn clear_db_flush(&mut self) {
         self.awaiting_db_flush.clear();
+    }
+
+    pub fn add_to_awaiting_db_flush(&mut self, trigger_id: TriggerId) {
+        // Mark this trigger as dirty so that we can persist it
+        self.awaiting_db_flush.insert(trigger_id);
     }
 
     pub fn clear(&mut self) {
@@ -153,8 +158,7 @@ impl ActiveTriggerMap {
         // if we didn't really update it.
         if trigger.inner.hidden_last_invoked_at != new_val {
             trigger.inner.hidden_last_invoked_at = new_val;
-            // Mark this trigger as dirty so that we can persist it
-            self.awaiting_db_flush.insert(trigger_id.clone());
+            self.add_to_awaiting_db_flush(trigger_id.clone());
         }
     }
 

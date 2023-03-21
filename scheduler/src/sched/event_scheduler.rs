@@ -92,8 +92,8 @@ impl EventScheduler {
         let triggers = self.triggers.clone();
         let mut triggers_to_save = Vec::new();
         {
-            let r = triggers.read().unwrap();
-            let triggers_pending = r.awaiting_db_flush();
+            let mut w = triggers.write().unwrap();
+            let triggers_pending = w.awaiting_db_flush();
             if !triggers_pending.is_empty() {
                 info!(
                     "Checkpointing {} triggers to database",
@@ -102,7 +102,7 @@ impl EventScheduler {
             }
 
             for trigger_id in triggers_pending {
-                let Some(trigger) = r.get(&trigger_id) else {
+                let Some(trigger) = w.get(&trigger_id) else {
                     continue;
                 };
                 // TODO: Check if we need to persist the remaining number of cron events.
@@ -110,29 +110,34 @@ impl EventScheduler {
                 // the triggers to save and then save them outside the lock.
                 triggers_to_save.push(trigger.clone());
             }
-        }
-        {
-            if !triggers_to_save.is_empty() {
-                let mut w = triggers.write().unwrap();
-                // reset awaiting db flush set
-                w.clear_db_flush();
-            }
+            // reset awaiting db flush set
+            w.clear_db_flush();
         }
 
         // Save to database.
+        let mut failed = Vec::new();
         for trigger in triggers_to_save {
             debug!(trigger_id = %trigger.id, "Checkpointing trigger");
+            // TODO: Consider batch-inserting.
             let res = self.store.install_trigger(&trigger).await;
             if let Err(e) = res {
                 error!(
                     trigger_id = %trigger.id,
-                    "Failed to checkpoint trigger: {}",
+                    "Failed to checkpoint trigger: {}, will be retried on next checkpoint",
                     e
                 );
+                failed.push(trigger.id);
+            }
+        }
+        // Failed triggers will be retried on next checkpoint.
+        {
+            let mut w = triggers.write().unwrap();
+            for trigger_id in failed {
+                w.add_to_awaiting_db_flush(trigger_id);
             }
         }
 
-        // Expired triggers should be removed from active map.
+        // TODO: Expired triggers should be removed from active map.
     }
 
     pub async fn install_trigger(
