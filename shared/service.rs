@@ -3,8 +3,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
-use hyper::Body;
-use hyper::{Request, Response};
+use hyper::{Body, Request, Response};
 use proto::FILE_DESCRIPTOR_SET;
 use tonic::body::BoxBody;
 use tonic::transport::{NamedService, Server};
@@ -99,7 +98,8 @@ pub async fn grpc_serve<S>(
         .await
     {
         error!(
-            "RPC service '{}' failed to start and will trigger system shutdown: {e}",
+            "RPC service '{}' failed to start and will trigger system \
+             shutdown: {e}",
             context.service_name()
         );
         context.broadcast_shutdown()

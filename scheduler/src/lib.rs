@@ -11,8 +11,7 @@ use sched::event_scheduler::EventScheduler;
 use sched::trigger_store::SqlTriggerStore;
 use shared::database::SqliteDatabase;
 use shared::grpc_client_provider::DispatcherClientProvider;
-use shared::netutils;
-use shared::service;
+use shared::{netutils, service};
 
 #[tracing::instrument(skip_all, fields(service = context.service_name()))]
 pub async fn start_scheduler_server(

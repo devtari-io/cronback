@@ -2,7 +2,11 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use proto::scheduler_proto::{GetTriggerRequest, InstallTriggerRequest};
-use proto::trigger_proto::{self, Cron, Schedule};
+use proto::trigger_proto::{
+    Cron,
+    Schedule,
+    {self},
+};
 use scheduler::test_helpers;
 use shared::config::{ConfigLoader, Role};
 use shared::service::ServiceContext;

@@ -3,7 +3,8 @@ use chrono_tz::{Tz, UTC};
 use iso8601_duration::Duration as IsoDuration;
 
 // Note that we reset nanoseconds to 0 to:
-// - Ensure that the same time is always returned, regardless of the nanosecond value
+// - Ensure that the same time is always returned, regardless of the nanosecond
+//   value
 // - Enforce per-second granularity
 
 pub fn parse_iso8601(input: &str) -> Option<DateTime<Tz>> {
@@ -46,7 +47,12 @@ pub fn to_iso8601(input: &DateTime<Tz>) -> String {
 pub mod iso8601_dateformat_serde {
     use chrono::DateTime;
     use chrono_tz::Tz;
-    use serde::{self, Deserialize, Deserializer, Serializer};
+    use serde::{
+        Deserialize,
+        Deserializer,
+        Serializer,
+        {self},
+    };
 
     use super::parse_iso8601;
 
@@ -80,7 +86,12 @@ pub mod iso8601_dateformat_serde {
 pub mod iso8601_dateformat_vec_serde {
     use chrono::DateTime;
     use chrono_tz::Tz;
-    use serde::{self, Deserialize, Deserializer, Serializer};
+    use serde::{
+        Deserialize,
+        Deserializer,
+        Serializer,
+        {self},
+    };
 
     use super::{parse_iso8601, to_iso8601};
 

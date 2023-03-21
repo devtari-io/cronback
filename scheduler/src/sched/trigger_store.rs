@@ -1,5 +1,6 @@
 use async_trait::async_trait;
-use shared::{database::SqliteDatabase, types::Trigger, types::TriggerId};
+use shared::database::SqliteDatabase;
+use shared::types::{Trigger, TriggerId};
 use sqlx::Row;
 use thiserror::Error;
 use tracing::debug;
@@ -73,16 +74,20 @@ impl TriggerStore for SqlTriggerStore {
     async fn get_all_active_triggers(
         &self,
     ) -> Result<Vec<Trigger>, TriggerStoreError> {
-        let results = sqlx::query("SELECT id, value FROM triggers where JSON_EXTRACT(value, '$.status') = 'active'")
-            .fetch_all(&self.db.pool)
-            .await?
-            .into_iter().map(|r| {
-                let id = r.get::<String, _>("id");
-                debug!(trigger_id = %id, "Loading trigger from database");
-                let j = r.get::<String, _>("value");
-                serde_json::from_str::<Trigger>(&j)
-            })
-            .collect::<Result<Vec<_>, _>>();
+        let results = sqlx::query(
+            "SELECT id, value FROM triggers where JSON_EXTRACT(value, \
+             '$.status') = 'active'",
+        )
+        .fetch_all(&self.db.pool)
+        .await?
+        .into_iter()
+        .map(|r| {
+            let id = r.get::<String, _>("id");
+            debug!(trigger_id = %id, "Loading trigger from database");
+            let j = r.get::<String, _>("value");
+            serde_json::from_str::<Trigger>(&j)
+        })
+        .collect::<Result<Vec<_>, _>>();
         Ok(results?)
     }
 
@@ -111,16 +116,22 @@ mod tests {
     use std::time::Duration;
 
     use chrono::{Timelike, Utc};
-    use shared::{
-        database::SqliteDatabase,
-        types::{Emit, OwnerId, Payload, Status, Trigger, TriggerId, Webhook},
+    use shared::database::SqliteDatabase;
+    use shared::types::{
+        Emit,
+        OwnerId,
+        Payload,
+        Status,
+        Trigger,
+        TriggerId,
+        Webhook,
     };
 
-    use super::SqlTriggerStore;
-    use super::TriggerStore;
+    use super::{SqlTriggerStore, TriggerStore};
 
     fn build_trigger(name: &str, status: Status) -> Trigger {
-        // Serialization drops nanoseconds, so to let's zero it here for easier equality comparisons
+        // Serialization drops nanoseconds, so to let's zero it here for easier
+        // equality comparisons
         let now = Utc::now().with_nanosecond(0).unwrap();
 
         let owner = OwnerId::new();

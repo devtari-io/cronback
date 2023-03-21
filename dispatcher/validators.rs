@@ -21,22 +21,23 @@ fn validate_endpoint_url_public_ip(host: Option<&str>) -> Result<()> {
         .to_socket_addrs()
         .map_err(|e| anyhow!("Failed to resolve DNS for endpoint: {}", e))?;
 
-    // To error on the safe side, a hostname is valid if ALL its IPs are publicly addressable.
+    // To error on the safe side, a hostname is valid if ALL its IPs are
+    // publicly addressable.
 
     // for addr in addrs {
     // match addr.ip() {
     //     std::net::IpAddr::V4(ip) => {
     //         if !ip.is_global() {
     //             return Err(anyhow!(
-    //                 "The endpoint's IP is not globally reachable (e.g. in private IP space)"
-    //             ));
+    //                 "The endpoint's IP is not globally reachable (e.g. in
+    // private IP space)"             ));
     //         }
     //     }
     //     std::net::IpAddr::V6(ip) => {
     //         if !ip.is_global() {
     //             return Err(anyhow!(
-    //                 "The endpoint's IP is not globally reachable (e.g. in private IP space)"
-    //             ));
+    //                 "The endpoint's IP is not globally reachable (e.g. in
+    // private IP space)"             ));
     //         }
     //     }
     // }

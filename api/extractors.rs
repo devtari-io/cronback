@@ -1,18 +1,15 @@
-use axum::{
-    extract::{
-        rejection::{FormRejection, JsonRejection},
-        FromRequest,
-    },
-    http::{header::CONTENT_TYPE, Request},
-    Form, Json,
-};
+use axum::extract::rejection::{FormRejection, JsonRejection};
+use axum::extract::FromRequest;
+use axum::http::header::CONTENT_TYPE;
+use axum::http::Request;
+use axum::{Form, Json};
 use serde::de::DeserializeOwned;
 use validator::Validate;
 
 use crate::errors::ApiError;
 // Parse input as form or json based on the content-type of the request.
-// Note, this doesn't not perform any validation. For validated form/json, please
-// use ValidatedFormOrJson
+// Note, this doesn't not perform any validation. For validated form/json,
+// please use ValidatedFormOrJson
 pub(crate) struct FormOrJson<T>(T);
 
 #[axum::async_trait]

@@ -1,17 +1,30 @@
-use std::{collections::HashMap, sync::Arc, time::Instant};
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::time::Instant;
 
 use chrono::Utc;
 use chrono_tz::UTC;
 use metrics::counter;
-use reqwest::{header::HeaderValue, Method};
+use reqwest::header::HeaderValue;
+use reqwest::Method;
 use shared::types::{
-    AttemptDetails, AttemptLogId, AttemptStatus, EmitAttemptLog, HttpMethod,
-    InvocationId, OwnerId, Payload, TriggerId, Webhook, WebhookAttemptDetails,
+    AttemptDetails,
+    AttemptLogId,
+    AttemptStatus,
+    EmitAttemptLog,
+    HttpMethod,
+    InvocationId,
+    OwnerId,
+    Payload,
+    TriggerId,
+    Webhook,
+    WebhookAttemptDetails,
     WebhookDeliveryStatus,
 };
 use tracing::{debug, error, info};
 
-use crate::{attempt_log_store::AttemptLogStore, retry::RetryPolicy};
+use crate::attempt_log_store::AttemptLogStore;
+use crate::retry::RetryPolicy;
 
 fn to_reqwest_http_method(method: &HttpMethod) -> reqwest::Method {
     match method {
@@ -143,32 +156,40 @@ async fn dispatch_webhook(
     let latency = request_start_time.elapsed();
 
     match response {
-        | Ok(resp) => WebhookAttemptDetails {
-            response_code: Some(resp.status().as_u16() as i32),
-            response_payload: Some(Payload {
-                content_type: resp
-                    .headers()
-                    .get(reqwest::header::CONTENT_TYPE)
-                    .map(|v| v.to_str().unwrap_or("INVALID").to_string())
-                    .unwrap_or_default(),
-                headers: resp
-                    .headers()
-                    .iter()
-                    .map(|(h, v)| {
-                        (
-                            h.to_string(),
-                            v.to_str().unwrap_or("INVALID").to_owned(),
-                        )
-                    })
-                    .collect::<HashMap<_, _>>(),
-                // TODO: Don't attempt to read the payload if it's larger than the max allowed payload size (based on the Content-length header)
-                // TODO: Reconsider the string type for the payload. This can be a binary blob and the below unwrap would fail.
-                body: String::from_utf8(resp.bytes().await.unwrap().to_vec())
+        | Ok(resp) => {
+            WebhookAttemptDetails {
+                response_code: Some(resp.status().as_u16() as i32),
+                response_payload: Some(Payload {
+                    content_type: resp
+                        .headers()
+                        .get(reqwest::header::CONTENT_TYPE)
+                        .map(|v| v.to_str().unwrap_or("INVALID").to_string())
+                        .unwrap_or_default(),
+                    headers: resp
+                        .headers()
+                        .iter()
+                        .map(|(h, v)| {
+                            (
+                                h.to_string(),
+                                v.to_str().unwrap_or("INVALID").to_owned(),
+                            )
+                        })
+                        .collect::<HashMap<_, _>>(),
+                    // TODO: Don't attempt to read the payload if it's larger
+                    // than the max allowed payload size
+                    // (based on the Content-length
+                    // header) TODO: Reconsider the string type for
+                    // the payload. This can be a binary blob and the below
+                    // unwrap would fail.
+                    body: String::from_utf8(
+                        resp.bytes().await.unwrap().to_vec(),
+                    )
                     .unwrap(),
-            }),
-            response_latency_s: latency,
-            error_msg: None,
-        },
+                }),
+                response_latency_s: latency,
+                error_msg: None,
+            }
+        }
         | Err(e) => {
             let message = if e.is_connect() {
                 "Connection Failed"

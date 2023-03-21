@@ -19,8 +19,9 @@ pub fn validate_timezone(
         return Err(validation_error(
             "unrecognized_cron_timezone",
             format!(
-                "Timezone unrecognized '{cron_timezone}'. A valid IANA timezone string is required",
-            )
+                "Timezone unrecognized '{cron_timezone}'. A valid IANA \
+                 timezone string is required",
+            ),
         ));
     };
     Ok(())

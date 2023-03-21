@@ -76,7 +76,8 @@ pub struct RunAt {
         length(
             min = 1,
             max = 5000,
-            message = "Reached maximum number of run_at events in the same trigger"
+            message = "Reached maximum number of run_at events in the same \
+                       trigger"
         ),
         custom = "validate_run_at"
     )]

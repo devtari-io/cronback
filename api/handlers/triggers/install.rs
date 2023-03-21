@@ -1,18 +1,17 @@
 use std::sync::Arc;
 
-use axum::{
-    debug_handler,
-    extract::State,
-    http::{header::HeaderMap, StatusCode},
-    response::IntoResponse,
-    Json,
-};
+use axum::extract::State;
+use axum::http::header::HeaderMap;
+use axum::http::StatusCode;
+use axum::response::IntoResponse;
+use axum::{debug_handler, Json};
 use proto::scheduler_proto::InstallTriggerRequest;
 use shared::types::{OwnerId, Trigger};
 
 use crate::api_model::InstallTrigger;
+use crate::errors::ApiError;
 use crate::extractors::ValidatedJson;
-use crate::{errors::ApiError, AppState};
+use crate::AppState;
 
 #[tracing::instrument(skip_all)]
 #[debug_handler]

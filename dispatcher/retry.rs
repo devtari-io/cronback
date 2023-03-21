@@ -54,10 +54,12 @@ impl RetryPolicy {
                     max_delay_s,
                     ..
                 },
-            )) => Some(std::cmp::min(
-                max_delay_s,
-                delay_s * 2_u32.pow(self.num_retries - 1),
-            )),
+            )) => {
+                Some(std::cmp::min(
+                    max_delay_s,
+                    delay_s * 2_u32.pow(self.num_retries - 1),
+                ))
+            }
             | None => None,
         }
     }

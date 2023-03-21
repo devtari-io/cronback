@@ -10,13 +10,12 @@ use cli::LogFormat;
 use colored::Colorize;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use metrics_util::MetricKindMask;
-use shared::{
-    config::{ConfigLoader, Role},
-    netutils::parse_addr,
-    service::ServiceContext,
-    shutdown::Shutdown,
-};
-use tokio::{select, task::JoinSet, time};
+use shared::config::{ConfigLoader, Role};
+use shared::netutils::parse_addr;
+use shared::service::ServiceContext;
+use shared::shutdown::Shutdown;
+use tokio::task::JoinSet;
+use tokio::{select, time};
 use tracing::{debug, error, info, trace, warn, Subscriber};
 use tracing_subscriber::FmtSubscriber;
 
@@ -24,7 +23,11 @@ fn setup_logging_subscriber(
     f: &LogFormat,
 ) -> Box<dyn Subscriber + Send + Sync> {
     let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| "cronbackd=debug,scheduler=debug,api=debug,dispatcher=debug,tower_http=debug".into());
+        .unwrap_or_else(|_| {
+            "cronbackd=debug,scheduler=debug,api=debug,dispatcher=debug,\
+             tower_http=debug"
+                .into()
+        });
 
     let sub = FmtSubscriber::builder()
         .with_thread_names(true)
@@ -66,7 +69,8 @@ async fn main() -> Result<()> {
     builder
         .idle_timeout(
             MetricKindMask::HISTOGRAM,
-            // Remove a metric from registry if it was not updated for 2 minutes.
+            // Remove a metric from registry if it was not updated for 2
+            // minutes.
             Some(Duration::from_secs(120)),
         )
         .with_http_listener(prometheus_sockaddr)
@@ -134,20 +138,24 @@ async fn spawn_service(
                 shutdown.clone(),
             )))
         }
-        | Role::Scheduler => tokio::spawn(scheduler::start_scheduler_server(
-            ServiceContext::new(
-                service_name.clone(),
-                config_loader,
-                shutdown.clone(),
-            ),
-        )),
-        | Role::Dispatcher => tokio::spawn(
-            dispatcher::start_dispatcher_server(ServiceContext::new(
-                service_name.clone(),
-                config_loader,
-                shutdown.clone(),
-            )),
-        ),
+        | Role::Scheduler => {
+            tokio::spawn(scheduler::start_scheduler_server(
+                ServiceContext::new(
+                    service_name.clone(),
+                    config_loader,
+                    shutdown.clone(),
+                ),
+            ))
+        }
+        | Role::Dispatcher => {
+            tokio::spawn(dispatcher::start_dispatcher_server(
+                ServiceContext::new(
+                    service_name.clone(),
+                    config_loader,
+                    shutdown.clone(),
+                ),
+            ))
+        }
     };
     match join_handle.await.unwrap() {
         | Ok(_) => info!("Service '{service_name}' terminated!"),

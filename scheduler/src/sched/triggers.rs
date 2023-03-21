@@ -1,9 +1,7 @@
-use std::{
-    cmp::Reverse,
-    collections::{BinaryHeap, HashMap, HashSet},
-    iter::Peekable,
-    str::FromStr,
-};
+use std::cmp::Reverse;
+use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::iter::Peekable;
+use std::str::FromStr;
 
 use chrono::{DateTime, Utc};
 use chrono_tz::{Tz, UTC};
@@ -12,15 +10,17 @@ use shared::types::{Schedule, Trigger, TriggerId};
 use thiserror::Error;
 use tracing::info;
 
-use super::{
-    event_dispatcher::DispatchError, trigger_store::TriggerStoreError,
-};
+use super::event_dispatcher::DispatchError;
+use super::trigger_store::TriggerStoreError;
 
 #[derive(Error, Debug)]
 pub(crate) enum TriggerError {
     #[error("Cannot parse cron expression")]
     CronParseError(#[from] cron::error::Error),
-    #[error("Unrecognized timezone '{0}' was supplied, are you sure this is an IANA timezone?")]
+    #[error(
+        "Unrecognized timezone '{0}' was supplied, are you sure this is an \
+         IANA timezone?"
+    )]
     InvalidTimezone(String),
     #[error("Trigger '{0}' should not have passed validation!")]
     MalformedTrigger(TriggerId),
@@ -111,6 +111,7 @@ impl ActiveTriggerMap {
         self.reset_dirty();
         new_state
     }
+
     pub fn get(&self, id: &TriggerId) -> Option<&Trigger> {
         self.state.get(id).map(|t| t.get())
     }
@@ -120,14 +121,16 @@ impl ActiveTriggerMap {
      * I hear you asking, why do we need that?
      *
      * We need this because:
-     * - We don't want to advance everything when we build a new temporal states,
-     *   as this will incorrectly advance triggers that are still due.
-     * - When temporal state is created, we only peek(), this makes the first iteration
-     *   a bit awkward, when we advance after executing the trigger, advance() will
-     *   return the same time point because we have never next()ed it. This _hack_
-     *   ensures that we will fast-forward in this rare case.
-     * - This also ensures that, for any reason, we skip duplicates in the run_at
-     *   list if we didn't catch this in validation.
+     * - We don't want to advance everything when we build a new temporal
+     *   states, as this will incorrectly advance triggers that are still
+     *   due.
+     * - When temporal state is created, we only peek(), this makes the first
+     *   iteration a bit awkward, when we advance after executing the
+     *   trigger, advance() will return the same time point because we have
+     *   never next()ed it. This _hack_ ensures that we will fast-forward in
+     *   this rare case.
+     * - This also ensures that, for any reason, we skip duplicates in the
+     *   run_at list if we didn't catch this in validation.
      */
     pub fn advance(&mut self, trigger_id: &TriggerId) -> Option<DateTime<Tz>> {
         self.state
@@ -154,8 +157,8 @@ impl ActiveTriggerMap {
             | Some(last_known) => Some(last_known),
         };
 
-        // We are guarding this because we should not add this trigger to `awaiting_db_flush`
-        // if we didn't really update it.
+        // We are guarding this because we should not add this trigger to
+        // `awaiting_db_flush` if we didn't really update it.
         if trigger.inner.hidden_last_invoked_at != new_val {
             trigger.inner.hidden_last_invoked_at = new_val;
             self.add_to_awaiting_db_flush(trigger_id.clone());
@@ -261,6 +264,7 @@ impl TriggerFutureTicks {
             }
         }
     }
+
     // Advances the iterator and peeks the following item
     pub fn advance_and_peek(&mut self) -> Option<DateTime<Tz>> {
         let _ = self.peek_or_next(true);
@@ -337,15 +341,19 @@ impl ActiveTrigger {
             ticks,
         })
     }
+
     pub fn get(&self) -> &Trigger {
         &self.inner
     }
+
     pub fn peek(&mut self) -> Option<DateTime<Tz>> {
         self.ticks.peek()
     }
+
     pub fn advance(&mut self) -> Option<DateTime<Tz>> {
         self.ticks.advance_and_peek()
     }
+
     pub fn last_invoked_at(&self) -> Option<DateTime<Utc>> {
         self.inner.hidden_last_invoked_at
     }
@@ -357,7 +365,14 @@ mod tests {
 
     use shared::timeutil::parse_iso8601;
     use shared::types::{
-        Cron, OwnerId, Payload, RunAt, Schedule, Status, Trigger, TriggerId,
+        Cron,
+        OwnerId,
+        Payload,
+        RunAt,
+        Schedule,
+        Status,
+        Trigger,
+        TriggerId,
     };
 
     use super::*;
@@ -417,8 +432,8 @@ mod tests {
     #[test]
     fn future_ticks_parsing_cron_with_limits() -> Result<(), TriggerError> {
         //  sec  min   hour   day of month   month   day of week   year
-        //  A specific second in the future, this should yield exactly one time point.
-        // FIXME: This will fail soon, see https://github.com/zslayton/cron/issues/97
+        //  A specific second in the future, this should yield exactly one time
+        // point. FIXME: This will fail soon, see https://github.com/zslayton/cron/issues/97
 
         let cron_pattern = "0 5 4 2 6 * 2040"; // fifth minute of every hour
         let schedule = create_cron_schedule(cron_pattern, 4);
@@ -444,7 +459,8 @@ mod tests {
 
     #[test]
     fn future_ticks_parsing_run_at() -> Result<(), TriggerError> {
-        // generating some time points, one in the past, and three in the future.
+        // generating some time points, one in the past, and three in the
+        // future.
         let mut timepoints = vec![];
         timepoints.push(parse_iso8601("PT-1M").unwrap()); // 1 minute ago (in the past)
         timepoints.push(parse_iso8601("PT2M").unwrap());
@@ -489,7 +505,8 @@ mod tests {
         let tick2_again = temporal_states.pop().unwrap().0.next_tick;
         assert_eq!(tick2, tick2_again);
 
-        // rebuilding the temporal state doesn't advance anything even if time passes
+        // rebuilding the temporal state doesn't advance anything even if time
+        // passes
         std::thread::sleep(Duration::from_secs(2));
         let mut temporal_states = map.build_temporal_state();
         assert_eq!(1, temporal_states.len());

@@ -1,25 +1,28 @@
 use std::time::Duration;
 
-use chrono::DateTime;
-use chrono::Utc;
-use proto::attempt_proto;
-use proto::invocation_proto;
-use proto::trigger_proto;
-use proto::webhook_proto;
+use chrono::{DateTime, Utc};
+use proto::{attempt_proto, invocation_proto, trigger_proto, webhook_proto};
 
-use super::AttemptDetails;
-use super::AttemptStatus;
-use super::EmitAttemptLog;
-use super::ExponentialBackoffRetry;
-use super::Invocation;
-use super::InvocationStatus;
-use super::RetryConfig;
-use super::SimpleRetry;
-use super::Webhook;
-use super::WebhookAttemptDetails;
-use super::WebhookDeliveryStatus;
-use super::WebhookStatus;
-use super::{Emit, HttpMethod, Payload, Schedule, Status, Trigger};
+use super::{
+    AttemptDetails,
+    AttemptStatus,
+    Emit,
+    EmitAttemptLog,
+    ExponentialBackoffRetry,
+    HttpMethod,
+    Invocation,
+    InvocationStatus,
+    Payload,
+    RetryConfig,
+    Schedule,
+    SimpleRetry,
+    Status,
+    Trigger,
+    Webhook,
+    WebhookAttemptDetails,
+    WebhookDeliveryStatus,
+    WebhookStatus,
+};
 use crate::timeutil::parse_iso8601;
 
 impl From<trigger_proto::Trigger> for Trigger {
@@ -37,7 +40,8 @@ impl From<trigger_proto::Trigger> for Trigger {
             schedule: value.schedule.map(|s| s.into()),
             emit: value.emit.into_iter().map(|e| e.into()).collect(),
             status: value.status.into(),
-            // We are not supposed to send this to other services, it is internal.
+            // We are not supposed to send this to other services, it is
+            // internal.
             hidden_last_invoked_at: None,
         }
     }

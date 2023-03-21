@@ -1,9 +1,15 @@
 use std::sync::Arc;
 
+use proto::scheduler_proto::scheduler_server::Scheduler;
 use proto::scheduler_proto::{
-    scheduler_server::Scheduler, FindTriggersRequest, FindTriggersResponse,
-    GetTriggerRequest, GetTriggerResponse, InstallTriggerRequest,
-    InstallTriggerResponse, InvokeTriggerRequest, InvokeTriggerResponse,
+    FindTriggersRequest,
+    FindTriggersResponse,
+    GetTriggerRequest,
+    GetTriggerResponse,
+    InstallTriggerRequest,
+    InstallTriggerResponse,
+    InvokeTriggerRequest,
+    InvokeTriggerResponse,
 };
 use shared::service::ServiceContext;
 use tonic::{Request, Response, Status};
@@ -35,7 +41,8 @@ impl Scheduler for SchedulerAPIHandler {
 
         let (_metadata, _ext, request) = request.into_parts();
         info!("Installing trigger {:?}", request);
-        // TODO: Instantiate a trigger, we will lookup the database to check for reference id
+        // TODO: Instantiate a trigger, we will lookup the database to check for
+        // reference id
 
         // Creating a new trigger from install_trigger
         let trigger = self.scheduler.install_trigger(request).await?;
@@ -51,7 +58,8 @@ impl Scheduler for SchedulerAPIHandler {
     ) -> Result<Response<InvokeTriggerResponse>, Status> {
         // check if trigger exists
         // A trigger that exists will be invoked regardless of its state
-        // manual invocation has nothing to do with the spinner or event scheduler
+        // manual invocation has nothing to do with the spinner or event
+        // scheduler
         //
         let (_metadata, _ext, request) = request.into_parts();
         info!(request.id, "Invoking trigger");

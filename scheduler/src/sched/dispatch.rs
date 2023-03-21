@@ -1,13 +1,10 @@
 use std::sync::Arc;
 
-use shared::{
-    grpc_client_provider::DispatcherClientProvider,
-    types::{Invocation, Trigger},
-};
+use shared::grpc_client_provider::DispatcherClientProvider;
+use shared::types::{Invocation, Trigger};
 use tracing::info;
 
-use super::event_dispatcher::DispatchError;
-use super::event_dispatcher::DispatchMode;
+use super::event_dispatcher::{DispatchError, DispatchMode};
 use crate::sched::event_dispatcher::DispatchJob;
 
 #[tracing::instrument(skip_all, fields(trigger_id = %trigger.id))]

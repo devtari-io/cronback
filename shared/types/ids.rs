@@ -28,6 +28,7 @@ impl OwnerId {
     pub fn new() -> Self {
         Self(generate_owner_id("acc"))
     }
+
     pub fn from(value: String) -> Self {
         Self(value)
     }
@@ -60,6 +61,7 @@ impl TriggerId {
     pub fn new(OwnerId(owner): &OwnerId) -> Self {
         Self(generate_model_id("trig", owner))
     }
+
     pub fn from(value: String) -> Self {
         Self(value)
     }
@@ -91,6 +93,7 @@ impl EventId {
     pub fn new(OwnerId(owner): &OwnerId) -> Self {
         Self(generate_model_id("evt", owner))
     }
+
     pub fn from(value: String) -> Self {
         Self(value)
     }
@@ -164,6 +167,7 @@ impl AttemptLogId {
     pub fn new(OwnerId(owner): &OwnerId) -> Self {
         Self(generate_model_id("att", owner))
     }
+
     pub fn from(value: String) -> Self {
         Self(value)
     }

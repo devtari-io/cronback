@@ -10,15 +10,12 @@ use std::sync::Arc;
 
 use proto::dispatcher_proto::dispatcher_server::DispatcherServer;
 use shared::database::SqliteDatabase;
-use shared::netutils;
-use shared::service;
+use shared::{netutils, service};
 use tracing::info;
 
-use crate::attempt_log_store::AttemptLogStore;
-use crate::attempt_log_store::SqlAttemptLogStore;
+use crate::attempt_log_store::{AttemptLogStore, SqlAttemptLogStore};
 use crate::dispatch_manager::DispatchManager;
-use crate::invocation_store::InvocationStore;
-use crate::invocation_store::SqlInvocationStore;
+use crate::invocation_store::{InvocationStore, SqlInvocationStore};
 
 #[tracing::instrument(skip_all, fields(service = context.service_name()))]
 pub async fn start_dispatcher_server(

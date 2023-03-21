@@ -1,7 +1,6 @@
 use async_trait::async_trait;
-use shared::{
-    database::SqliteDatabase, types::Invocation, types::InvocationId,
-};
+use shared::database::SqliteDatabase;
+use shared::types::{Invocation, InvocationId};
 use sqlx::Row;
 use thiserror::Error;
 
@@ -97,19 +96,24 @@ mod tests {
 
     use chrono::{Timelike, Utc};
     use chrono_tz::UTC;
-    use shared::{
-        database::SqliteDatabase,
-        types::{
-            Invocation, InvocationId, InvocationStatus, OwnerId, Payload,
-            TriggerId, Webhook, WebhookDeliveryStatus, WebhookStatus,
-        },
+    use shared::database::SqliteDatabase;
+    use shared::types::{
+        Invocation,
+        InvocationId,
+        InvocationStatus,
+        OwnerId,
+        Payload,
+        TriggerId,
+        Webhook,
+        WebhookDeliveryStatus,
+        WebhookStatus,
     };
 
-    use super::InvocationStore;
-    use super::SqlInvocationStore;
+    use super::{InvocationStore, SqlInvocationStore};
 
     fn build_invocation() -> Invocation {
-        // Serialization drops nanoseconds, so to let's zero it here for easier equality comparisons
+        // Serialization drops nanoseconds, so to let's zero it here for easier
+        // equality comparisons
         let now = Utc::now().with_timezone(&UTC).with_nanosecond(0).unwrap();
 
         let owner = OwnerId::new();

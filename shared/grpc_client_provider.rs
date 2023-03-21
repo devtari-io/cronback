@@ -21,7 +21,8 @@ impl DispatcherClientProvider {
         &self,
     ) -> Result<DispatcherClient, tonic::transport::Error> {
         {
-            // This mutex will always be acquirable after the first client initialization.
+            // This mutex will always be acquirable after the first client
+            // initialization.
             let c = self.inner.read().unwrap();
 
             if let Some(ref client) = *c {
@@ -35,7 +36,8 @@ impl DispatcherClientProvider {
         let mut c = self.inner.write().unwrap();
 
         // Between releasing the read lock and acquiring the write lock, someone
-        // might have already initialized it. In that case, let's just reuse their client
+        // might have already initialized it. In that case, let's just reuse
+        // their client
         if let Some(ref client) = *c {
             return Ok(client.clone());
         }

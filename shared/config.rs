@@ -2,11 +2,15 @@
 
 use std::collections::{HashMap, HashSet};
 
+use config::builder::DefaultState;
 use config::{
-    builder::DefaultState, Config as ConfigRaw, ConfigBuilder, ConfigError,
+    Config as ConfigRaw,
+    ConfigBuilder,
+    ConfigError,
+    Environment,
     File,
+    FileFormat,
 };
-use config::{Environment, FileFormat};
 use serde::Deserialize;
 use valuable::Valuable;
 

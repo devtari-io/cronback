@@ -2,34 +2,32 @@ use std::sync::{Arc, Mutex, RwLock};
 
 use chrono::Utc;
 use proto::scheduler_proto::InstallTriggerRequest;
-use shared::{
-    grpc_client_provider::DispatcherClientProvider,
-    service::ServiceContext,
-    types::{Invocation, OwnerId, Status, Trigger, TriggerId},
-};
+use shared::grpc_client_provider::DispatcherClientProvider;
+use shared::service::ServiceContext;
+use shared::types::{Invocation, OwnerId, Status, Trigger, TriggerId};
 use tracing::{debug, error, info, warn};
 
-use super::{
-    dispatch::dispatch,
-    spinner::{Spinner, SpinnerHandle},
-    trigger_store::TriggerStore,
-    triggers::{ActiveTriggerMap, TriggerError},
-};
+use super::dispatch::dispatch;
+use super::spinner::{Spinner, SpinnerHandle};
+use super::trigger_store::TriggerStore;
+use super::triggers::{ActiveTriggerMap, TriggerError};
 
 /**
  *
- * EventScheduler is the gateway to the scheduling and dispatch thread (spinner)
- * It's designed to be easily shared with inner mutability and minimal locking
- * to reduce contention.
+ * EventScheduler is the gateway to the scheduling and dispatch thread
+ * (spinner) It's designed to be easily shared with inner mutability and
+ * minimal locking to reduce contention.
  *
  *
- * Event Scheduler also wraps the database. I'll load and store triggers from
- * the database as needed. Installing a new trigger happens on two steps:
+ * Event Scheduler also wraps the database. I'll load and store triggers
+ * from the database as needed. Installing a new trigger happens on two
+ * steps:
  * - Inserting the trigger in the database
  * - Adding the trigger to the ActiveTriggerMap (while holding a write lock)
  *
- * This is designed like this to minimise locking the ActiveTriggerMap (vs. making
- * database queries from the TriggerMap while holding the write lock unnecessarily)
+ * This is designed like this to minimise locking the ActiveTriggerMap (vs.
+ * making database queries from the TriggerMap while holding the write lock
+ * unnecessarily)
  *
  * EventScheduler owns
  *   - Active TriggerMap
@@ -105,9 +103,10 @@ impl EventScheduler {
                 let Some(trigger) = w.get(&trigger_id) else {
                     continue;
                 };
-                // TODO: Check if we need to persist the remaining number of cron events.
-                // We can't hold the lock in async scope so we need to collect
-                // the triggers to save and then save them outside the lock.
+                // TODO: Check if we need to persist the remaining number of
+                // cron events. We can't hold the lock in async
+                // scope so we need to collect the triggers to
+                // save and then save them outside the lock.
                 triggers_to_save.push(trigger.clone());
             }
             // reset awaiting db flush set
@@ -224,8 +223,11 @@ impl EventScheduler {
         info!("Found {} active triggers in the database", triggers.len());
         let config = self.context.get_config();
         if config.scheduler.dangerous_fast_forward {
-            warn!("Skipping missed invocations, the scheduler will ignore the last_invoked_at of \
-                  all triggers. This will cause triggers to execute future events only");
+            warn!(
+                "Skipping missed invocations, the scheduler will ignore the \
+                 last_invoked_at of all triggers. This will cause triggers to \
+                 execute future events only"
+            );
         }
         let mut map = self.triggers.write().unwrap();
         for trigger in triggers {

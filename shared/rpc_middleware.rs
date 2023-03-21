@@ -2,8 +2,7 @@ use std::task::{Context, Poll};
 use std::time::Instant;
 
 use hyper::Body;
-use metrics::histogram;
-use metrics::increment_counter;
+use metrics::{histogram, increment_counter};
 use tonic::body::BoxBody;
 use tower::{Layer, Service};
 
@@ -52,12 +51,12 @@ where
         + 'static,
     S::Future: Send + 'static,
 {
-    type Response = S::Response;
     type Error = S::Error;
     type Future = futures::future::BoxFuture<
         'static,
         Result<Self::Response, Self::Error>,
     >;
+    type Response = S::Response;
 
     fn poll_ready(
         &mut self,
@@ -67,8 +66,8 @@ where
     }
 
     fn call(&mut self, req: hyper::Request<Body>) -> Self::Future {
-        // This is necessary because tonic internally uses `tower::buffer::Buffer`.
-        // See https://github.com/tower-rs/tower/issues/547#issuecomment-767629149
+        // This is necessary because tonic internally uses
+        // `tower::buffer::Buffer`. See https://github.com/tower-rs/tower/issues/547#issuecomment-767629149
         // for details on why this is necessary
         let clone = self.inner.clone();
         let mut inner = std::mem::replace(&mut self.inner, clone);

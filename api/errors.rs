@@ -1,11 +1,8 @@
 use std::error::Error;
 
-use axum::extract::rejection::JsonRejection;
-use axum::{
-    extract::rejection::FormRejection,
-    http::StatusCode,
-    response::{IntoResponse, Response},
-};
+use axum::extract::rejection::{FormRejection, JsonRejection};
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
 use thiserror::Error;
 use tonic::Status;
 use tracing::error;
@@ -16,7 +13,7 @@ use crate::AppStateError;
 pub enum ApiError {
     #[error(
         "Unsupported content-type '{0}'. Only application/json or \
-            x-www-form-urlencoded can be used here"
+         x-www-form-urlencoded can be used here"
     )]
     UnsupportedContentType(String),
     #[error(transparent)]
@@ -40,8 +37,8 @@ impl IntoResponse for ApiError {
                     .replace('\n', ", ");
                 (StatusCode::BAD_REQUEST, message)
             }
-            // Form Rejections, we are expanding the match to expose the underlying
-            // error better to our users. See https://docs.rs/axum/latest/axum/extract/index.html#accessing-inner-errors for details.
+            // Form Rejections, we are expanding the match to expose the
+            // underlying error better to our users. See https://docs.rs/axum/latest/axum/extract/index.html#accessing-inner-errors for details.
             | ApiError::FormRejection(
                 FormRejection::FailedToDeserializeFormBody(err),
             ) => serde_error_response(err),

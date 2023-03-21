@@ -79,6 +79,7 @@ impl InvocationJob {
             attempt_store,
         }
     }
+
     #[tracing::instrument(skip(self))]
     async fn run(mut self) -> Invocation {
         increment_gauge!("dispatcher.inflight_invocations_total", 1.0);
@@ -121,7 +122,11 @@ impl InvocationJob {
                 .store_invocation(&self.invocation)
                 .await
             {
-                error!("Failed to persist invocation status for invocation {} for emit #{}: {}", self.invocation.id, idx, e);
+                error!(
+                    "Failed to persist invocation status for invocation {} \
+                     for emit #{}: {}",
+                    self.invocation.id, idx, e
+                );
             }
         }
 

@@ -1,8 +1,6 @@
 use async_trait::async_trait;
-use shared::{
-    database::SqliteDatabase,
-    types::{AttemptLogId, EmitAttemptLog, InvocationId},
-};
+use shared::database::SqliteDatabase;
+use shared::types::{AttemptLogId, EmitAttemptLog, InvocationId};
 use sqlx::Row;
 use thiserror::Error;
 
@@ -79,15 +77,19 @@ impl AttemptLogStore for SqlAttemptLogStore {
         &self,
         id: &InvocationId,
     ) -> Result<Vec<EmitAttemptLog>, AttemptLogStoreError> {
-        let results = sqlx::query("SELECT value FROM attempts where JSON_EXTRACT(value, '$.invocation_id') = ?")
-            .bind(&id.to_string())
-            .fetch_all(&self.db.pool)
-            .await?
-            .into_iter().map(|r| {
-                let j = r.get::<String, _>("value");
-                serde_json::from_str::<EmitAttemptLog>(&j)
-            })
-            .collect::<Result<Vec<_>, _>>();
+        let results = sqlx::query(
+            "SELECT value FROM attempts where JSON_EXTRACT(value, \
+             '$.invocation_id') = ?",
+        )
+        .bind(&id.to_string())
+        .fetch_all(&self.db.pool)
+        .await?
+        .into_iter()
+        .map(|r| {
+            let j = r.get::<String, _>("value");
+            serde_json::from_str::<EmitAttemptLog>(&j)
+        })
+        .collect::<Result<Vec<_>, _>>();
         Ok(results?)
     }
 
@@ -113,23 +115,27 @@ impl AttemptLogStore for SqlAttemptLogStore {
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::HashMap, time::Duration};
+    use std::collections::HashMap;
+    use std::time::Duration;
 
     use chrono::{Timelike, Utc};
     use chrono_tz::UTC;
-    use shared::{
-        database::SqliteDatabase,
-        types::{
-            AttemptLogId, EmitAttemptLog, InvocationId, OwnerId, Payload,
-            TriggerId, WebhookAttemptDetails,
-        },
+    use shared::database::SqliteDatabase;
+    use shared::types::{
+        AttemptLogId,
+        EmitAttemptLog,
+        InvocationId,
+        OwnerId,
+        Payload,
+        TriggerId,
+        WebhookAttemptDetails,
     };
 
-    use super::AttemptLogStore;
-    use super::SqlAttemptLogStore;
+    use super::{AttemptLogStore, SqlAttemptLogStore};
 
     fn build_attempt(invocation_id: &InvocationId) -> EmitAttemptLog {
-        // Serialization drops nanoseconds, so to let's zero it here for easier equality comparisons
+        // Serialization drops nanoseconds, so to let's zero it here for easier
+        // equality comparisons
         let now = Utc::now().with_timezone(&UTC).with_nanosecond(0).unwrap();
 
         let owner = OwnerId::new();

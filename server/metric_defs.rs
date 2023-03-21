@@ -1,6 +1,7 @@
 use metrics::{describe_counter, describe_gauge, describe_histogram, Unit};
 
-/// Optional but adds description/help message to the metrics emitted to metric sink.
+/// Optional but adds description/help message to the metrics emitted to metric
+/// sink.
 pub(crate) fn install_metrics() {
     describe_counter!(
         "rpc.requests_total",

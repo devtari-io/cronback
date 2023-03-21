@@ -3,21 +3,24 @@ pub mod errors;
 pub(crate) mod extractors;
 mod handlers;
 
-use std::{sync::Arc, time::Instant};
+use std::sync::Arc;
+use std::time::Instant;
 
-use axum::{
-    extract::MatchedPath,
-    http::{Request, StatusCode},
-    middleware::{self, Next},
-    response::IntoResponse,
-    routing::get,
-    Router,
+use axum::extract::MatchedPath;
+use axum::http::{Request, StatusCode};
+use axum::middleware::{
+    Next,
+    {self},
 };
+use axum::response::IntoResponse;
+use axum::routing::get;
+use axum::Router;
 use metrics::{histogram, increment_counter};
 use proto::scheduler_proto::scheduler_client::SchedulerClient as GenSchedulerClient;
 use rand::seq::SliceRandom;
-use shared::{config::Config, netutils, types::TriggerId};
-use shared::{service, types::CellId};
+use shared::config::Config;
+use shared::types::{CellId, TriggerId};
+use shared::{netutils, service};
 use thiserror::Error;
 use tokio::select;
 use tracing::{error, info, warn};

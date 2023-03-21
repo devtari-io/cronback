@@ -1,16 +1,16 @@
 use std::sync::Arc;
 
-use axum::{
-    debug_handler,
-    extract::{Path, State},
-    http::{header::HeaderMap, StatusCode},
-    response::IntoResponse,
-    Json,
-};
+use axum::extract::{Path, State};
+use axum::http::header::HeaderMap;
+use axum::http::StatusCode;
+use axum::response::IntoResponse;
+use axum::{debug_handler, Json};
 use proto::scheduler_proto::InvokeTriggerRequest;
 use shared::types::{Invocation, TriggerId, ValidId};
 
-use crate::{api_model::InvokeTrigger, errors::ApiError, AppState};
+use crate::api_model::InvokeTrigger;
+use crate::errors::ApiError;
+use crate::AppState;
 
 #[tracing::instrument(skip(state))]
 #[debug_handler]
