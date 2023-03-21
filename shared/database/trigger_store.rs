@@ -1,9 +1,10 @@
 use async_trait::async_trait;
-use shared::database::SqliteDatabase;
-use shared::types::{Trigger, TriggerId};
 use sqlx::Row;
 use thiserror::Error;
 use tracing::debug;
+
+use crate::database::SqliteDatabase;
+use crate::types::{OwnerId, Trigger, TriggerId};
 
 #[derive(Error, Debug)]
 pub enum TriggerStoreError {
@@ -29,6 +30,11 @@ pub trait TriggerStore {
         &self,
         id: &TriggerId,
     ) -> Result<Option<Trigger>, TriggerStoreError>;
+
+    async fn get_triggers_by_owner(
+        &self,
+        owner_id: &OwnerId,
+    ) -> Result<Vec<Trigger>, TriggerStoreError>;
 }
 
 pub struct SqlTriggerStore {
@@ -91,6 +97,26 @@ impl TriggerStore for SqlTriggerStore {
         Ok(results?)
     }
 
+    async fn get_triggers_by_owner(
+        &self,
+        owner_id: &OwnerId,
+    ) -> Result<Vec<Trigger>, TriggerStoreError> {
+        let results = sqlx::query(
+            "SELECT value FROM triggers where JSON_EXTRACT(value, \
+             '$.owner_id') = ?",
+        )
+        .bind(owner_id.to_string())
+        .fetch_all(&self.db.pool)
+        .await?
+        .into_iter()
+        .map(|r| {
+            let j = r.get::<String, _>("value");
+            serde_json::from_str::<Trigger>(&j)
+        })
+        .collect::<Result<Vec<_>, _>>();
+        Ok(results?)
+    }
+
     async fn get_trigger(
         &self,
         id: &TriggerId,
@@ -116,8 +142,10 @@ mod tests {
     use std::time::Duration;
 
     use chrono::{Timelike, Utc};
-    use shared::database::SqliteDatabase;
-    use shared::types::{
+
+    use super::{SqlTriggerStore, TriggerStore};
+    use crate::database::SqliteDatabase;
+    use crate::types::{
         Emit,
         OwnerId,
         Payload,
@@ -127,14 +155,11 @@ mod tests {
         Webhook,
     };
 
-    use super::{SqlTriggerStore, TriggerStore};
-
-    fn build_trigger(name: &str, status: Status) -> Trigger {
+    fn build_trigger(name: &str, owner: OwnerId, status: Status) -> Trigger {
         // Serialization drops nanoseconds, so to let's zero it here for easier
         // equality comparisons
         let now = Utc::now().with_nanosecond(0).unwrap();
 
-        let owner = OwnerId::new();
         Trigger {
             id: TriggerId::new(&owner),
             owner_id: owner,
@@ -147,7 +172,7 @@ mod tests {
             schedule: None,
             emit: vec![Emit::Webhook(Webhook {
                 url: Some("http://test".to_string()),
-                http_method: shared::types::HttpMethod::GET,
+                http_method: crate::types::HttpMethod::GET,
                 timeout_s: Duration::from_secs(5),
                 retry: None,
             })],
@@ -162,9 +187,12 @@ mod tests {
         let db = SqliteDatabase::in_memory().await?;
         let store = SqlTriggerStore::create(db).await?;
 
-        let t1 = build_trigger("t1", Status::Active);
-        let t2 = build_trigger("t2", Status::Paused);
-        let t3 = build_trigger("t3", Status::Active);
+        let owner1 = OwnerId::new();
+        let owner2 = OwnerId::new();
+
+        let t1 = build_trigger("t1", owner1.clone(), Status::Active);
+        let t2 = build_trigger("t2", owner1.clone(), Status::Paused);
+        let t3 = build_trigger("t3", owner2.clone(), Status::Active);
 
         // Test installs
         store.install_trigger(&t1).await?;
@@ -186,10 +214,16 @@ mod tests {
 
         // Test get all active
         let mut results = store.get_all_active_triggers().await?;
-        let mut expected = vec![t1, t3];
+        let mut expected = vec![t1.clone(), t3.clone()];
         expected.sort_by(|a, b| a.id.cmp(&b.id));
         results.sort_by(|a, b| a.id.cmp(&b.id));
+        assert_eq!(results, expected);
 
+        // Test get by owner
+        let mut results = store.get_triggers_by_owner(&owner1).await?;
+        let mut expected = vec![t1, t2];
+        expected.sort_by(|a, b| a.id.cmp(&b.id));
+        results.sort_by(|a, b| a.id.cmp(&b.id));
         assert_eq!(results, expected);
 
         Ok(())

@@ -5,13 +5,16 @@ use futures::stream::FuturesUnordered;
 use futures::StreamExt;
 use metrics::{decrement_gauge, increment_gauge};
 use proto::dispatcher_proto;
+use shared::database::attempt_log_store::AttemptLogStore;
+use shared::database::invocation_store::{
+    InvocationStore,
+    InvocationStoreError,
+};
 use shared::types::{Invocation, InvocationStatus, WebhookDeliveryStatus};
 use thiserror::Error;
 use tracing::{error, Instrument};
 
-use crate::attempt_log_store::AttemptLogStore;
 use crate::emits;
-use crate::invocation_store::{InvocationStore, InvocationStoreError};
 
 #[derive(Error, Debug)]
 pub enum DispatcherManagerError {

@@ -8,7 +8,7 @@ use std::time::Duration;
 use handler::SchedulerAPIHandler;
 use proto::scheduler_proto::scheduler_server::SchedulerServer;
 use sched::event_scheduler::EventScheduler;
-use sched::trigger_store::SqlTriggerStore;
+use shared::database::trigger_store::SqlTriggerStore;
 use shared::database::SqliteDatabase;
 use shared::grpc_client_provider::DispatcherClientProvider;
 use shared::{netutils, service};
@@ -70,6 +70,7 @@ pub mod test_helpers {
 
     use proto::scheduler_proto::scheduler_client::SchedulerClient;
     use proto::scheduler_proto::scheduler_server::SchedulerServer;
+    use shared::database::trigger_store::SqlTriggerStore;
     use shared::database::SqliteDatabase;
     use shared::grpc_client_provider::DispatcherClientProvider;
     use shared::service::ServiceContext;
@@ -81,7 +82,6 @@ pub mod test_helpers {
 
     use crate::handler::SchedulerAPIHandler;
     use crate::sched::event_scheduler::EventScheduler;
-    use crate::sched::trigger_store::SqlTriggerStore;
 
     pub async fn test_server_and_client(
         context: ServiceContext,

@@ -1,8 +1,9 @@
 use async_trait::async_trait;
-use shared::database::SqliteDatabase;
-use shared::types::{Invocation, InvocationId};
 use sqlx::Row;
 use thiserror::Error;
+
+use crate::database::SqliteDatabase;
+use crate::types::{Invocation, InvocationId, OwnerId, TriggerId};
 
 #[derive(Error, Debug)]
 pub enum InvocationStoreError {
@@ -24,6 +25,16 @@ pub trait InvocationStore {
         &self,
         id: &InvocationId,
     ) -> Result<Option<Invocation>, InvocationStoreError>;
+
+    async fn get_invocations_by_trigger(
+        &self,
+        trigger_id: &TriggerId,
+    ) -> Result<Vec<Invocation>, InvocationStoreError>;
+
+    async fn get_invocations_by_owner(
+        &self,
+        owner_id: &OwnerId,
+    ) -> Result<Vec<Invocation>, InvocationStoreError>;
 }
 
 pub struct SqlInvocationStore {
@@ -88,6 +99,46 @@ impl InvocationStore for SqlInvocationStore {
             | Err(e) => Err(e.into()),
         }
     }
+
+    async fn get_invocations_by_trigger(
+        &self,
+        trigger_id: &TriggerId,
+    ) -> Result<Vec<Invocation>, InvocationStoreError> {
+        let results = sqlx::query(
+            "SELECT value FROM invocations where JSON_EXTRACT(value, \
+             '$.trigger_id') = ?",
+        )
+        .bind(trigger_id.to_string())
+        .fetch_all(&self.db.pool)
+        .await?
+        .into_iter()
+        .map(|r| {
+            let j = r.get::<String, _>("value");
+            serde_json::from_str::<Invocation>(&j)
+        })
+        .collect::<Result<Vec<_>, _>>();
+        Ok(results?)
+    }
+
+    async fn get_invocations_by_owner(
+        &self,
+        owner_id: &OwnerId,
+    ) -> Result<Vec<Invocation>, InvocationStoreError> {
+        let results = sqlx::query(
+            "SELECT value FROM invocations where JSON_EXTRACT(value, \
+             '$.owner_id') = ?",
+        )
+        .bind(owner_id.to_string())
+        .fetch_all(&self.db.pool)
+        .await?
+        .into_iter()
+        .map(|r| {
+            let j = r.get::<String, _>("value");
+            serde_json::from_str::<Invocation>(&j)
+        })
+        .collect::<Result<Vec<_>, _>>();
+        Ok(results?)
+    }
 }
 
 #[cfg(test)]
@@ -96,8 +147,10 @@ mod tests {
 
     use chrono::{Timelike, Utc};
     use chrono_tz::UTC;
-    use shared::database::SqliteDatabase;
-    use shared::types::{
+
+    use super::{InvocationStore, SqlInvocationStore};
+    use crate::database::SqliteDatabase;
+    use crate::types::{
         Invocation,
         InvocationId,
         InvocationStatus,
@@ -109,23 +162,23 @@ mod tests {
         WebhookStatus,
     };
 
-    use super::{InvocationStore, SqlInvocationStore};
-
-    fn build_invocation() -> Invocation {
+    fn build_invocation(
+        trigger_id: TriggerId,
+        owner_id: OwnerId,
+    ) -> Invocation {
         // Serialization drops nanoseconds, so to let's zero it here for easier
         // equality comparisons
         let now = Utc::now().with_timezone(&UTC).with_nanosecond(0).unwrap();
 
-        let owner = OwnerId::new();
         Invocation {
-            id: InvocationId::new(&owner),
-            trigger_id: TriggerId::new(&owner),
-            owner_id: owner,
+            id: InvocationId::new(&owner_id),
+            trigger_id,
+            owner_id,
             created_at: now,
             status: vec![InvocationStatus::WebhookStatus(WebhookStatus {
                 webhook: Webhook {
                     url: Some("http://test".to_string()),
-                    http_method: shared::types::HttpMethod::GET,
+                    http_method: crate::types::HttpMethod::GET,
                     timeout_s: Duration::from_secs(5),
                     retry: None,
                 },
@@ -140,9 +193,14 @@ mod tests {
         let db = SqliteDatabase::in_memory().await?;
         let store = SqlInvocationStore::create(db).await?;
 
-        let mut i1 = build_invocation();
-        let i2 = build_invocation();
-        let i3 = build_invocation();
+        let owner1 = OwnerId::new();
+        let owner2 = OwnerId::new();
+        let t1 = TriggerId::new(&owner1);
+        let t2 = TriggerId::new(&owner2);
+
+        let mut i1 = build_invocation(t1.clone(), owner1.clone());
+        let i2 = build_invocation(t2.clone(), owner2.clone());
+        let i3 = build_invocation(t1.clone(), owner1.clone());
 
         // Test stores
         store.store_invocation(&i1).await?;
@@ -162,10 +220,22 @@ mod tests {
             None
         );
 
+        // Test get invocations by trigger
+        let mut results = store.get_invocations_by_trigger(&t1).await?;
+        let mut expected = vec![i1.clone(), i3.clone()];
+        expected.sort_by(|a, b| a.id.cmp(&b.id));
+        results.sort_by(|a, b| a.id.cmp(&b.id));
+        assert_eq!(results, expected);
+
+        // Test get invocations by owner
+        let results = store.get_invocations_by_owner(&owner2).await?;
+        let expected = vec![i2.clone()];
+        assert_eq!(results, expected);
+
         i1.status = vec![InvocationStatus::WebhookStatus(WebhookStatus {
             webhook: Webhook {
                 url: Some("http://test".to_string()),
-                http_method: shared::types::HttpMethod::GET,
+                http_method: crate::types::HttpMethod::GET,
                 timeout_s: Duration::from_secs(5),
                 retry: None,
             },

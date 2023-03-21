@@ -146,6 +146,12 @@ impl InvocationId {
     }
 }
 
+impl ValidId for InvocationId {
+    fn is_valid(&self) -> bool {
+        self.0.starts_with("inv_")
+    }
+}
+
 #[derive(
     Debug,
     Hash,

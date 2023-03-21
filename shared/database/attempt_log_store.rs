@@ -1,8 +1,9 @@
 use async_trait::async_trait;
-use shared::database::SqliteDatabase;
-use shared::types::{AttemptLogId, EmitAttemptLog, InvocationId};
 use sqlx::Row;
 use thiserror::Error;
+
+use crate::database::SqliteDatabase;
+use crate::types::{AttemptLogId, EmitAttemptLog, InvocationId};
 
 #[derive(Error, Debug)]
 pub enum AttemptLogStoreError {
@@ -120,8 +121,10 @@ mod tests {
 
     use chrono::{Timelike, Utc};
     use chrono_tz::UTC;
-    use shared::database::SqliteDatabase;
-    use shared::types::{
+
+    use super::{AttemptLogStore, SqlAttemptLogStore};
+    use crate::database::SqliteDatabase;
+    use crate::types::{
         AttemptLogId,
         EmitAttemptLog,
         InvocationId,
@@ -130,8 +133,6 @@ mod tests {
         TriggerId,
         WebhookAttemptDetails,
     };
-
-    use super::{AttemptLogStore, SqlAttemptLogStore};
 
     fn build_attempt(invocation_id: &InvocationId) -> EmitAttemptLog {
         // Serialization drops nanoseconds, so to let's zero it here for easier
@@ -144,8 +145,8 @@ mod tests {
             invocation_id: invocation_id.clone(),
             trigger_id: TriggerId::new(&owner),
             owner_id: owner.clone(),
-            status: shared::types::AttemptStatus::Succeeded,
-            details: shared::types::AttemptDetails::WebhookAttemptDetails(
+            status: crate::types::AttemptStatus::Succeeded,
+            details: crate::types::AttemptDetails::WebhookAttemptDetails(
                 WebhookAttemptDetails {
                     response_code: Some(404),
                     response_latency_s: Duration::from_secs(10),

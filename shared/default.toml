@@ -7,6 +7,7 @@ prometheus_port = 9000
 #scheduler_shard_map = { 023 = "127.0.0.1:9811" }
 address = "0.0.0.0"
 port = 8888
+database_uri = "sqlite://database.sqlite?mode=rwc"
 
 [api.scheduler_cell_map]
 # Maps a cell_id to a scheduler address

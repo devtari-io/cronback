@@ -58,6 +58,7 @@ pub struct ApiConfig {
     pub address: String,
     pub port: u16,
     pub scheduler_cell_map: HashMap<u64, String>,
+    pub database_uri: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]

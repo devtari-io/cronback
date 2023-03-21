@@ -6,12 +6,12 @@ use std::str::FromStr;
 use chrono::{DateTime, Utc};
 use chrono_tz::{Tz, UTC};
 use cron::{OwnedScheduleIterator, Schedule as CronSchedule};
+use shared::database::trigger_store::TriggerStoreError;
 use shared::types::{Schedule, Trigger, TriggerId};
 use thiserror::Error;
 use tracing::info;
 
 use super::event_dispatcher::DispatchError;
-use super::trigger_store::TriggerStoreError;
 
 #[derive(Error, Debug)]
 pub(crate) enum TriggerError {

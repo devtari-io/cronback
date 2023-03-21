@@ -7,6 +7,7 @@ use chrono_tz::UTC;
 use metrics::counter;
 use reqwest::header::HeaderValue;
 use reqwest::Method;
+use shared::database::attempt_log_store::AttemptLogStore;
 use shared::types::{
     AttemptDetails,
     AttemptLogId,
@@ -23,7 +24,6 @@ use shared::types::{
 };
 use tracing::{debug, error, info};
 
-use crate::attempt_log_store::AttemptLogStore;
 use crate::retry::RetryPolicy;
 
 fn to_reqwest_http_method(method: &HttpMethod) -> reqwest::Method {

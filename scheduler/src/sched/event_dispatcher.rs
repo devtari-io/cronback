@@ -1,9 +1,6 @@
 use std::sync::Arc;
 
-use proto::dispatcher_proto::{
-    DispatchRequest,
-    {self},
-};
+use proto::dispatcher_proto::{self, DispatchRequest};
 use shared::grpc_client_provider::DispatcherClientProvider;
 use shared::types::{Invocation, Trigger};
 use thiserror::Error;

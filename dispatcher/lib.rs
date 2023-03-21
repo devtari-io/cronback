@@ -1,21 +1,22 @@
-pub(crate) mod attempt_log_store;
 mod dispatch_manager;
 mod emits;
 mod handler;
-pub(crate) mod invocation_store;
 mod retry;
 mod validators;
 
 use std::sync::Arc;
 
 use proto::dispatcher_proto::dispatcher_server::DispatcherServer;
+use shared::database::attempt_log_store::{
+    AttemptLogStore,
+    SqlAttemptLogStore,
+};
+use shared::database::invocation_store::{InvocationStore, SqlInvocationStore};
 use shared::database::SqliteDatabase;
 use shared::{netutils, service};
 use tracing::info;
 
-use crate::attempt_log_store::{AttemptLogStore, SqlAttemptLogStore};
 use crate::dispatch_manager::DispatchManager;
-use crate::invocation_store::{InvocationStore, SqlInvocationStore};
 
 #[tracing::instrument(skip_all, fields(service = context.service_name()))]
 pub async fn start_dispatcher_server(

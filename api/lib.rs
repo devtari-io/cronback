@@ -19,6 +19,13 @@ use metrics::{histogram, increment_counter};
 use proto::scheduler_proto::scheduler_client::SchedulerClient as GenSchedulerClient;
 use rand::seq::SliceRandom;
 use shared::config::Config;
+use shared::database::attempt_log_store::{
+    AttemptLogStore,
+    SqlAttemptLogStore,
+};
+use shared::database::invocation_store::{InvocationStore, SqlInvocationStore};
+use shared::database::trigger_store::{SqlTriggerStore, TriggerStore};
+use shared::database::SqliteDatabase;
 use shared::types::{CellId, TriggerId};
 use shared::{netutils, service};
 use thiserror::Error;
@@ -31,11 +38,20 @@ pub enum AppStateError {
     ConnectError(#[from] tonic::transport::Error),
     #[error("Internal data routing error: {0}")]
     RoutingError(String),
+    #[error("Database error: {0}")]
+    DatabaseError(String),
+}
+
+pub struct Db {
+    pub trigger_store: Box<dyn TriggerStore + Send + Sync>,
+    pub invocation_store: Box<dyn InvocationStore + Send + Sync>,
+    pub attempt_store: Box<dyn AttemptLogStore + Send + Sync>,
 }
 
 pub(crate) struct AppState {
     pub _context: service::ServiceContext,
     pub config: Config,
+    pub db: Db,
 }
 pub type SchedulerClient = GenSchedulerClient<tonic::transport::Channel>;
 
@@ -98,9 +114,20 @@ pub async fn start_api_server(
     let addr =
         netutils::parse_addr(&config.api.address, config.api.port).unwrap();
 
+    let db = SqliteDatabase::connect(&config.api.database_uri).await?;
+
+    let stores = Db {
+        trigger_store: Box::new(SqlTriggerStore::create(db.clone()).await?),
+        invocation_store: Box::new(
+            SqlInvocationStore::create(db.clone()).await?,
+        ),
+        attempt_store: Box::new(SqlAttemptLogStore::create(db.clone()).await?),
+    };
+
     let shared_state = Arc::new(AppState {
         _context: context.clone(),
         config: config.clone(),
+        db: stores,
     });
 
     // build our application with a route
