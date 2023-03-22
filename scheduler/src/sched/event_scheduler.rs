@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
 
 use chrono::Utc;
@@ -11,6 +12,7 @@ use tracing::{debug, error, info, warn};
 use super::dispatch::dispatch;
 use super::spinner::{Spinner, SpinnerHandle};
 use super::triggers::{ActiveTriggerMap, TriggerError};
+use crate::sched::triggers::ActiveTrigger;
 
 /**
  *
@@ -38,7 +40,8 @@ use super::triggers::{ActiveTriggerMap, TriggerError};
  *   - Start/pause the spinner.
  *
  * Needs to take care of:
- *   - Compaction/eviction: remove expired triggers
+ *   - Compaction/eviction: remove expired triggers.
+ *   - Flushes active triggers map into the database periodically.
  */
 pub(crate) struct EventScheduler {
     context: ServiceContext,
@@ -88,8 +91,12 @@ impl EventScheduler {
         debug!("Attempting to checkpoint triggers");
         // Persist active triggers to database
         let triggers = self.triggers.clone();
+        // Triggers that have been cancelled or expired.
+        let mut retired_triggers: HashMap<TriggerId, ActiveTrigger> =
+            HashMap::new();
         let mut triggers_to_save = Vec::new();
         {
+            // Write lock held
             let mut w = triggers.write().unwrap();
             let triggers_pending = w.awaiting_db_flush();
             if !triggers_pending.is_empty() {
@@ -103,11 +110,23 @@ impl EventScheduler {
                 let Some(trigger) = w.get(&trigger_id) else {
                     continue;
                 };
-                // TODO: Check if we need to persist the remaining number of
-                // cron events. We can't hold the lock in async
+                // We can't hold the lock in async
                 // scope so we need to collect the triggers to
                 // save and then save them outside the lock.
                 triggers_to_save.push(trigger.clone());
+                // A trigger can be removed from the active map if it is
+                // expired/cancelled
+                if w.is_trigger_retired(&trigger_id) {
+                    debug!(
+                        "Trigger {} is retired and will be removed from \
+                         spinner",
+                        trigger_id
+                    );
+                    retired_triggers.insert(
+                        trigger_id.clone(),
+                        w.pop_trigger(&trigger_id).unwrap(),
+                    );
+                }
             }
             // reset awaiting db flush set
             w.clear_db_flush();
@@ -132,6 +151,14 @@ impl EventScheduler {
         {
             let mut w = triggers.write().unwrap();
             for trigger_id in failed {
+                // expired/cancelled triggers were removed, if we failed to
+                // flush we should put them back.
+                if retired_triggers.contains_key(&trigger_id) {
+                    w.push_trigger(
+                        trigger_id.clone(),
+                        retired_triggers.remove(&trigger_id).unwrap(),
+                    )
+                }
                 w.add_to_awaiting_db_flush(trigger_id);
             }
         }
@@ -139,6 +166,7 @@ impl EventScheduler {
         // TODO: Expired triggers should be removed from active map.
     }
 
+    #[tracing::instrument(skip_all)]
     pub async fn install_trigger(
         &self,
         install_trigger: InstallTriggerRequest,
@@ -169,6 +197,7 @@ impl EventScheduler {
         .await?
     }
 
+    #[tracing::instrument(skip_all, fields(trigger_id = %id))]
     pub async fn get_trigger(
         &self,
         id: TriggerId,
@@ -200,6 +229,45 @@ impl EventScheduler {
         )
         .await?;
         Ok(invocation)
+    }
+
+    #[tracing::instrument(skip_all, fields(trigger_id = %id))]
+    pub async fn pause_trigger(
+        &self,
+        id: TriggerId,
+    ) -> Result<Trigger, TriggerError> {
+        let triggers = self.triggers.clone();
+        tokio::task::spawn_blocking(move || {
+            let mut w = triggers.write().unwrap();
+            w.pause(&id).map(|_| w.get(&id).unwrap().clone())
+        })
+        .await?
+    }
+
+    #[tracing::instrument(skip_all, fields(trigger_id = %id))]
+    pub async fn resume_trigger(
+        &self,
+        id: TriggerId,
+    ) -> Result<Trigger, TriggerError> {
+        let triggers = self.triggers.clone();
+        tokio::task::spawn_blocking(move || {
+            let mut w = triggers.write().unwrap();
+            w.resume(&id).map(|_| w.get(&id).unwrap().clone())
+        })
+        .await?
+    }
+
+    #[tracing::instrument(skip_all, fields(trigger_id = %id))]
+    pub async fn cancel_trigger(
+        &self,
+        id: TriggerId,
+    ) -> Result<Trigger, TriggerError> {
+        let triggers = self.triggers.clone();
+        tokio::task::spawn_blocking(move || {
+            let mut w = triggers.write().unwrap();
+            w.cancel(&id).map(|_| w.get(&id).unwrap().clone())
+        })
+        .await?
     }
 
     pub async fn shutdown(&self) {

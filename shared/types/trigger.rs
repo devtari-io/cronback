@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::fmt::Display;
 use std::str::FromStr;
 
 use chrono::{DateTime, Utc};
@@ -39,22 +40,22 @@ pub struct Trigger {
     pub status: Status,
 
     pub hidden_last_invoked_at: Option<DateTime<Utc>>,
-    //pub hidden_remaining_cron_events: Option<u64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 #[serde(deny_unknown_fields)]
 pub enum Status {
+    #[default]
     Active,
     Expired,
     Canceled,
     Paused,
 }
 
-impl Default for Status {
-    fn default() -> Self {
-        Self::Active
+impl Display for Status {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", serde_json::to_string(self).unwrap())
     }
 }
 
@@ -68,9 +69,11 @@ pub enum Schedule {
 
 #[skip_serializing_none]
 #[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize, Validate, PartialEq)]
+#[derive(
+    Debug, Default, Clone, Serialize, Deserialize, Validate, PartialEq,
+)]
+#[serde(default)]
 #[serde(deny_unknown_fields)]
-#[serde(transparent)]
 pub struct RunAt {
     #[validate(
         length(
@@ -82,7 +85,9 @@ pub struct RunAt {
         custom = "validate_run_at"
     )]
     #[serde(with = "iso8601_dateformat_vec_serde")]
-    pub run_at: Vec<DateTime<Tz>>,
+    pub timepoints: Vec<DateTime<Tz>>,
+    // TODO: Reject if set through the API.
+    pub remaining: u64,
 }
 
 #[skip_serializing_none]
@@ -95,17 +100,19 @@ pub struct Cron {
     pub cron: Option<String>,
 
     #[validate(custom = "validate_timezone")]
-    pub cron_timezone: String,
-
-    pub cron_events_limit: u64,
+    pub timezone: String,
+    pub limit: u64,
+    // TODO: Reject if set through the API.
+    pub remaining: u64,
 }
 
 impl Default for Cron {
     fn default() -> Self {
         Self {
             cron: None,
-            cron_timezone: "Etc/UTC".to_owned(),
-            cron_events_limit: 0,
+            timezone: "Etc/UTC".to_owned(),
+            limit: 0,
+            remaining: 0,
         }
     }
 }

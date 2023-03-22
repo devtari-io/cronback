@@ -2,6 +2,8 @@ use std::sync::Arc;
 
 use proto::scheduler_proto::scheduler_server::Scheduler;
 use proto::scheduler_proto::{
+    CancelTriggerRequest,
+    CancelTriggerResponse,
     FindTriggersRequest,
     FindTriggersResponse,
     GetTriggerRequest,
@@ -10,6 +12,10 @@ use proto::scheduler_proto::{
     InstallTriggerResponse,
     InvokeTriggerRequest,
     InvokeTriggerResponse,
+    PauseTriggerRequest,
+    PauseTriggerResponse,
+    ResumeTriggerRequest,
+    ResumeTriggerResponse,
 };
 use shared::service::ServiceContext;
 use tonic::{Request, Response, Status};
@@ -84,6 +90,45 @@ impl Scheduler for SchedulerAPIHandler {
             trigger: Some(trigger.into()),
         };
         Ok(Response::new(reply))
+    }
+
+    async fn pause_trigger(
+        &self,
+        request: Request<PauseTriggerRequest>,
+    ) -> Result<Response<PauseTriggerResponse>, Status> {
+        // TODO
+        let (_metadata, _ext, request) = request.into_parts();
+        info!(request.id, "Pausing trigger");
+        let trigger = self.scheduler.pause_trigger(request.id.into()).await?;
+        Ok(Response::new(PauseTriggerResponse {
+            trigger: Some(trigger.into()),
+        }))
+    }
+
+    async fn resume_trigger(
+        &self,
+        request: Request<ResumeTriggerRequest>,
+    ) -> Result<Response<ResumeTriggerResponse>, Status> {
+        // TODO
+        let (_metadata, _ext, request) = request.into_parts();
+        info!(request.id, "Resuming trigger");
+        let trigger = self.scheduler.resume_trigger(request.id.into()).await?;
+        Ok(Response::new(ResumeTriggerResponse {
+            trigger: Some(trigger.into()),
+        }))
+    }
+
+    async fn cancel_trigger(
+        &self,
+        request: Request<CancelTriggerRequest>,
+    ) -> Result<Response<CancelTriggerResponse>, Status> {
+        // TODO
+        let (_metadata, _ext, request) = request.into_parts();
+        info!(request.id, "Canceling trigger");
+        let trigger = self.scheduler.cancel_trigger(request.id.into()).await?;
+        Ok(Response::new(CancelTriggerResponse {
+            trigger: Some(trigger.into()),
+        }))
     }
 
     async fn find_triggers(

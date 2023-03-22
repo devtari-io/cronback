@@ -10,6 +10,7 @@ impl From<TriggerError> for Status {
             | TriggerError::JoinError(e) => {
                 Status::internal(format!("Internal error: {e}"))
             }
+            | TriggerError::NotFound(e) => Status::not_found(e),
             | e => Status::invalid_argument(e.to_string()),
         }
     }

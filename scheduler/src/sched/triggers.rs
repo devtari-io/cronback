@@ -7,7 +7,7 @@ use chrono::{DateTime, Utc};
 use chrono_tz::{Tz, UTC};
 use cron::{OwnedScheduleIterator, Schedule as CronSchedule};
 use shared::database::trigger_store::TriggerStoreError;
-use shared::types::{Schedule, Trigger, TriggerId};
+use shared::types::{Schedule, Status, Trigger, TriggerId};
 use thiserror::Error;
 use tracing::info;
 
@@ -26,6 +26,8 @@ pub(crate) enum TriggerError {
     MalformedTrigger(TriggerId),
     #[error("Trigger with Id '{0}' is unknown to this scheduler!")]
     NotFound(TriggerId),
+    #[error("Cannot perform operation on a trigger with status '{0}'")]
+    InvalidStatus(Status),
     //join error
     #[error("Internal async processing failure!")]
     JoinError(#[from] tokio::task::JoinError),
@@ -71,8 +73,8 @@ impl ActiveTriggerMap {
         self.dirty
     }
 
-    pub fn awaiting_db_flush(&self) -> &HashSet<TriggerId> {
-        &self.awaiting_db_flush
+    pub fn awaiting_db_flush(&self) -> HashSet<TriggerId> {
+        self.awaiting_db_flush.clone()
     }
 
     pub fn clear_db_flush(&mut self) {
@@ -82,6 +84,41 @@ impl ActiveTriggerMap {
     pub fn add_to_awaiting_db_flush(&mut self, trigger_id: TriggerId) {
         // Mark this trigger as dirty so that we can persist it
         self.awaiting_db_flush.insert(trigger_id);
+    }
+
+    pub fn is_trigger_retired(&self, trigger_id: &TriggerId) -> bool {
+        self.state
+            .get(trigger_id)
+            .map(|t| {
+                [Status::Canceled, Status::Expired].contains(&t.get().status)
+            })
+            .unwrap_or(false)
+    }
+
+    // Can be used to remove an expired/cancelled trigger after flush
+    pub fn pop_trigger(
+        &mut self,
+        trigger_id: &TriggerId,
+    ) -> Option<ActiveTrigger> {
+        let res = self.state.remove(trigger_id);
+        if res.is_some() {
+            // not strictly necessary, but without it the spinner will report
+            // the wrong number of active triggers to metrics.
+            self.mark_dirty();
+        }
+        res
+    }
+
+    // Should be used to only push dead/retired triggers.
+    pub fn push_trigger(
+        &mut self,
+        trigger_id: TriggerId,
+        trigger: ActiveTrigger,
+    ) {
+        self.state.insert(trigger_id, trigger);
+        // not strictly necessary, but without it the spinner will report
+        // the wrong number of active triggers to metrics.
+        self.mark_dirty();
     }
 
     pub fn clear(&mut self) {
@@ -133,9 +170,75 @@ impl ActiveTriggerMap {
      *   run_at list if we didn't catch this in validation.
      */
     pub fn advance(&mut self, trigger_id: &TriggerId) -> Option<DateTime<Tz>> {
-        self.state
-            .get_mut(trigger_id)
-            .and_then(|trigger| trigger.advance())
+        let Some(trigger) = self.state.get_mut(trigger_id) else {
+            return None;
+        };
+
+        if !trigger.is_alive() {
+            return None;
+        }
+
+        let next_tick = trigger.advance();
+
+        if next_tick.is_some() {
+            return next_tick;
+        }
+
+        // We should not be active anymore.
+        self.update_status(trigger_id, Status::Expired, &[])
+            .unwrap();
+        None
+    }
+
+    pub fn pause(
+        &mut self,
+        trigger_id: &TriggerId,
+    ) -> Result<(), TriggerError> {
+        self.update_status(
+            trigger_id,
+            Status::Paused,
+            &[Status::Canceled, Status::Expired],
+        )
+    }
+
+    pub fn resume(
+        &mut self,
+        trigger_id: &TriggerId,
+    ) -> Result<(), TriggerError> {
+        self.update_status(
+            trigger_id,
+            Status::Active,
+            &[Status::Canceled, Status::Expired],
+        )
+    }
+
+    pub fn cancel(
+        &mut self,
+        trigger_id: &TriggerId,
+    ) -> Result<(), TriggerError> {
+        self.update_status(trigger_id, Status::Canceled, &[])
+    }
+
+    fn update_status(
+        &mut self,
+        trigger_id: &TriggerId,
+        new_status: Status,
+        reject_statuses: &[Status],
+    ) -> Result<(), TriggerError> {
+        let Some(trigger) = self.state.get_mut(trigger_id) else {
+            return Err(TriggerError::NotFound(trigger_id.clone()));
+        };
+
+        if reject_statuses.contains(&trigger.get().status) {
+            return Err(TriggerError::InvalidStatus(
+                trigger.get().status.clone(),
+            ));
+        }
+
+        if trigger.update_status(new_status) {
+            self.add_to_awaiting_db_flush(trigger_id.clone());
+        }
+        Ok(())
     }
 
     pub fn update_last_invoked_at(
@@ -213,9 +316,12 @@ impl Eq for TriggerTemporalState {}
 pub(crate) enum TriggerFutureTicks {
     CronPattern {
         next_ticks: Peekable<OwnedScheduleIterator<Tz>>,
-        remaining_events_limit: Option<u64>,
+        remaining: Option<u64>,
     },
-    RunAt(BinaryHeap<Reverse<DateTime<Tz>>>),
+    RunAt {
+        run_at: BinaryHeap<Reverse<DateTime<Tz>>>,
+        remaining: u64,
+    },
 }
 
 impl TriggerFutureTicks {
@@ -227,8 +333,8 @@ impl TriggerFutureTicks {
             | Schedule::Recurring(cron) => {
                 let raw_pattern = cron.cron.clone().unwrap();
                 let cron_schedule = CronSchedule::from_str(&raw_pattern)?;
-                let tz: Tz = cron.cron_timezone.parse().map_err(|_| {
-                    TriggerError::InvalidTimezone(cron.cron_timezone.clone())
+                let tz: Tz = cron.timezone.parse().map_err(|_| {
+                    TriggerError::InvalidTimezone(cron.timezone.clone())
                 })?;
                 let next_ticks = if let Some(last_invoked_at) = last_invoked_at
                 {
@@ -238,29 +344,33 @@ impl TriggerFutureTicks {
                 } else {
                     cron_schedule.upcoming_owned(tz).peekable()
                 };
-                // TODO: This should be remaining_events_limit, or instead,
-                // change the spec to set an end date.
-                let events_limit = if cron.cron_events_limit > 0 {
-                    Some(cron.cron_events_limit)
+                let remaining = if cron.limit > 0 {
+                    Some(cron.remaining)
                 } else {
                     None
                 };
                 Ok(TriggerFutureTicks::CronPattern {
                     next_ticks,
-                    remaining_events_limit: events_limit,
+                    remaining,
                 })
             }
             | Schedule::RunAt(run_at) => {
                 let mut ticks = BinaryHeap::new();
                 let last_invoked_at =
                     last_invoked_at.unwrap_or(Utc::now()).with_timezone(&UTC);
-                for ts in run_at.run_at.iter() {
+                let mut remaining = 0;
+
+                for ts in run_at.timepoints.iter() {
                     if *ts > last_invoked_at {
+                        remaining += 1;
                         // Reversed to make this min-heap
                         ticks.push(Reverse(*ts));
                     }
                 }
-                Ok(TriggerFutureTicks::RunAt(ticks))
+                Ok(TriggerFutureTicks::RunAt {
+                    run_at: ticks,
+                    remaining,
+                })
             }
         }
     }
@@ -276,17 +386,24 @@ impl TriggerFutureTicks {
         self.peek_or_next(false)
     }
 
+    pub fn remaining(&self) -> Option<u64> {
+        match self {
+            | Self::CronPattern { remaining, .. } => *remaining,
+            | Self::RunAt { remaining, .. } => Some(*remaining),
+        }
+    }
+
     fn peek_or_next(&mut self, next: bool) -> Option<DateTime<Tz>> {
         match self {
             // We hit the run limit.
             | Self::CronPattern {
-                remaining_events_limit: Some(events_limit),
+                remaining: Some(events_limit),
                 ..
             } if *events_limit == 0 => None,
             // We might have more runs
             | Self::CronPattern {
                 next_ticks,
-                remaining_events_limit,
+                remaining: remaining_events_limit,
                 ..
             } => {
                 if next {
@@ -302,11 +419,13 @@ impl TriggerFutureTicks {
                     next_ticks.peek().cloned()
                 }
             }
-            | Self::RunAt(ticks) => {
+            | Self::RunAt { run_at, remaining } => {
                 if next {
-                    ticks.pop().map(|f| f.0)
+                    let res = run_at.pop().map(|f| f.0);
+                    *remaining -= 1;
+                    res
                 } else {
-                    ticks.peek().map(|f| f.0)
+                    run_at.peek().map(|f| f.0)
                 }
             }
         }
@@ -350,12 +469,40 @@ impl ActiveTrigger {
         self.ticks.peek()
     }
 
+    // Active means that it should continue to live in the spinner map. A paused
+    // trigger is considered active, but it won't be invoked. We will advance
+    // its clock as if it was invoked though.
+    pub fn is_alive(&self) -> bool {
+        self.inner.status == Status::Active
+            || self.inner.status == Status::Paused
+    }
+
     pub fn advance(&mut self) -> Option<DateTime<Tz>> {
-        self.ticks.advance_and_peek()
+        let res = self.ticks.advance_and_peek();
+        let schedule = self.inner.schedule.as_mut().unwrap();
+        match schedule {
+            | Schedule::Recurring(cron) => {
+                cron.remaining = self.ticks.remaining().unwrap_or(0);
+            }
+            | Schedule::RunAt(run_at) => {
+                run_at.remaining = self.ticks.remaining().unwrap_or(0);
+            }
+        };
+        res
     }
 
     pub fn last_invoked_at(&self) -> Option<DateTime<Utc>> {
         self.inner.hidden_last_invoked_at
+    }
+
+    // Returns true if state has changed.
+    fn update_status(&mut self, new_status: Status) -> bool {
+        if self.inner.status != new_status {
+            self.inner.status = new_status;
+            true
+        } else {
+            false
+        }
     }
 }
 
@@ -380,13 +527,19 @@ mod tests {
     fn create_cron_schedule(pattern: &str, cron_events_limit: u64) -> Schedule {
         Schedule::Recurring(Cron {
             cron: Some(pattern.into()),
-            cron_timezone: "Europe/London".into(),
-            cron_events_limit,
+            timezone: "Europe/London".into(),
+            limit: cron_events_limit,
+            remaining: cron_events_limit,
         })
     }
 
     fn create_run_at(timepoints: Vec<DateTime<Tz>>) -> Schedule {
-        Schedule::RunAt(RunAt { run_at: timepoints })
+        let remaining = timepoints.len() as u64;
+
+        Schedule::RunAt(RunAt {
+            timepoints,
+            remaining,
+        })
     }
 
     fn create_trigger(sched: Schedule) -> Trigger {
@@ -418,7 +571,7 @@ mod tests {
         assert!(result.peek().is_some());
         let TriggerFutureTicks::CronPattern {
             mut next_ticks,
-            remaining_events_limit,
+            remaining: remaining_events_limit,
         } = result else {
             panic!("Should never get here!");
         };
@@ -442,7 +595,7 @@ mod tests {
         assert!(matches!(result, TriggerFutureTicks::CronPattern { .. }));
 
         if let TriggerFutureTicks::CronPattern {
-            remaining_events_limit,
+            remaining: remaining_events_limit,
             ..
         } = result
         {
@@ -461,18 +614,19 @@ mod tests {
     fn future_ticks_parsing_run_at() -> Result<(), TriggerError> {
         // generating some time points, one in the past, and three in the
         // future.
-        let mut timepoints = vec![];
-        timepoints.push(parse_iso8601("PT-1M").unwrap()); // 1 minute ago (in the past)
-        timepoints.push(parse_iso8601("PT2M").unwrap());
-        timepoints.push(parse_iso8601("PT3M").unwrap());
+        let timepoints = vec![
+            parse_iso8601("PT-1M").unwrap(), /* 1 minute ago (in the past) */
+            parse_iso8601("PT2M").unwrap(),
+            parse_iso8601("PT3M").unwrap(),
+        ];
 
         let schedule = create_run_at(timepoints);
 
         let mut result = TriggerFutureTicks::from_schedule(&schedule, None)?;
         assert!(matches!(result, TriggerFutureTicks::RunAt { .. }));
 
-        if let TriggerFutureTicks::RunAt(ref points) = result {
-            assert_eq!(points.len(), 2);
+        if let TriggerFutureTicks::RunAt { ref run_at, .. } = result {
+            assert_eq!(run_at.len(), 2);
         } else {
             panic!("Should never get here!");
         }

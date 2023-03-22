@@ -9,9 +9,9 @@ use chrono::{DateTime, Utc};
 use metrics::{counter, gauge, histogram};
 use shared::grpc_client_provider::DispatcherClientProvider;
 use shared::service::ServiceContext;
-use shared::types::TriggerId;
+use shared::types::{Status, TriggerId};
 use tokio::runtime::Handle;
-use tracing::{info, trace, warn, Instrument};
+use tracing::{debug, info, trace, warn, Instrument};
 
 use super::event_dispatcher::DispatchError;
 use super::triggers::{ActiveTriggerMap, TriggerTemporalState};
@@ -247,9 +247,7 @@ impl Spinner {
             /*
              * 3. Write-Lock TriggerMap
              * 4. Calculate temporal state for the removed triggers and
-             * re-insert. 5. Check if we have dirty triggers,
-             * fetch their contents. 6. Rebuild temporal state if
-             * needed. 7. loop
+             * re-insert.
              */
             if !dispatch_queue.is_empty() {
                 // Maybe individual triggers need to be advanced.
@@ -266,9 +264,19 @@ impl Spinner {
                         // will keep it for simplicity.
                         trigger.next_tick = next_tick;
                         temporal_states.push(Reverse(trigger));
+                    } else {
+                        // This trigger is no longer active. We should flush and
+                        // compact.
+                        w.add_to_awaiting_db_flush(trigger.trigger_id);
                     }
                 }
             }
+            /*
+             * 5. Check if we have dirty triggers,
+             * fetch their contents.
+             * 6. Rebuild temporal state if
+             * needed.
+             */
             // Is the state dirty?
             if self.triggers.read().unwrap().is_dirty() {
                 trace!("Triggers updated, reloading...");
@@ -282,7 +290,7 @@ impl Spinner {
                 );
             }
 
-            // This number indicates how busy the machine is. The closer to zero
+            // This indicates how busy the machine is. The closer to zero
             // the busier we are. That said, it's not an accurate indicator of
             // the overall system performance as we might be overwhelming the
             // tokio runtime by the number of the async dispatches we are
@@ -314,6 +322,22 @@ impl Spinner {
             };
             trigger.clone()
         };
+
+        if trigger.status == Status::Paused {
+            let handle = self.tokio_handle.spawn(
+                async move {
+                    // We probably should persist this fake invocation
+                    // somewhere.
+                    debug!(
+                        "Skipping dispatch of PAUSED trigger {}",
+                        trigger.id
+                    );
+                    Ok(())
+                }
+                .instrument(tracing::Span::current()),
+            );
+            return Some(handle);
+        }
         // TODO:
         // Can't we dispatch? if we can't, we should retry a few times, then we
         // drop into  failsafe mode.

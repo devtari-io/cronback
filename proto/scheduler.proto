@@ -14,6 +14,12 @@ service Scheduler {
   rpc GetTrigger (GetTriggerRequest)  returns (GetTriggerResponse);
   /// Retrieve a trigger by token
   rpc FindTriggers (FindTriggersRequest)  returns (FindTriggersResponse);
+  /// Pause a running trigger
+  rpc PauseTrigger (PauseTriggerRequest)  returns (PauseTriggerResponse);
+  /// Resume a paused/active trigger
+  rpc ResumeTrigger (ResumeTriggerRequest)  returns (ResumeTriggerResponse);
+  /// Cancel trigger
+  rpc CancelTrigger (CancelTriggerRequest)  returns (CancelTriggerResponse);
 }
 
 message InstallTriggerRequest {
@@ -35,6 +41,34 @@ message InstallTriggerRequest {
 message InstallTriggerResponse {
   trigger_proto.Trigger trigger = 1;
 }
+
+// PAUSE TRIGGER
+message PauseTriggerRequest {
+  string id = 1;
+}
+
+message PauseTriggerResponse {
+  trigger_proto.Trigger trigger = 1;
+}
+
+// RESUME TRIGGER
+message ResumeTriggerRequest {
+  string id = 1;
+}
+
+message ResumeTriggerResponse {
+  trigger_proto.Trigger trigger = 1;
+}
+
+// CANCEL TRIGGER
+message CancelTriggerRequest {
+  string id = 1;
+}
+
+message CancelTriggerResponse {
+  trigger_proto.Trigger trigger = 1;
+}
+
 
 // == EXECUTE TRIGGER MANUALLY ==
 message InvokeTriggerRequest {

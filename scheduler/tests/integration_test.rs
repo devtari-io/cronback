@@ -39,15 +39,16 @@ async fn install_trigger_valid_test() {
         }),
         schedule: Some(Schedule {
             schedule: Some(trigger_proto::schedule::Schedule::Cron(Cron {
-                cron: format!("0 * * * * *"),
+                cron: "0 * * * * *".to_owned(),
                 timezone: "Europe/London".into(),
-                events_limit: 4,
+                limit: 4,
+                remaining: 0, // will be overridden by the server.
             })),
         }),
     };
     let request_future = async {
         let installed_trigger = client
-            .install_trigger(Request::new(install_trigger.into()))
+            .install_trigger(Request::new(install_trigger))
             .await
             .unwrap()
             .into_inner();

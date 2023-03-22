@@ -74,8 +74,9 @@ impl From<Cron> for trigger_proto::Cron {
     fn from(value: Cron) -> Self {
         Self {
             cron: value.cron.unwrap(),
-            timezone: value.cron_timezone,
-            events_limit: value.cron_events_limit,
+            timezone: value.timezone,
+            limit: value.limit,
+            remaining: value.remaining,
         }
     }
 }
@@ -83,7 +84,12 @@ impl From<Cron> for trigger_proto::Cron {
 impl From<RunAt> for trigger_proto::RunAt {
     fn from(value: RunAt) -> Self {
         Self {
-            run_at: value.run_at.into_iter().map(|d| to_iso8601(&d)).collect(),
+            run_at: value
+                .timepoints
+                .into_iter()
+                .map(|d| to_iso8601(&d))
+                .collect(),
+            remaining: value.remaining,
         }
     }
 }

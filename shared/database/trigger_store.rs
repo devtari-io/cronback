@@ -82,7 +82,7 @@ impl TriggerStore for SqlTriggerStore {
     ) -> Result<Vec<Trigger>, TriggerStoreError> {
         let results = sqlx::query(
             "SELECT id, value FROM triggers where JSON_EXTRACT(value, \
-             '$.status') = 'active'",
+             '$.status') IN ('active', 'paused')",
         )
         .fetch_all(&self.db.pool)
         .await?
@@ -193,16 +193,19 @@ mod tests {
         let t1 = build_trigger("t1", owner1.clone(), Status::Active);
         let t2 = build_trigger("t2", owner1.clone(), Status::Paused);
         let t3 = build_trigger("t3", owner2.clone(), Status::Active);
+        let t4 = build_trigger("t4", owner2.clone(), Status::Expired);
 
         // Test installs
         store.install_trigger(&t1).await?;
         store.install_trigger(&t2).await?;
         store.install_trigger(&t3).await?;
+        store.install_trigger(&t4).await?;
 
         // Test getters
         assert_eq!(store.get_trigger(&t1.id).await?, Some(t1.clone()));
         assert_eq!(store.get_trigger(&t2.id).await?, Some(t2.clone()));
         assert_eq!(store.get_trigger(&t3.id).await?, Some(t3.clone()));
+        assert_eq!(store.get_trigger(&t4.id).await?, Some(t4.clone()));
 
         // Test fetching non existent trigger
         assert_eq!(
@@ -214,7 +217,7 @@ mod tests {
 
         // Test get all active
         let mut results = store.get_all_active_triggers().await?;
-        let mut expected = vec![t1.clone(), t3.clone()];
+        let mut expected = vec![t1.clone(), t2.clone(), t3.clone()];
         expected.sort_by(|a, b| a.id.cmp(&b.id));
         results.sort_by(|a, b| a.id.cmp(&b.id));
         assert_eq!(results, expected);

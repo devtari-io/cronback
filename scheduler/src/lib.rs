@@ -124,11 +124,15 @@ pub mod test_helpers {
         let socket = Arc::clone(&socket);
         // Connect to the server over a Unix socket
         // The URL will be ignored.
+        //
         let channel = Endpoint::try_from("http://example.url")
             .unwrap()
             .connect_with_connector(service_fn(move |_: Uri| {
                 let socket = Arc::clone(&socket);
-                async move { UnixStream::connect(&*socket).await }
+                #[allow(clippy::redundant_async_block)]
+                async move {
+                    UnixStream::connect(&*socket).await
+                }
             }))
             .await
             .unwrap();

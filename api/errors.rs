@@ -5,7 +5,7 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use thiserror::Error;
 use tonic::Status;
-use tracing::error;
+use tracing::{error, warn};
 
 use crate::AppStateError;
 
@@ -60,16 +60,46 @@ impl IntoResponse for ApiError {
             }
             | ApiError::SchedulerError(e) => {
                 // TODO: Ship GRPC errors better
-                error!(
-                    message = e.to_string(),
-                    message = e.to_string(),
-                    "A scheduler communication error has been reported.",
-                );
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Something went terribly wrong here, please report a bug!"
-                        .to_owned(),
-                )
+                match e.code() {
+                    | tonic::Code::InvalidArgument => {
+                        (StatusCode::BAD_REQUEST, e.message().to_string())
+                    }
+                    | tonic::Code::NotFound => {
+                        (StatusCode::NOT_FOUND, e.message().to_string())
+                    }
+                    | tonic::Code::AlreadyExists => {
+                        (StatusCode::CONFLICT, e.message().to_string())
+                    }
+                    | tonic::Code::PermissionDenied => {
+                        (StatusCode::FORBIDDEN, e.message().to_string())
+                    }
+                    | tonic::Code::Unauthenticated => {
+                        (StatusCode::UNAUTHORIZED, e.message().to_string())
+                    }
+                    | tonic::Code::Unimplemented => {
+                        (StatusCode::NOT_IMPLEMENTED, e.message().to_string())
+                    }
+                    | tonic::Code::Unavailable => {
+                        (
+                            StatusCode::SERVICE_UNAVAILABLE,
+                            e.message().to_string(),
+                        )
+                    }
+                    | _ => {
+                        error!(
+                            message = e.to_string(),
+                            message = e.to_string(),
+                            "A scheduler communication error has been \
+                             reported.",
+                        );
+                        (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            "Something went terribly wrong here, please \
+                             report a bug!"
+                                .to_owned(),
+                        )
+                    }
+                }
             }
         }
         .into_response()
@@ -88,6 +118,8 @@ where
             format!("JSON validation error: {}", serde_json_err),
         )
     } else {
+        warn!("JSON error: {}", err);
+
         (StatusCode::BAD_REQUEST, "Unknown error".to_string())
     }
 }

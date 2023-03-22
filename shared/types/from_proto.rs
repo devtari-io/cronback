@@ -85,8 +85,9 @@ impl From<trigger_proto::Cron> for super::Cron {
     fn from(value: trigger_proto::Cron) -> Self {
         Self {
             cron: Some(value.cron),
-            cron_timezone: value.timezone,
-            cron_events_limit: value.events_limit,
+            timezone: value.timezone,
+            limit: value.limit,
+            remaining: value.remaining,
         }
     }
 }
@@ -94,11 +95,12 @@ impl From<trigger_proto::Cron> for super::Cron {
 impl From<trigger_proto::RunAt> for super::RunAt {
     fn from(value: trigger_proto::RunAt) -> Self {
         Self {
-            run_at: value
+            timepoints: value
                 .run_at
                 .into_iter()
                 .map(|d| parse_iso8601(&d).unwrap())
                 .collect(),
+            remaining: value.remaining,
         }
     }
 }

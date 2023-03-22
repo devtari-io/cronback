@@ -18,7 +18,8 @@ message Cron {
   string cron = 1;
   string timezone = 2;
   // The number of times this trigger should run. A value of 0, means that it never expires
-  uint64 events_limit = 3;
+  uint64 limit = 3;
+  uint64 remaining = 4;
 }
 
 enum RetryPolicy {
@@ -64,6 +65,7 @@ message Emit {
 
 message RunAt {
   repeated string run_at = 1;
+  uint64 remaining = 2;
 }
 message Schedule {
   oneof schedule {
