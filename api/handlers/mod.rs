@@ -1,14 +1,34 @@
 use std::sync::Arc;
 
-use axum::Router;
+use axum::{middleware, Router};
 
+use crate::auth::auth as auth_middleware;
 use crate::AppState;
 
+pub(crate) mod admin;
 pub(crate) mod invocations;
 pub(crate) mod triggers;
 
 pub(crate) fn routes(shared_state: Arc<AppState>) -> Router {
     Router::new()
-        .nest("/triggers", triggers::routes(Arc::clone(&shared_state)))
-        .nest("/invocations", invocations::routes(shared_state))
+        // TODO: The admin route requires special authorization
+        .nest("/admin", admin::routes(Arc::clone(&shared_state)))
+        .nest(
+            "/triggers",
+            triggers::routes(Arc::clone(&shared_state)).route_layer(
+                middleware::from_fn_with_state(
+                    Arc::clone(&shared_state),
+                    auth_middleware,
+                ),
+            ),
+        )
+        .nest(
+            "/invocations",
+            invocations::routes(Arc::clone(&shared_state)).route_layer(
+                middleware::from_fn_with_state(
+                    Arc::clone(&shared_state),
+                    auth_middleware,
+                ),
+            ),
+        )
 }

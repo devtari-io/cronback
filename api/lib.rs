@@ -1,4 +1,6 @@
 mod api_model;
+pub(crate) mod auth;
+pub(crate) mod auth_store;
 pub mod errors;
 pub(crate) mod extractors;
 mod handlers;
@@ -6,6 +8,7 @@ mod handlers;
 use std::sync::Arc;
 use std::time::Instant;
 
+use auth_store::AuthStore;
 use axum::extract::MatchedPath;
 use axum::http::{Request, StatusCode};
 use axum::middleware::{
@@ -32,6 +35,8 @@ use thiserror::Error;
 use tokio::select;
 use tracing::{error, info, warn};
 
+use crate::auth_store::SqlAuthStore;
+
 #[derive(Debug, Error)]
 pub enum AppStateError {
     #[error(transparent)]
@@ -46,9 +51,10 @@ pub struct Db {
     pub trigger_store: Box<dyn TriggerStore + Send + Sync>,
     pub invocation_store: Box<dyn InvocationStore + Send + Sync>,
     pub attempt_store: Box<dyn AttemptLogStore + Send + Sync>,
+    pub auth_store: Box<dyn AuthStore + Send + Sync>,
 }
 
-pub(crate) struct AppState {
+pub struct AppState {
     pub _context: service::ServiceContext,
     pub config: Config,
     pub db: Db,
@@ -122,6 +128,7 @@ pub async fn start_api_server(
             SqlInvocationStore::create(db.clone()).await?,
         ),
         attempt_store: Box::new(SqlAttemptLogStore::create(db.clone()).await?),
+        auth_store: Box::new(SqlAuthStore::create(db.clone()).await?),
     };
 
     let shared_state = Arc::new(AppState {
