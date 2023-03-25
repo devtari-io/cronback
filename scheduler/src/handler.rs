@@ -96,7 +96,6 @@ impl Scheduler for SchedulerAPIHandler {
         &self,
         request: Request<PauseTriggerRequest>,
     ) -> Result<Response<PauseTriggerResponse>, Status> {
-        // TODO
         let (_metadata, _ext, request) = request.into_parts();
         info!(request.id, "Pausing trigger");
         let trigger = self.scheduler.pause_trigger(request.id.into()).await?;
@@ -109,7 +108,6 @@ impl Scheduler for SchedulerAPIHandler {
         &self,
         request: Request<ResumeTriggerRequest>,
     ) -> Result<Response<ResumeTriggerResponse>, Status> {
-        // TODO
         let (_metadata, _ext, request) = request.into_parts();
         info!(request.id, "Resuming trigger");
         let trigger = self.scheduler.resume_trigger(request.id.into()).await?;
@@ -122,7 +120,6 @@ impl Scheduler for SchedulerAPIHandler {
         &self,
         request: Request<CancelTriggerRequest>,
     ) -> Result<Response<CancelTriggerResponse>, Status> {
-        // TODO
         let (_metadata, _ext, request) = request.into_parts();
         info!(request.id, "Canceling trigger");
         let trigger = self.scheduler.cancel_trigger(request.id.into()).await?;

@@ -129,10 +129,7 @@ pub mod test_helpers {
             .unwrap()
             .connect_with_connector(service_fn(move |_: Uri| {
                 let socket = Arc::clone(&socket);
-                #[allow(clippy::redundant_async_block)]
-                async move {
-                    UnixStream::connect(&*socket).await
-                }
+                async move { UnixStream::connect(&*socket).await }
             }))
             .await
             .unwrap();

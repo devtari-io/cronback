@@ -470,7 +470,7 @@ impl ActiveTrigger {
     }
 
     // Active means that it should continue to live in the spinner map. A paused
-    // trigger is considered active, but it won't be invoked. We will advance
+    // trigger is considered alive, but it won't be invoked. We will advance
     // its clock as if it was invoked though.
     pub fn is_alive(&self) -> bool {
         self.inner.status == Status::Active
