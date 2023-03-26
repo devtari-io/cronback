@@ -1,10 +1,10 @@
 use std::time::Duration;
 
+use futures::future::BoxFuture;
 use shared::types::{ExponentialBackoffRetry, RetryConfig, SimpleRetry};
 
 pub struct RetryPolicy {
     config: Option<RetryConfig>,
-    num_retries: u32,
     retries_limit: u32,
 }
 
@@ -23,24 +23,51 @@ impl RetryPolicy {
         };
         Self {
             config: Some(c),
-            num_retries: 0,
             retries_limit,
         }
     }
 
     pub fn no_retry() -> Self {
         Self {
-            num_retries: 0,
             config: None,
             retries_limit: 0,
         }
     }
 
+    // Given an async function F, this function will retry it
+    // according to the retry policy as long as F returns Err.
+    // If retries are exhausted, the last error from F is returned.
+    pub async fn retry<'a, T, U>(
+        &self,
+        mut f: impl FnMut(u32) -> BoxFuture<'a, Result<T, U>>,
+    ) -> Result<T, U> {
+        let mut num_retries: u32 = 0;
+        loop {
+            let result = f(num_retries).await;
+
+            match result {
+                | Ok(r) => return Ok(r),
+                | Err(e) => {
+                    num_retries += 1;
+                    match self.next_sleep_duration(num_retries) {
+                        | Some(d) => {
+                            let jitter = Duration::from_millis(
+                                (rand::random::<u16>() % 1000).into(),
+                            );
+                            tokio::time::sleep(d + jitter).await;
+                            continue;
+                        }
+                        | None => return Err(e),
+                    }
+                }
+            }
+        }
+    }
+
     /// Returns the duration to sleep if a retry should be done
     /// or None if we should no longer retry
-    pub fn next_sleep_duration(&mut self) -> Option<Duration> {
-        self.num_retries += 1;
-        if self.num_retries > self.retries_limit {
+    fn next_sleep_duration(&self, retry_num: u32) -> Option<Duration> {
+        if retry_num > self.retries_limit {
             return None;
         }
 
@@ -57,7 +84,7 @@ impl RetryPolicy {
             )) => {
                 Some(std::cmp::min(
                     max_delay_s,
-                    delay_s * 2_u32.pow(self.num_retries - 1),
+                    delay_s * 2_u32.pow(retry_num - 1),
                 ))
             }
             | None => None,
@@ -75,37 +102,37 @@ mod tests {
 
     #[test]
     fn no_retry_policy() {
-        let mut retry_policy = RetryPolicy::no_retry();
+        let retry_policy = RetryPolicy::no_retry();
 
-        assert_eq!(retry_policy.next_sleep_duration(), None);
+        assert_eq!(retry_policy.next_sleep_duration(1), None);
     }
 
     #[test]
-    fn simple_retry_policy() {
+    fn simple_retry_policy_delays() {
         let config = RetryConfig::SimpleRetry(SimpleRetry {
             max_num_attempts: 3,
             delay_s: Duration::from_secs(100),
         });
 
-        let mut retry_policy = RetryPolicy::with_config(config);
+        let retry_policy = RetryPolicy::with_config(config);
 
         assert_eq!(
-            retry_policy.next_sleep_duration(),
+            retry_policy.next_sleep_duration(1),
             Some(Duration::from_secs(100))
         );
         assert_eq!(
-            retry_policy.next_sleep_duration(),
+            retry_policy.next_sleep_duration(2),
             Some(Duration::from_secs(100))
         );
         assert_eq!(
-            retry_policy.next_sleep_duration(),
+            retry_policy.next_sleep_duration(3),
             Some(Duration::from_secs(100))
         );
-        assert_eq!(retry_policy.next_sleep_duration(), None);
+        assert_eq!(retry_policy.next_sleep_duration(4), None);
     }
 
     #[test]
-    fn exponential_retry_policy() {
+    fn exponential_retry_policy_delays() {
         let config =
             RetryConfig::ExponentialBackoffRetry(ExponentialBackoffRetry {
                 max_num_attempts: 5,
@@ -113,28 +140,28 @@ mod tests {
                 max_delay_s: Duration::from_secs(50),
             });
 
-        let mut retry_policy = RetryPolicy::with_config(config);
+        let retry_policy = RetryPolicy::with_config(config);
 
         assert_eq!(
-            retry_policy.next_sleep_duration(),
+            retry_policy.next_sleep_duration(1),
             Some(Duration::from_secs(10))
         );
         assert_eq!(
-            retry_policy.next_sleep_duration(),
+            retry_policy.next_sleep_duration(2),
             Some(Duration::from_secs(20))
         );
         assert_eq!(
-            retry_policy.next_sleep_duration(),
+            retry_policy.next_sleep_duration(3),
             Some(Duration::from_secs(40))
         );
         assert_eq!(
-            retry_policy.next_sleep_duration(),
+            retry_policy.next_sleep_duration(4),
             Some(Duration::from_secs(50))
         );
         assert_eq!(
-            retry_policy.next_sleep_duration(),
+            retry_policy.next_sleep_duration(5),
             Some(Duration::from_secs(50))
         );
-        assert_eq!(retry_policy.next_sleep_duration(), None);
+        assert_eq!(retry_policy.next_sleep_duration(6), None);
     }
 }

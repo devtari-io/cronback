@@ -4,6 +4,7 @@ use std::time::Instant;
 
 use chrono::Utc;
 use chrono_tz::UTC;
+use futures::FutureExt;
 use metrics::counter;
 use reqwest::header::HeaderValue;
 use reqwest::Method;
@@ -55,68 +56,78 @@ impl WebhookEmitJob {
             webhook_url = self.webhook.url
             ))]
     pub async fn run(&self) -> WebhookDeliveryStatus {
-        let mut retry_policy = if let Some(config) = &self.webhook.retry {
+        let retry_policy = if let Some(config) = &self.webhook.retry {
             RetryPolicy::with_config(config.clone())
         } else {
             RetryPolicy::no_retry()
         };
 
-        loop {
-            counter!("dispatcher.attempts_total", 1);
+        let res = retry_policy
+            .retry(|retry_num| {
+                {
+                    async move {
+                        counter!("dispatcher.attempts_total", 1);
+                        info!(
+                            "Executing retry #{retry_num} for invocation {}",
+                            &self.invocation_id,
+                        );
 
-            let attempt_start_time = Utc::now().with_timezone(&UTC);
+                        let attempt_start_time = Utc::now().with_timezone(&UTC);
 
-            let attempt_id = AttemptLogId::new(&self.owner_id);
-            let response =
-                dispatch_webhook(&attempt_id, &self.webhook, &self.payload)
-                    .await;
+                        let attempt_id = AttemptLogId::new(&self.owner_id);
+                        let response = dispatch_webhook(
+                            &attempt_id,
+                            &self.webhook,
+                            &self.payload,
+                        )
+                        .await;
 
-            let attempt_log = EmitAttemptLog {
-                id: attempt_id.clone(),
-                invocation_id: self.invocation_id.clone(),
-                trigger_id: self.trigger_id.clone(),
-                owner_id: self.owner_id.clone(),
-                status: if response.is_success() {
-                    AttemptStatus::Succeeded
-                } else {
-                    AttemptStatus::Failed
-                },
-                details: AttemptDetails::WebhookAttemptDetails(
-                    response.clone(),
-                ),
-                created_at: attempt_start_time,
-            };
+                        let attempt_log = EmitAttemptLog {
+                            id: attempt_id.clone(),
+                            invocation_id: self.invocation_id.clone(),
+                            trigger_id: self.trigger_id.clone(),
+                            owner_id: self.owner_id.clone(),
+                            status: if response.is_success() {
+                                AttemptStatus::Succeeded
+                            } else {
+                                AttemptStatus::Failed
+                            },
+                            details: AttemptDetails::WebhookAttemptDetails(
+                                response.clone(),
+                            ),
+                            created_at: attempt_start_time,
+                        };
 
-            info!(
-            attempt_id = %attempt_log.id,
-            status = ?attempt_log.status,
-            "dispatch-attempt"
-            );
+                        info!(
+                        attempt_id = %attempt_log.id,
+                        status = ?attempt_log.status,
+                        "dispatch-attempt"
+                        );
 
-            if let Err(e) = self.attempt_store.log_attempt(&attempt_log).await {
-                error!("Failed to log attempt {attempt_id} to database: {}", e);
-            }
+                        if let Err(e) =
+                            self.attempt_store.log_attempt(&attempt_log).await
+                        {
+                            error!(
+                                "Failed to log attempt {attempt_id} to \
+                                 database: {}",
+                                e
+                            );
+                        }
 
-            if response.is_success() {
-                return WebhookDeliveryStatus::Succeeded;
-            }
-
-            match retry_policy.next_sleep_duration() {
-                | Some(dur) => {
-                    debug!(
-                    attempt_id = %attempt_log.id,
-                    "dispatch-attempt: will retry in {dur:?}"
-                    );
-                    tokio::time::sleep(dur).await;
+                        if response.is_success() {
+                            Ok(())
+                        } else {
+                            Err(())
+                        }
+                    }
                 }
-                | None => {
-                    debug!(
-                    attempt_id = %attempt_log.id,
-                    "dispatch-attempt: no more retries left, marking the invocation as failed"
-                    );
-                    return WebhookDeliveryStatus::Failed;
-                }
-            }
+                .boxed()
+            })
+            .await;
+
+        match res {
+            | Ok(_) => WebhookDeliveryStatus::Succeeded,
+            | Err(_) => WebhookDeliveryStatus::Failed,
         }
     }
 }
