@@ -4,7 +4,7 @@ use axum::extract::State;
 use axum::http::header::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use axum::{debug_handler, Json};
+use axum::{debug_handler, Extension, Json};
 use proto::scheduler_proto::InstallTriggerRequest;
 use shared::types::{OwnerId, Schedule, Trigger};
 
@@ -17,14 +17,13 @@ use crate::AppState;
 #[debug_handler]
 pub(crate) async fn install(
     state: State<Arc<AppState>>,
+    Extension(owner_id): Extension<OwnerId>,
     ValidatedJson(mut request): ValidatedJson<InstallTrigger>,
 ) -> Result<impl IntoResponse, ApiError> {
     let mut response_headers = HeaderMap::new();
     response_headers
         .insert("cronback-trace-id", "SOMETHING SOMETHING".parse().unwrap());
 
-    // TODO: Get owner id
-    let owner_id = OwnerId::from("ab1".to_owned());
     // Decide the scheduler cell
     // Pick cell.
     let (cell_id, mut scheduler) = state.pick_scheduler("".to_string()).await?;

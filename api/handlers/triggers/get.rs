@@ -4,7 +4,7 @@ use axum::extract::{Path, State};
 use axum::http::header::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use axum::{debug_handler, Json};
+use axum::{debug_handler, Extension, Json};
 use proto::scheduler_proto::GetTriggerRequest;
 use serde_json::json;
 use shared::types::{OwnerId, Trigger, TriggerId, ValidId};
@@ -18,12 +18,11 @@ use crate::{AppState, AppStateError};
 pub(crate) async fn get(
     state: State<Arc<AppState>>,
     Path(id): Path<TriggerId>,
+    Extension(owner_id): Extension<OwnerId>,
 ) -> Result<impl IntoResponse, ApiError> {
     let mut response_headers = HeaderMap::new();
     response_headers
         .insert("cronback-trace-id", "SOMETHING SOMETHING".parse().unwrap());
-    // TODO: Get owner id
-    let owner_id = OwnerId::from("ab1".to_owned());
     if !id.is_valid() {
         return Ok((
             StatusCode::BAD_REQUEST,
@@ -44,6 +43,11 @@ pub(crate) async fn get(
         .unwrap();
 
     let trigger: Trigger = trigger.into();
+
+    if trigger.owner_id != owner_id {
+        return Ok(StatusCode::FORBIDDEN.into_response());
+    }
+
     Ok((StatusCode::OK, response_headers, Json(trigger)).into_response())
 }
 
@@ -51,12 +55,11 @@ pub(crate) async fn get(
 #[debug_handler]
 pub(crate) async fn list(
     state: State<Arc<AppState>>,
+    Extension(owner_id): Extension<OwnerId>,
 ) -> Result<impl IntoResponse, ApiError> {
     let mut response_headers = HeaderMap::new();
     response_headers
         .insert("cronback-trace-id", "SOMETHING SOMETHING".parse().unwrap());
-    // TODO: Get owner id
-    let owner_id = OwnerId::from("ab1".to_owned());
     info!("Get all trigger for owner {}", owner_id);
 
     let triggers = state

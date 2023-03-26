@@ -3,11 +3,12 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use axum::extract::State;
-use axum::http::{self, Request, StatusCode};
+use axum::http::{self, HeaderMap, HeaderValue, Request, StatusCode};
 use axum::middleware::Next;
 use axum::response::IntoResponse;
 use base64::Engine;
 use sha2::{Digest, Sha512};
+use shared::types::OwnerId;
 use tracing::error;
 use uuid::Uuid;
 
@@ -105,13 +106,10 @@ impl ApiKey {
     }
 }
 
-pub async fn auth<B>(
-    State(state): State<Arc<AppState>>,
-    mut req: Request<B>,
-    next: Next<B>,
-) -> impl IntoResponse {
-    let auth_header = req
-        .headers()
+fn get_auth_key(
+    header_map: &HeaderMap<HeaderValue>,
+) -> Result<String, StatusCode> {
+    let auth_header = header_map
         .get(http::header::AUTHORIZATION)
         .and_then(|header| header.to_str().ok());
 
@@ -125,12 +123,49 @@ pub async fn auth<B>(
         return Err(StatusCode::UNAUTHORIZED);
     }
 
-    let auth_key = match auth_header.split_once(' ') {
-        | Some((name, content)) if name == "Bearer" => content,
-        | _ => {
-            return Err(StatusCode::BAD_REQUEST);
-        }
-    };
+    match auth_header.split_once(' ') {
+        | Some((name, content)) if name == "Bearer" => Ok(content.to_string()),
+        | _ => Err(StatusCode::BAD_REQUEST),
+    }
+}
+
+pub async fn admin_only_auth<B>(
+    State(state): State<Arc<AppState>>,
+    req: Request<B>,
+    next: Next<B>,
+) -> impl IntoResponse {
+    let auth_key = get_auth_key(req.headers())?;
+    let admin_keys = &state.config.api.admin_api_keys;
+    if admin_keys.contains(&auth_key) {
+        Ok(next.run(req).await)
+    } else {
+        Err(StatusCode::FORBIDDEN)
+    }
+}
+
+pub async fn auth<B>(
+    State(state): State<Arc<AppState>>,
+    mut req: Request<B>,
+    next: Next<B>,
+) -> impl IntoResponse {
+    let auth_key = get_auth_key(req.headers())?;
+    let admin_keys = &state.config.api.admin_api_keys;
+    if admin_keys.contains(&auth_key) {
+        // This is an admin user which is acting on behalf of some owner.
+        const ON_BEHALF_OF_HEADER_NAME: &str = "X-On-Behalf-Of";
+
+        let Some(owner_id) = req
+            .headers()
+            .get(ON_BEHALF_OF_HEADER_NAME)
+            .and_then(|h| h.to_str().ok()) else {
+                error!("Admin user didn't set {} header", ON_BEHALF_OF_HEADER_NAME);
+                return Err(StatusCode::BAD_REQUEST);
+            };
+        let owner_id = OwnerId::from(owner_id.to_string());
+        req.extensions_mut().insert(owner_id);
+
+        return Ok(next.run(req).await);
+    }
 
     let Ok(api_key) = auth_key.to_string().parse() else {
         return Err(StatusCode::UNAUTHORIZED);

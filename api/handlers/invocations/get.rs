@@ -4,7 +4,7 @@ use axum::extract::{Path, State};
 use axum::http::header::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use axum::{debug_handler, Json};
+use axum::{debug_handler, Extension, Json};
 use serde_json::json;
 use shared::types::{InvocationId, OwnerId, ValidId};
 use tracing::info;
@@ -16,14 +16,13 @@ use crate::{AppState, AppStateError};
 #[debug_handler]
 pub(crate) async fn get(
     state: State<Arc<AppState>>,
+    Extension(owner_id): Extension<OwnerId>,
     Path(id): Path<InvocationId>,
 ) -> Result<impl IntoResponse, ApiError> {
     let mut response_headers = HeaderMap::new();
     response_headers
         .insert("cronback-trace-id", "SOMETHING SOMETHING".parse().unwrap());
     info!("Get invocation with id {}", id);
-
-    // TODO: authorization
 
     if !id.is_valid() {
         return Ok((
@@ -42,32 +41,32 @@ pub(crate) async fn get(
         .await
         .map_err(|e| AppStateError::DatabaseError(e.to_string()))?;
 
-    Ok(match invocation {
-        | Some(invocation) => {
-            (StatusCode::OK, response_headers, Json(invocation)).into_response()
-        }
-        | None => {
-            (
+    let Some(invocation) = invocation else {
+            return Ok((
                 StatusCode::NOT_FOUND,
                 response_headers,
                 // TODO: We need a proper API design for API errors
                 Json("Invocation not found"),
             )
-                .into_response()
-        }
-    })
+                .into_response());
+    };
+
+    if invocation.owner_id != owner_id {
+        return Ok(StatusCode::FORBIDDEN.into_response());
+    }
+
+    Ok((StatusCode::OK, response_headers, Json(invocation)).into_response())
 }
 
 #[tracing::instrument(skip(state))]
 #[debug_handler]
 pub(crate) async fn list(
     state: State<Arc<AppState>>,
+    Extension(owner_id): Extension<OwnerId>,
 ) -> Result<impl IntoResponse, ApiError> {
     let mut response_headers = HeaderMap::new();
     response_headers
         .insert("cronback-trace-id", "SOMETHING SOMETHING".parse().unwrap());
-    // TODO: Get owner id
-    let owner_id = OwnerId::from("ab1".to_owned());
     info!("Get all invocations for owner {}", owner_id);
 
     let invocations = state

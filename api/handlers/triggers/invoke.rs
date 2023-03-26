@@ -4,18 +4,19 @@ use axum::extract::{Path, State};
 use axum::http::header::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use axum::{debug_handler, Json};
+use axum::{debug_handler, Extension, Json};
 use proto::scheduler_proto::InvokeTriggerRequest;
-use shared::types::{Invocation, TriggerId, ValidId};
+use shared::types::{Invocation, OwnerId, TriggerId, ValidId};
 
 use crate::api_model::InvokeTrigger;
 use crate::errors::ApiError;
-use crate::AppState;
+use crate::{AppState, AppStateError};
 
 #[tracing::instrument(skip(state))]
 #[debug_handler]
 pub(crate) async fn invoke(
     state: State<Arc<AppState>>,
+    Extension(owner_id): Extension<OwnerId>,
     Path(id): Path<TriggerId>,
 ) -> Result<impl IntoResponse, ApiError> {
     let mut response_headers = HeaderMap::new();
@@ -26,8 +27,24 @@ pub(crate) async fn invoke(
             StatusCode::BAD_REQUEST,
             response_headers,
             // TODO: We need a proper API design for API errors
-            Json(Err("Invalid trigger id")),
-        ));
+            Json("Invalid trigger id"),
+        )
+            .into_response());
+    }
+
+    let Some(trigger) = state
+        .db
+        .trigger_store
+        .get_trigger(&id)
+        .await
+        .map_err(|e| AppStateError::DatabaseError(e.to_string()))? else {
+            return Ok(
+                StatusCode::NOT_FOUND.into_response()
+            );
+        };
+
+    if trigger.owner_id != owner_id {
+        return Ok(StatusCode::FORBIDDEN.into_response());
     }
 
     let mut scheduler = state.scheduler_for_trigger(&id).await?;
@@ -43,5 +60,6 @@ pub(crate) async fn invoke(
         .unwrap();
     let invocation: Invocation = invocation.into();
 
-    Ok((StatusCode::CREATED, response_headers, Json(Ok(invocation))))
+    Ok((StatusCode::CREATED, response_headers, Json(invocation))
+        .into_response())
 }

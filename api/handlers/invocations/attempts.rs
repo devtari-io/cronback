@@ -4,9 +4,9 @@ use axum::extract::{Path, State};
 use axum::http::header::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use axum::{debug_handler, Json};
+use axum::{debug_handler, Extension, Json};
 use serde_json::json;
-use shared::types::{InvocationId, ValidId};
+use shared::types::{InvocationId, OwnerId, ValidId};
 use tracing::info;
 
 use crate::errors::ApiError;
@@ -16,13 +16,12 @@ use crate::{AppState, AppStateError};
 #[debug_handler]
 pub(crate) async fn list(
     state: State<Arc<AppState>>,
+    Extension(owner_id): Extension<OwnerId>,
     Path(id): Path<InvocationId>,
 ) -> Result<impl IntoResponse, ApiError> {
     let mut response_headers = HeaderMap::new();
     response_headers
         .insert("cronback-trace-id", "SOMETHING SOMETHING".parse().unwrap());
-
-    // TODO authorization
 
     if !id.is_valid() {
         return Ok((
@@ -35,6 +34,21 @@ pub(crate) async fn list(
     }
 
     info!("Get all attempts for invocation {}", id);
+
+    let Some(invocation) = state
+        .db
+        .invocation_store
+        .get_invocation(&id)
+        .await
+        .map_err(|e| AppStateError::DatabaseError(e.to_string()))? else {
+            return Ok(
+                StatusCode::NOT_FOUND.into_response()
+            );
+        };
+
+    if invocation.owner_id != owner_id {
+        return Ok(StatusCode::FORBIDDEN.into_response());
+    }
 
     let attempts = state
         .db
