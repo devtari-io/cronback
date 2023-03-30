@@ -1,14 +1,15 @@
 use std::sync::Arc;
 
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::http::header::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
-use serde_json::json;
 use shared::types::{InvocationId, OwnerId, ValidId};
 use tracing::info;
+use validator::Validate;
 
+use crate::api_model::{paginate, Pagination};
 use crate::errors::ApiError;
 use crate::{AppState, AppStateError};
 
@@ -61,6 +62,7 @@ pub(crate) async fn get(
 #[tracing::instrument(skip(state))]
 #[debug_handler]
 pub(crate) async fn list(
+    pagination: Option<Query<Pagination<InvocationId>>>,
     state: State<Arc<AppState>>,
     Extension(owner_id): Extension<OwnerId>,
 ) -> Result<impl IntoResponse, ApiError> {
@@ -69,16 +71,27 @@ pub(crate) async fn list(
         .insert("cronback-trace-id", "SOMETHING SOMETHING".parse().unwrap());
     info!("Get all invocations for owner {}", owner_id);
 
+    let Query(pagination) = pagination.unwrap_or_default();
+    pagination.validate()?;
+
+    // Trick. We want to know if there is a next page, so we ask for one more
+    let limit = pagination.limit() + 1;
+
     let invocations = state
         .db
         .invocation_store
-        .get_invocations_by_owner(&owner_id)
+        .get_invocations_by_owner(
+            &owner_id,
+            pagination.before.clone(),
+            pagination.after.clone(),
+            limit,
+        )
         .await
         .map_err(|e| AppStateError::DatabaseError(e.to_string()))?;
 
     Ok((
         StatusCode::OK,
         response_headers,
-        Json(json!({ "invocations": invocations })),
+        Json(paginate(invocations, pagination)),
     ))
 }

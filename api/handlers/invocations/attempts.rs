@@ -1,20 +1,22 @@
 use std::sync::Arc;
 
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::http::header::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
-use serde_json::json;
-use shared::types::{InvocationId, OwnerId, ValidId};
+use shared::types::{AttemptLogId, InvocationId, OwnerId, ValidId};
 use tracing::info;
+use validator::Validate;
 
+use crate::api_model::{paginate, Pagination};
 use crate::errors::ApiError;
 use crate::{AppState, AppStateError};
 
 #[tracing::instrument(skip(state))]
 #[debug_handler]
 pub(crate) async fn list(
+    pagination: Option<Query<Pagination<AttemptLogId>>>,
     state: State<Arc<AppState>>,
     Extension(owner_id): Extension<OwnerId>,
     Path(id): Path<InvocationId>,
@@ -34,6 +36,8 @@ pub(crate) async fn list(
     }
 
     info!("Get all attempts for invocation {}", id);
+    let Query(pagination) = pagination.unwrap_or_default();
+    pagination.validate()?;
 
     let Some(invocation) = state
         .db
@@ -50,17 +54,25 @@ pub(crate) async fn list(
         return Ok(StatusCode::FORBIDDEN.into_response());
     }
 
+    // Trick. We want to know if there is a next page, so we ask for one more
+    let limit = pagination.limit() + 1;
+
     let attempts = state
         .db
         .attempt_store
-        .get_attempts_for_invocation(&id)
+        .get_attempts_for_invocation(
+            &id,
+            pagination.before.clone(),
+            pagination.after.clone(),
+            limit,
+        )
         .await
         .map_err(|e| AppStateError::DatabaseError(e.to_string()))?;
 
     Ok((
         StatusCode::OK,
         response_headers,
-        Json(json!({ "attempts": attempts })),
+        Json(paginate(attempts, pagination)),
     )
         .into_response())
 }

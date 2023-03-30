@@ -5,6 +5,7 @@ use crate::model_util::{generate_model_id, generate_owner_id};
 
 pub trait ValidId {
     fn is_valid(&self) -> bool;
+    fn value(&self) -> &str;
 }
 
 #[derive(
@@ -38,6 +39,10 @@ impl ValidId for OwnerId {
     fn is_valid(&self) -> bool {
         self.0.starts_with("acc_")
     }
+
+    fn value(&self) -> &str {
+        &self.0
+    }
 }
 
 #[derive(
@@ -70,6 +75,10 @@ impl TriggerId {
 impl ValidId for TriggerId {
     fn is_valid(&self) -> bool {
         self.0.starts_with("trig_")
+    }
+
+    fn value(&self) -> &str {
+        &self.0
     }
 }
 
@@ -150,6 +159,10 @@ impl ValidId for InvocationId {
     fn is_valid(&self) -> bool {
         self.0.starts_with("inv_")
     }
+
+    fn value(&self) -> &str {
+        &self.0
+    }
 }
 
 #[derive(
@@ -176,5 +189,15 @@ impl AttemptLogId {
 
     pub fn from(value: String) -> Self {
         Self(value)
+    }
+}
+
+impl ValidId for AttemptLogId {
+    fn is_valid(&self) -> bool {
+        self.0.starts_with("att")
+    }
+
+    fn value(&self) -> &str {
+        &self.0
     }
 }

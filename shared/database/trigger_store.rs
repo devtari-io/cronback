@@ -3,8 +3,9 @@ use sqlx::Row;
 use thiserror::Error;
 use tracing::debug;
 
+use super::helpers::paginated_query_builder;
 use crate::database::SqliteDatabase;
-use crate::types::{OwnerId, Trigger, TriggerId};
+use crate::types::{OwnerId, Trigger, TriggerId, ValidId};
 
 #[derive(Error, Debug)]
 pub enum TriggerStoreError {
@@ -34,6 +35,9 @@ pub trait TriggerStore {
     async fn get_triggers_by_owner(
         &self,
         owner_id: &OwnerId,
+        before: Option<TriggerId>,
+        after: Option<TriggerId>,
+        limit: usize,
     ) -> Result<Vec<Trigger>, TriggerStoreError>;
 }
 
@@ -100,20 +104,29 @@ impl TriggerStore for SqlTriggerStore {
     async fn get_triggers_by_owner(
         &self,
         owner_id: &OwnerId,
+        before: Option<TriggerId>,
+        after: Option<TriggerId>,
+        limit: usize,
     ) -> Result<Vec<Trigger>, TriggerStoreError> {
-        let results = sqlx::query(
-            "SELECT value FROM triggers where JSON_EXTRACT(value, \
-             '$.owner_id') = ?",
-        )
-        .bind(owner_id.to_string())
-        .fetch_all(&self.db.pool)
-        .await?
-        .into_iter()
-        .map(|r| {
-            let j = r.get::<String, _>("value");
-            serde_json::from_str::<Trigger>(&j)
-        })
-        .collect::<Result<Vec<_>, _>>();
+        let mut builder = paginated_query_builder(
+            "triggers",
+            "owner_id",
+            owner_id.value(),
+            &before,
+            &after,
+            limit,
+        );
+
+        let results = builder
+            .build()
+            .fetch_all(&self.db.pool)
+            .await?
+            .into_iter()
+            .map(|r| {
+                let j = r.get::<String, _>("value");
+                serde_json::from_str::<Trigger>(&j)
+            })
+            .collect::<Result<Vec<_>, _>>();
         Ok(results?)
     }
 
@@ -223,7 +236,9 @@ mod tests {
         assert_eq!(results, expected);
 
         // Test get by owner
-        let mut results = store.get_triggers_by_owner(&owner1).await?;
+        let mut results = store
+            .get_triggers_by_owner(&owner1, None, None, 100)
+            .await?;
         let mut expected = vec![t1, t2];
         expected.sort_by(|a, b| a.id.cmp(&b.id));
         results.sort_by(|a, b| a.id.cmp(&b.id));

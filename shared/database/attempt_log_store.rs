@@ -2,8 +2,9 @@ use async_trait::async_trait;
 use sqlx::Row;
 use thiserror::Error;
 
+use super::helpers::paginated_query_builder;
 use crate::database::SqliteDatabase;
-use crate::types::{AttemptLogId, EmitAttemptLog, InvocationId};
+use crate::types::{AttemptLogId, EmitAttemptLog, InvocationId, ValidId};
 
 #[derive(Error, Debug)]
 pub enum AttemptLogStoreError {
@@ -24,6 +25,9 @@ pub trait AttemptLogStore {
     async fn get_attempts_for_invocation(
         &self,
         id: &InvocationId,
+        before: Option<AttemptLogId>,
+        after: Option<AttemptLogId>,
+        limit: usize,
     ) -> Result<Vec<EmitAttemptLog>, AttemptLogStoreError>;
 
     async fn get_attempt(
@@ -77,20 +81,29 @@ impl AttemptLogStore for SqlAttemptLogStore {
     async fn get_attempts_for_invocation(
         &self,
         id: &InvocationId,
+        before: Option<AttemptLogId>,
+        after: Option<AttemptLogId>,
+        limit: usize,
     ) -> Result<Vec<EmitAttemptLog>, AttemptLogStoreError> {
-        let results = sqlx::query(
-            "SELECT value FROM attempts where JSON_EXTRACT(value, \
-             '$.invocation_id') = ?",
-        )
-        .bind(&id.to_string())
-        .fetch_all(&self.db.pool)
-        .await?
-        .into_iter()
-        .map(|r| {
-            let j = r.get::<String, _>("value");
-            serde_json::from_str::<EmitAttemptLog>(&j)
-        })
-        .collect::<Result<Vec<_>, _>>();
+        let mut builder = paginated_query_builder(
+            "attempts",
+            "invocation_id",
+            id.value(),
+            &before,
+            &after,
+            limit,
+        );
+
+        let results = builder
+            .build()
+            .fetch_all(&self.db.pool)
+            .await?
+            .into_iter()
+            .map(|r| {
+                let j = r.get::<String, _>("value");
+                serde_json::from_str::<EmitAttemptLog>(&j)
+            })
+            .collect::<Result<Vec<_>, _>>();
         Ok(results?)
     }
 
@@ -194,7 +207,9 @@ mod tests {
         );
 
         // Test get all for a certain invocation
-        let mut results = store.get_attempts_for_invocation(&inv1).await?;
+        let mut results = store
+            .get_attempts_for_invocation(&inv1, None, None, 100)
+            .await?;
         let mut expected = vec![a1, a3];
         expected.sort_by(|a, b| a.id.cmp(&b.id));
         results.sort_by(|a, b| a.id.cmp(&b.id));

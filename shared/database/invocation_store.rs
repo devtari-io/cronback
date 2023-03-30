@@ -2,8 +2,9 @@ use async_trait::async_trait;
 use sqlx::Row;
 use thiserror::Error;
 
+use super::helpers::paginated_query_builder;
 use crate::database::SqliteDatabase;
-use crate::types::{Invocation, InvocationId, OwnerId, TriggerId};
+use crate::types::{Invocation, InvocationId, OwnerId, TriggerId, ValidId};
 
 #[derive(Error, Debug)]
 pub enum InvocationStoreError {
@@ -29,11 +30,17 @@ pub trait InvocationStore {
     async fn get_invocations_by_trigger(
         &self,
         trigger_id: &TriggerId,
+        before: Option<InvocationId>,
+        after: Option<InvocationId>,
+        limit: usize,
     ) -> Result<Vec<Invocation>, InvocationStoreError>;
 
     async fn get_invocations_by_owner(
         &self,
         owner_id: &OwnerId,
+        before: Option<InvocationId>,
+        after: Option<InvocationId>,
+        limit: usize,
     ) -> Result<Vec<Invocation>, InvocationStoreError>;
 }
 
@@ -103,40 +110,58 @@ impl InvocationStore for SqlInvocationStore {
     async fn get_invocations_by_trigger(
         &self,
         trigger_id: &TriggerId,
+        before: Option<InvocationId>,
+        after: Option<InvocationId>,
+        limit: usize,
     ) -> Result<Vec<Invocation>, InvocationStoreError> {
-        let results = sqlx::query(
-            "SELECT value FROM invocations where JSON_EXTRACT(value, \
-             '$.trigger_id') = ?",
-        )
-        .bind(trigger_id.to_string())
-        .fetch_all(&self.db.pool)
-        .await?
-        .into_iter()
-        .map(|r| {
-            let j = r.get::<String, _>("value");
-            serde_json::from_str::<Invocation>(&j)
-        })
-        .collect::<Result<Vec<_>, _>>();
+        let mut builder = paginated_query_builder(
+            "invocations",
+            "trigger_id",
+            trigger_id.value(),
+            &before,
+            &after,
+            limit,
+        );
+
+        let results = builder
+            .build()
+            .fetch_all(&self.db.pool)
+            .await?
+            .into_iter()
+            .map(|r| {
+                let j = r.get::<String, _>("value");
+                serde_json::from_str::<Invocation>(&j)
+            })
+            .collect::<Result<Vec<_>, _>>();
         Ok(results?)
     }
 
     async fn get_invocations_by_owner(
         &self,
         owner_id: &OwnerId,
+        before: Option<InvocationId>,
+        after: Option<InvocationId>,
+        limit: usize,
     ) -> Result<Vec<Invocation>, InvocationStoreError> {
-        let results = sqlx::query(
-            "SELECT value FROM invocations where JSON_EXTRACT(value, \
-             '$.owner_id') = ?",
-        )
-        .bind(owner_id.to_string())
-        .fetch_all(&self.db.pool)
-        .await?
-        .into_iter()
-        .map(|r| {
-            let j = r.get::<String, _>("value");
-            serde_json::from_str::<Invocation>(&j)
-        })
-        .collect::<Result<Vec<_>, _>>();
+        let mut builder = paginated_query_builder(
+            "invocations",
+            "owner_id",
+            owner_id.value(),
+            &before,
+            &after,
+            limit,
+        );
+
+        let results = builder
+            .build()
+            .fetch_all(&self.db.pool)
+            .await?
+            .into_iter()
+            .map(|r| {
+                let j = r.get::<String, _>("value");
+                serde_json::from_str::<Invocation>(&j)
+            })
+            .collect::<Result<Vec<_>, _>>();
         Ok(results?)
     }
 }
@@ -221,14 +246,18 @@ mod tests {
         );
 
         // Test get invocations by trigger
-        let mut results = store.get_invocations_by_trigger(&t1).await?;
+        let mut results = store
+            .get_invocations_by_trigger(&t1, None, None, 100)
+            .await?;
         let mut expected = vec![i1.clone(), i3.clone()];
         expected.sort_by(|a, b| a.id.cmp(&b.id));
         results.sort_by(|a, b| a.id.cmp(&b.id));
         assert_eq!(results, expected);
 
         // Test get invocations by owner
-        let results = store.get_invocations_by_owner(&owner2).await?;
+        let results = store
+            .get_invocations_by_owner(&owner2, None, None, 100)
+            .await?;
         let expected = vec![i2.clone()];
         assert_eq!(results, expected);
 
