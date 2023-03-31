@@ -100,7 +100,8 @@ impl ConfigLoader {
                 Environment::with_prefix("CRONBACK")
                     .try_parsing(true)
                     .separator("__")
-                    .list_separator(","),
+                    .list_separator(",")
+                    .with_list_parse_key("api.admin_api_keys"),
             );
         if let Some(path) = path {
             builder = builder.add_source(File::with_name(path));
