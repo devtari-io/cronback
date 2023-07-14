@@ -656,6 +656,7 @@ dependencies = [
  "chrono",
  "chrono-tz",
  "futures",
+ "ipext",
  "lib",
  "metrics",
  "prost",
@@ -1191,6 +1192,11 @@ dependencies = [
  "libc",
  "windows-sys 0.48.0",
 ]
+
+[[package]]
+name = "ipext"
+version = "0.1.0"
+source = "git+https://github.com/jedisct1/rust-ipext?rev=0ebeb115bd67#0ebeb115bd67af5ed684000332f7f908432317d2"
 
 [[package]]
 name = "ipnet"

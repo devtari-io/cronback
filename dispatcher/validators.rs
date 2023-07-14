@@ -1,64 +1,62 @@
-use std::net::ToSocketAddrs;
-
-use anyhow::{anyhow, Result};
-use lib::types::{Emit, Webhook};
+use ipext::IpExt;
+use lib::types::Webhook;
+use thiserror::Error;
 use url::Url;
 
+#[derive(Error, Debug)]
+pub enum ValidationError {
+    #[error("Missing")]
+    MissingUrl,
+
+    #[error("Failed to parse url: {0}")]
+    InvalidUrl(String),
+
+    #[error("Unsupported url schema: {0}")]
+    UnsupportedScheme(String),
+
+    #[error("Failed to resolve ip of url '{0}'")]
+    Dns(String),
+
+    #[error("Domain resolves to non-routable IP: {0}")]
+    NonRoutableIp(String),
+}
+
 #[allow(dead_code)]
-fn validate_endpoint_scheme(scheme: &str) -> Result<()> {
+fn validate_endpoint_scheme(scheme: &str) -> Result<(), ValidationError> {
     if scheme == "http" || scheme == "https" {
         Ok(())
     } else {
-        Err(anyhow!("Endpoint scheme '{scheme}' not supported"))
+        Err(ValidationError::UnsupportedScheme(scheme.to_string()))
     }
 }
 
 #[allow(dead_code)]
-fn validate_endpoint_url_public_ip(host: Option<&str>) -> Result<()> {
-    let host = host.ok_or(anyhow!("The endpoint must contain a host"))?;
-
+fn validate_endpoint_url_public_ip(url: &Url) -> Result<(), ValidationError> {
     // This function does the DNS resolution. Unfortunately, it's synchronous.
-    let _addrs = format!("{host}:80")
+    let addrs = url
         // TODO: Replace with non-blocking nameservice lookup
-        .to_socket_addrs()
-        .map_err(|e| anyhow!("Failed to resolve DNS for endpoint: {}", e))?;
+        .socket_addrs(|| None)
+        .map_err(|_| ValidationError::Dns(url.to_string()))?;
 
     // To error on the safe side, a hostname is valid if ALL its IPs are
     // publicly addressable.
-
-    // for addr in addrs {
-    // match addr.ip() {
-    //     std::net::IpAddr::V4(ip) => {
-    //         if !ip.is_global() {
-    //             return Err(anyhow!(
-    //                 "The endpoint's IP is not globally reachable (e.g. in
-    // private IP space)"             ));
-    //         }
-    //     }
-    //     std::net::IpAddr::V6(ip) => {
-    //         if !ip.is_global() {
-    //             return Err(anyhow!(
-    //                 "The endpoint's IP is not globally reachable (e.g. in
-    // private IP space)"             ));
-    //         }
-    //     }
-    // }
-    // }
+    for addr in addrs {
+        if !IpExt::is_global(&addr.ip()) {
+            return Err(ValidationError::NonRoutableIp(addr.ip().to_string()));
+        }
+    }
     Ok(())
 }
 
-#[allow(dead_code)]
-pub(crate) fn validate_dispatch_request(emit: Emit) -> Result<()> {
-    let url_string = match emit {
-        | Emit::Webhook(Webhook { url, .. }) => url.unwrap(),
-        | Emit::Event(_) => unimplemented!(),
-    };
+pub(crate) fn validate_webhook(
+    webhook: &Webhook,
+) -> Result<(), ValidationError> {
+    let url_string = webhook.url.as_ref().ok_or(ValidationError::MissingUrl)?;
 
-    let url = Url::parse(&url_string).map_err(|e| {
-        anyhow!("Failed to parse endpoint URL '{}': {} ", url_string, e)
-    })?;
+    let url = Url::parse(url_string)
+        .map_err(|e| ValidationError::InvalidUrl(e.to_string()))?;
     validate_endpoint_scheme(url.scheme())?;
-    validate_endpoint_url_public_ip(url.host_str())?;
+    validate_endpoint_url_public_ip(&url)?;
 
     Ok(())
 }
@@ -66,75 +64,74 @@ pub(crate) fn validate_dispatch_request(emit: Emit) -> Result<()> {
 #[cfg(test)]
 mod tests {
 
-    // use std::assert_matches::assert_matches;
-    //
-    // use prost_types::Duration;
-    // use proto::trigger_proto::{
-    //     endpoint::Endpoint, Endpoint as EndpointStruct, HttpMethod, Webhook,
-    // };
-    //
-    // use super::validate_dispatch_request;
-    //
-    // fn build_request_from_url(url: &str) -> proto::event_proto::Request {
-    //     proto::event_proto::Request {
-    //         endpoint: Some(EndpointStruct {
-    //             endpoint: Some(Endpoint::Webhook(Webhook {
-    //                 http_method: HttpMethod::Get.into(),
-    //                 url: url.to_string(),
-    //             })),
-    //         }),
-    //         request_payload: None,
-    //         timeout: Some(Duration::default()),
-    //     }
-    // }
+    use std::time::Duration;
 
-    // #[test]
-    // fn valid_urls() {
-    //     let urls = vec![
-    //         "https://google.com/url",
-    //         "https://example.com:3030/url",
-    //         "https://1.1.1.1/url",
-    //         "http://[2606:4700:4700::1111]/another_url/path",
-    //         "http://[2606:4700:4700::1111]:5050/another_url/path",
-    //         "http://user:pass@google.com/another_url/path",
-    //     ];
-    //
-    //     for url in urls {
-    //         assert_matches!(
-    //             validate_dispatch_request(&build_request_from_url(url)),
-    //             Ok(()),
-    //             "URL: {}",
-    //             url
-    //         );
-    //     }
-    // }
-    //
-    // #[test]
-    // fn invalid_urls() {
-    //     let urls = vec![
-    //         // Private IPs
-    //         "https://10.0.10.1",
-    //         "https://192.168.1.1",
-    //         "https://[::1]:80",
-    //         // Non-http url
-    //         "ftp://google.com",
-    //         // Lookback address
-    //         "https://localhost/url",
-    //         // Scheme-less
-    //         "google.com/url",
-    //         // Unparsable URL
-    //         "http---@goog.com",
-    //         // Non-existent domains
-    //         "https://ppqqzonlnp.io/url/url",
-    //     ];
-    //
-    //     for url in urls {
-    //         assert_matches!(
-    //             validate_dispatch_request(&build_request_from_url(url)),
-    //             Err(_),
-    //             "URL: {}",
-    //             url
-    //         );
-    //     }
-    // }
+    use lib::types::{HttpMethod, Webhook};
+
+    use super::validate_webhook;
+
+    fn build_webhook_from_url(url: &str) -> Webhook {
+        Webhook {
+            _kind: Default::default(),
+            url: Some(url.to_string()),
+            http_method: HttpMethod::GET,
+            timeout_s: Duration::from_secs(5),
+            retry: None,
+        }
+    }
+
+    #[test]
+    fn valid_urls() {
+        let urls = vec![
+            "https://google.com/url",
+            "https://example.com:3030/url",
+            "https://1.1.1.1/url",
+            "http://[2606:4700:4700::1111]/another_url/path",
+            "http://[2606:4700:4700::1111]:5050/another_url/path",
+            "http://user:pass@google.com/another_url/path",
+        ];
+
+        for url in urls {
+            let result = validate_webhook(&build_webhook_from_url(url));
+            assert!(
+                matches!(
+                    validate_webhook(&build_webhook_from_url(url)),
+                    Ok(())
+                ),
+                "URL: {}, result: {:?}",
+                url,
+                result,
+            );
+        }
+    }
+
+    #[test]
+    fn invalid_urls() {
+        let urls = vec![
+            // Private IPs
+            "https://10.0.10.1",
+            "https://192.168.1.1",
+            "https://[::1]:80",
+            // Non-http url
+            "ftp://google.com",
+            // Lookback address
+            "https://localhost/url",
+            // Scheme-less
+            "google.com/url",
+            // Unparsable URL
+            "http---@goog.com",
+            // Non-existent domains
+            "https://ppqqzonlnp.io/url/url",
+        ];
+
+        for url in urls {
+            let result = validate_webhook(&build_webhook_from_url(url));
+            assert!(
+                matches!(result, Err(_)),
+                "URL: {}, result: {:?}",
+                url,
+                result
+            );
+        }
+    }
 }

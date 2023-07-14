@@ -34,4 +34,8 @@ rand = { workspace = true }
 # Unique Dependencies
 reqwest = "0.11"
 url = "2.3"
-
+# A crate that re-exposes the unstable IP features that got introduced in
+# https://github.com/rust-lang/rust/issues/27709.
+# Given that this is an untrusted repo, we're pinning it to a particular
+# revision after reviewing the code at this revision.
+ipext = {git = "https://github.com/jedisct1/rust-ipext", rev="0ebeb115bd67"}

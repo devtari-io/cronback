@@ -26,6 +26,7 @@ use reqwest::Method;
 use tracing::{debug, error, info};
 
 use crate::retry::RetryPolicy;
+use crate::validators::validate_webhook;
 
 fn to_reqwest_http_method(method: &HttpMethod) -> reqwest::Method {
     match method {
@@ -144,6 +145,20 @@ async fn dispatch_webhook(
     webhook: &Webhook,
     payload: &Option<Payload>,
 ) -> WebhookAttemptDetails {
+    let validation_result = validate_webhook(webhook);
+
+    if let Err(e) = validation_result {
+        debug!(
+            trigger_id = %trigger_id,
+            "Webhook validation failure for trigger '{}': {}",
+            trigger_id.to_string(),
+            e.to_string(),
+        );
+        return WebhookAttemptDetails::with_error(format!(
+            "Webhook validation failure: {e}"
+        ));
+    }
+
     // It's important to not follow any redirects for security reasons.
     // TODO: Reconsider this by hooking into the redirect hooks and re-running
     // the validations on every redirect attempt.
