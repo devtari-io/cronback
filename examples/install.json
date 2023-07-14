@@ -1,5 +1,4 @@
 {
-  "name": "asoli",
   "schedule": {
     "timepoints": [
       "PT1M",
@@ -13,6 +12,7 @@
     },
     "body": "{ \"name\": \"asoli\"}"
   },
+  "status": "on_demand",
   "action": {
     "type": "webhook",
     "url": "http://localhost:3000/action",

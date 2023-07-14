@@ -8,12 +8,17 @@ use crate::types::{ProjectId, RequestId};
 pub trait OptionExt {
     type Item;
     fn unwrap_ref(&self) -> &Self::Item;
+    fn unwrap_mut(&mut self) -> &mut Self::Item;
 }
 impl<T> OptionExt for Option<T> {
     type Item = T;
 
     fn unwrap_ref(&self) -> &T {
         self.as_ref().unwrap()
+    }
+
+    fn unwrap_mut(&mut self) -> &mut T {
+        self.as_mut().unwrap()
     }
 }
 

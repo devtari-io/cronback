@@ -1,6 +1,5 @@
 syntax = "proto3";
 
-import "common.proto";
 import "trigger.proto";
 import "run.proto";
 
@@ -8,19 +7,19 @@ package scheduler_proto;
 
 service Scheduler {
   /// Install or update a trigger onto the scheduler
-  rpc InstallTrigger (InstallTriggerRequest)  returns (InstallTriggerResponse);
+  rpc UpsertTrigger (UpsertTriggerRequest) returns (UpsertTriggerResponse);
   /// Manually run a trigger
-  rpc RunTrigger (RunTriggerRequest)  returns (RunTriggerResponse);
+  rpc RunTrigger (RunTriggerRequest) returns (RunTriggerResponse);
   /// Get a trigger by id
-  rpc GetTrigger (GetTriggerRequest)  returns (GetTriggerResponse);
+  rpc GetTrigger (GetTriggerRequest) returns (GetTriggerResponse);
   /// Retrieve a list of triggers 
-  rpc ListTriggers (ListTriggersRequest)  returns (ListTriggersResponse);
+  rpc ListTriggers (ListTriggersRequest) returns (ListTriggersResponse);
   /// Pause a running trigger
-  rpc PauseTrigger (PauseTriggerRequest)  returns (PauseTriggerResponse);
+  rpc PauseTrigger (PauseTriggerRequest) returns (PauseTriggerResponse);
   /// Resume a paused/active trigger
-  rpc ResumeTrigger (ResumeTriggerRequest)  returns (ResumeTriggerResponse);
+  rpc ResumeTrigger (ResumeTriggerRequest) returns (ResumeTriggerResponse);
   /// Cancel trigger
-  rpc CancelTrigger (CancelTriggerRequest)  returns (CancelTriggerResponse);
+  rpc CancelTrigger (CancelTriggerRequest) returns (CancelTriggerResponse);
 }
 
 enum RunMode {
@@ -29,58 +28,50 @@ enum RunMode {
   SYNC = 2;
 }
 
-message InstallTriggerRequest {
+message UpsertTriggerRequest {
   // Id is only set if we are updating an existing trigger and we know the id up front
-  optional common.TriggerId id = 1;
-  bool fail_if_exists = 2;
-  string name = 4;
-  /// [Future] User supplied identifier, unique per owner account
-  optional string reference = 5;
-  optional string description = 6;
-  trigger_proto.Action action = 7;
-  optional trigger_proto.Payload payload = 8;
-  trigger_proto.Schedule schedule = 9;
+  bool fail_if_exists = 1;
+  trigger_proto.Trigger trigger = 2;
 }
 
 // == INSTALL OR UPDATE EXISTING TRIGGER ==
-message InstallTriggerResponse {
+message UpsertTriggerResponse {
   trigger_proto.Trigger trigger = 1;
   bool already_existed = 2;
 }
 
 // PAUSE TRIGGER
 message PauseTriggerRequest {
-  common.TriggerId id = 1;
+  string name = 1;
 }
 
 message PauseTriggerResponse {
-  trigger_proto.TriggerManifest trigger = 1;
+  trigger_proto.Trigger trigger = 1;
 }
 
 // RESUME TRIGGER
 message ResumeTriggerRequest {
-  common.TriggerId id = 1;
+  string name = 1;
 }
 
 message ResumeTriggerResponse {
-  trigger_proto.TriggerManifest trigger = 1;
+  trigger_proto.Trigger trigger = 1;
 }
 
 // CANCEL TRIGGER
 message CancelTriggerRequest {
-  common.TriggerId id = 1;
+  string name = 1;
 }
 
 message CancelTriggerResponse {
-  trigger_proto.TriggerManifest trigger = 1;
+  trigger_proto.Trigger trigger = 1;
 }
 
 
 // == EXECUTE TRIGGER MANUALLY ==
 message RunTriggerRequest {
-  common.TriggerId id = 1;
+  string name = 1;
   RunMode mode = 2;
-
 }
 
 message RunTriggerResponse {
@@ -89,7 +80,7 @@ message RunTriggerResponse {
 
 // == GET TRIGGER ==
 message GetTriggerRequest {
-  common.TriggerId id = 1;
+  string name = 1;
 }
 
 message GetTriggerResponse {
@@ -97,14 +88,8 @@ message GetTriggerResponse {
 }
 
 // == LIST TRIGGER ==
-message Pagination {
-  optional uint64 limit = 1;
-  optional string before = 2;
-  optional string after = 3;
-}
 // The returned triggers must match the "set" fields in this object
 message ListTriggersFilter {
-  optional string reference = 1;
   repeated trigger_proto.TriggerStatus statuses = 2;
 }
 
@@ -116,5 +101,5 @@ message ListTriggersRequest {
 }
 
 message ListTriggersResponse {
-  repeated trigger_proto.TriggerManifest triggers = 1;
+  repeated trigger_proto.Trigger triggers = 1;
 }

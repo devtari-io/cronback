@@ -24,12 +24,10 @@ pub(crate) enum TriggerError {
     InvalidTimezone(String),
     #[error("Trigger '{0}' has no schedule!")]
     NotScheduled(TriggerId),
-    #[error("Trigger with Id '{0}' is unknown to this scheduler!")]
-    NotFound(TriggerId),
+    #[error("Trigger '{0}' is unknown to this scheduler!")]
+    NotFound(String),
     #[error("Cannot {0} on a trigger with status {1}")]
     InvalidStatus(String, Status),
-    #[error("Cannot update trigger {0}")]
-    UpdateNotAllowed(TriggerId),
     //join error
     #[error("Internal async processing failure!")]
     JoinError(#[from] tokio::task::JoinError),
@@ -37,8 +35,8 @@ pub(crate) enum TriggerError {
     TriggerStore(#[from] TriggerStoreError),
     #[error("Cannot dispatch a run for this trigger")]
     Run(#[from] DispatchError),
-    #[error("Trigger with reference '{0}' already exists")]
-    AlreadyExists(/* reference */ String),
+    #[error("Trigger '{0}' already exists")]
+    AlreadyExists(/* name */ String),
 }
 
 ///
@@ -242,7 +240,7 @@ impl ActiveTriggerMap {
         reject_statuses: &[Status],
     ) -> Result<(), TriggerError> {
         let Some(trigger) = self.state.get_mut(trigger_id) else {
-            return Err(TriggerError::NotFound(trigger_id.clone()));
+            return Err(TriggerError::NotFound(trigger_id.to_string()));
         };
 
         if reject_statuses.contains(&trigger.get().status) {
@@ -564,7 +562,6 @@ mod tests {
         Trigger {
             id,
             project_id: project,
-            reference: None,
             name: "sample-trigger".to_owned(),
             description: None,
             created_at: Utc::now(),

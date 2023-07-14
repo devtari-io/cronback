@@ -27,6 +27,7 @@ pub enum RunStatus {
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+#[skip_serializing_none]
 #[serde(default)]
 pub(crate) struct RunTrigger {
     pub mode: RunMode,
@@ -35,6 +36,7 @@ pub(crate) struct RunTrigger {
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Clone, FromProto, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 #[proto(target = "proto::run_proto::Run")]
 pub struct Run {
     #[proto(required)]

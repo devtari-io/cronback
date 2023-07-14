@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use axum::extract::State;
+use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
@@ -13,21 +13,14 @@ use serde::Deserialize;
 use validator::Validate;
 
 use crate::errors::ApiError;
-use crate::extractors::ValidatedId;
-use crate::model::{
-    paginate,
-    Pagination,
-    Trigger,
-    TriggerManifest,
-    TriggerStatus,
-};
+use crate::model::{paginate, Pagination, Trigger, TriggerStatus};
 use crate::AppState;
 
 #[tracing::instrument(skip(state))]
 #[debug_handler]
 pub(crate) async fn get(
     state: State<Arc<AppState>>,
-    ValidatedId(id): ValidatedId<TriggerId>,
+    Path(name): Path<String>,
     Extension(project): Extension<ValidShardedId<ProjectId>>,
     Extension(request_id): Extension<RequestId>,
 ) -> Result<impl IntoResponse, ApiError> {
@@ -36,9 +29,7 @@ pub(crate) async fn get(
         .get_client(&request_id, &project)
         .await?;
     let trigger = scheduler
-        .get_trigger(GetTriggerRequest {
-            id: Some(id.into()),
-        })
+        .get_trigger(GetTriggerRequest { name })
         .await?
         .into_inner()
         .trigger
@@ -51,7 +42,6 @@ pub(crate) async fn get(
 #[derive(Debug, IntoProto, Deserialize, Default, Validate)]
 #[proto(target = "proto::scheduler_proto::ListTriggersFilter")]
 pub(crate) struct ListFilters {
-    pub reference: Option<String>,
     #[serde(default)]
     #[proto(name = "statuses")]
     pub status: Vec<TriggerStatus>,
@@ -87,8 +77,7 @@ pub(crate) async fn list(
         .into_inner()
         .triggers;
 
-    let triggers: Vec<TriggerManifest> =
-        triggers.into_iter().map(Into::into).collect();
+    let triggers: Vec<Trigger> = triggers.into_iter().map(Into::into).collect();
 
     Ok((StatusCode::OK, Json(paginate(triggers, pagination))))
 }

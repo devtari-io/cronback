@@ -1,15 +1,14 @@
 use std::sync::Arc;
 
-use axum::extract::State;
+use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
 use lib::model::ValidShardedId;
-use lib::types::{ProjectId, RequestId, TriggerId};
+use lib::types::{ProjectId, RequestId};
 use proto::scheduler_proto::RunTriggerRequest;
 
 use crate::errors::ApiError;
-use crate::extractors::ValidatedId;
 use crate::model::{Run, RunTrigger};
 use crate::AppState;
 
@@ -19,7 +18,7 @@ pub(crate) async fn run(
     State(state): State<Arc<AppState>>,
     Extension(project): Extension<ValidShardedId<ProjectId>>,
     Extension(request_id): Extension<RequestId>,
-    ValidatedId(id): ValidatedId<TriggerId>,
+    Path(name): Path<String>,
     // The body of the request is optional, so we use Option<Json<...>>.
     request: Option<Json<RunTrigger>>,
 ) -> Result<impl IntoResponse, ApiError> {
@@ -29,7 +28,7 @@ pub(crate) async fn run(
         .get_client(&request_id, &project)
         .await?;
     let run_request = RunTriggerRequest {
-        id: Some(id.into()),
+        name,
         mode: request.mode.into(),
     };
     let run = scheduler

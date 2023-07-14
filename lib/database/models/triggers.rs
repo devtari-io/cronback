@@ -21,31 +21,25 @@ impl EntityName for Entity {
 }
 
 #[derive(
-    Clone,
-    IntoProto,
-    FromProto,
-    Debug,
-    PartialEq,
-    DeriveModel,
-    DeriveActiveModel,
-    Eq,
+    Clone, IntoProto, Debug, PartialEq, DeriveModel, DeriveActiveModel, Eq,
 )]
 #[proto(target = "proto::trigger_proto::Trigger")]
 pub struct Model {
-    #[proto(required)]
+    #[proto(skip)]
     pub id: TriggerId,
-    #[proto(required)]
-    pub project_id: ValidShardedId<ProjectId>,
+    // unique
     pub name: String,
+    #[proto(skip)]
+    pub project_id: ValidShardedId<ProjectId>,
     pub description: Option<String>,
     #[proto(required)]
     pub created_at: DateTime<Utc>,
     pub updated_at: Option<DateTime<Utc>>,
-    pub reference: Option<String>,
     pub payload: Option<Payload>,
     pub schedule: Option<Schedule>,
     #[proto(required)]
     pub action: Action,
+    #[proto(required)]
     pub status: Status,
     pub last_ran_at: Option<DateTime<Utc>>,
 }
@@ -53,12 +47,11 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
     Id,
-    ProjectId,
     Name,
+    ProjectId,
     Description,
     CreatedAt,
     UpdatedAt,
-    Reference,
     Payload,
     Schedule,
     Action,
@@ -68,7 +61,7 @@ pub enum Column {
 
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
 pub enum PrimaryKey {
-    Id,
+    Name,
     ProjectId,
 }
 
@@ -89,12 +82,11 @@ impl ColumnTrait for Column {
     fn def(&self) -> ColumnDef {
         match self {
             | Self::Id => ColumnType::String(None).def(),
+            | Self::Name => ColumnType::String(None).def(),
             | Self::ProjectId => ColumnType::String(None).def(),
-            | Self::Name => ColumnType::String(None).def().null(),
             | Self::Description => ColumnType::String(None).def().null(),
             | Self::CreatedAt => ColumnType::String(None).def(),
             | Self::UpdatedAt => ColumnType::String(None).def(),
-            | Self::Reference => ColumnType::String(None).def().null(),
             | Self::Payload => ColumnType::String(None).def().null(),
             | Self::Schedule => ColumnType::String(None).def().null(),
             | Self::Action => ColumnType::String(None).def().null(),
@@ -117,43 +109,10 @@ impl Model {
         self.status.alive()
     }
 
-    pub fn into_manifest(self) -> TriggerManifest {
-        TriggerManifest {
-            id: self.id,
-            project: self.project_id,
-            name: self.name,
-            description: self.description,
-            created_at: self.created_at,
-            updated_at: self.updated_at,
-            action: self.action,
-            reference: self.reference,
-            schedule: self.schedule,
-            status: self.status,
-            last_ran_at: self.last_ran_at,
-        }
-    }
-
-    pub fn get_manifest(&self) -> TriggerManifest {
-        TriggerManifest {
-            id: self.id.clone(),
-            project: self.project_id.clone(),
-            name: self.name.clone(),
-            description: self.description.clone(),
-            created_at: self.created_at,
-            updated_at: self.updated_at,
-            action: self.action.clone(),
-            reference: self.reference.clone(),
-            schedule: self.schedule.clone(),
-            status: self.status.clone(),
-            last_ran_at: self.last_ran_at,
-        }
-    }
-
     pub fn update(
         &mut self,
         new_name: String,
         new_description: Option<String>,
-        new_reference: Option<String>,
         new_payload: Option<Payload>,
         new_schedule: Option<Schedule>,
         new_action: Action,
@@ -162,7 +121,6 @@ impl Model {
 
         self.name = new_name;
         self.description = new_description;
-        self.reference = new_reference;
         self.payload = new_payload;
         self.schedule = new_schedule;
         self.action = new_action;
@@ -173,25 +131,6 @@ impl Model {
         };
         // NOTE: we leave last_ran_at as is.
     }
-}
-
-#[derive(Debug, IntoProto, Clone, PartialEq)]
-#[proto(target = "proto::trigger_proto::TriggerManifest")]
-pub struct TriggerManifest {
-    pub id: TriggerId,
-    #[proto(name = "project_id")]
-    pub project: ValidShardedId<ProjectId>,
-    pub name: String,
-    pub description: Option<String>,
-    #[proto(required)]
-    pub created_at: DateTime<Utc>,
-    pub updated_at: Option<DateTime<Utc>>,
-    #[proto(required)]
-    pub action: Action,
-    pub reference: Option<String>,
-    pub schedule: Option<Schedule>,
-    pub status: Status,
-    pub last_ran_at: Option<DateTime<Utc>>,
 }
 
 #[derive(

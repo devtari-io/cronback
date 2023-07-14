@@ -12,10 +12,10 @@ impl MigrationTrait for Migration {
                     .table(Triggers::Table)
                     .if_not_exists()
                     .col(ColumnDef::new(Triggers::Id).string().not_null())
+                    .col(ColumnDef::new(Triggers::Name).string().not_null())
                     .col(
                         ColumnDef::new(Triggers::ProjectId).string().not_null(),
                     )
-                    .col(ColumnDef::new(Triggers::Name).string().not_null())
                     .col(ColumnDef::new(Triggers::Description).string())
                     .col(
                         ColumnDef::new(Triggers::CreatedAt)
@@ -23,7 +23,6 @@ impl MigrationTrait for Migration {
                             .not_null(),
                     )
                     .col(ColumnDef::new(Triggers::UpdatedAt).date_time())
-                    .col(ColumnDef::new(Triggers::Reference).string())
                     .col(ColumnDef::new(Triggers::Payload).json())
                     .col(ColumnDef::new(Triggers::Schedule).json())
                     .col(ColumnDef::new(Triggers::Action).json().not_null())
@@ -31,7 +30,7 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Triggers::LastRanAt).date_time())
                     .primary_key(
                         Index::create()
-                            .col(Triggers::Id)
+                            .col(Triggers::Name)
                             .col(Triggers::ProjectId),
                     )
                     .to_owned(),
@@ -52,10 +51,10 @@ impl MigrationTrait for Migration {
             .create_index(
                 Index::create()
                     .if_not_exists()
-                    .name("UQ_triggers_project_reference")
+                    .name("UQ_triggers_project_trigger_name")
                     .table(Triggers::Table)
                     .col(Triggers::ProjectId)
-                    .col(Triggers::Reference)
+                    .col(Triggers::Name)
                     .unique()
                     .to_owned(),
             )
@@ -64,8 +63,21 @@ impl MigrationTrait for Migration {
             .create_index(
                 Index::create()
                     .if_not_exists()
-                    .name("IX_triggers_status")
+                    .name("UQ_triggers_project_trigger_id")
                     .table(Triggers::Table)
+                    .col(Triggers::ProjectId)
+                    .col(Triggers::Id)
+                    .unique()
+                    .to_owned(),
+            )
+            .await?;
+        manager
+            .create_index(
+                Index::create()
+                    .if_not_exists()
+                    .name("IX_triggers_project_status")
+                    .table(Triggers::Table)
+                    .col(Triggers::ProjectId)
                     .col(Triggers::Status)
                     .to_owned(),
             )
@@ -91,7 +103,6 @@ enum Triggers {
     Description,
     CreatedAt,
     UpdatedAt,
-    Reference,
     Payload,
     Schedule,
     Action,

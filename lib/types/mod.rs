@@ -24,5 +24,4 @@ pub use crate::database::models::triggers::{
     RunAt,
     Schedule,
     Status,
-    TriggerManifest,
 };

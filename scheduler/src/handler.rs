@@ -3,15 +3,12 @@ use std::sync::Arc;
 use lib::database::models::triggers;
 use lib::prelude::*;
 use lib::service::ServiceContext;
-use lib::types::TriggerId;
 use proto::scheduler_proto::scheduler_server::Scheduler;
 use proto::scheduler_proto::{
     CancelTriggerRequest,
     CancelTriggerResponse,
     GetTriggerRequest,
     GetTriggerResponse,
-    InstallTriggerRequest,
-    InstallTriggerResponse,
     ListTriggersFilter,
     ListTriggersRequest,
     ListTriggersResponse,
@@ -21,6 +18,8 @@ use proto::scheduler_proto::{
     ResumeTriggerResponse,
     RunTriggerRequest,
     RunTriggerResponse,
+    UpsertTriggerRequest,
+    UpsertTriggerResponse,
 };
 use tonic::{Request, Response, Status};
 
@@ -42,15 +41,15 @@ impl SchedulerAPIHandler {
 
 #[tonic::async_trait]
 impl Scheduler for SchedulerAPIHandler {
-    async fn install_trigger(
+    async fn upsert_trigger(
         &self,
-        request: Request<InstallTriggerRequest>,
-    ) -> Result<Response<InstallTriggerResponse>, Status> {
+        request: Request<UpsertTriggerRequest>,
+    ) -> Result<Response<UpsertTriggerResponse>, Status> {
         let ctx = request.context()?;
         // Creating a new trigger from install_trigger
         let reply = self
             .scheduler
-            .install_trigger(ctx, request.into_inner())
+            .upsert_trigger(ctx, request.into_inner())
             .await?;
         Ok(Response::new(reply))
     }
@@ -66,9 +65,8 @@ impl Scheduler for SchedulerAPIHandler {
         // scheduler
         //
         let request = request.into_inner();
-        let trigger_id: TriggerId = request.id.unwrap().into();
         let mode = request.mode.into();
-        let run = self.scheduler.run_trigger(ctx, trigger_id, mode).await?;
+        let run = self.scheduler.run_trigger(ctx, request.name, mode).await?;
         Ok(Response::new(RunTriggerResponse {
             run: Some(run.into()),
         }))
@@ -80,9 +78,7 @@ impl Scheduler for SchedulerAPIHandler {
     ) -> Result<Response<GetTriggerResponse>, Status> {
         let ctx = request.context()?;
         let request = request.into_inner();
-        let trigger_id: TriggerId = request.id.unwrap().into();
-
-        let trigger = self.scheduler.get_trigger(ctx, trigger_id).await?;
+        let trigger = self.scheduler.get_trigger(ctx, request.name).await?;
         let reply = GetTriggerResponse {
             trigger: Some(trigger.into()),
         };
@@ -95,8 +91,7 @@ impl Scheduler for SchedulerAPIHandler {
     ) -> Result<Response<PauseTriggerResponse>, Status> {
         let ctx = request.context()?;
         let request = request.into_inner();
-        let trigger_id: TriggerId = request.id.unwrap().into();
-        let trigger = self.scheduler.pause_trigger(ctx, trigger_id).await?;
+        let trigger = self.scheduler.pause_trigger(ctx, request.name).await?;
         Ok(Response::new(PauseTriggerResponse {
             trigger: Some(trigger.into()),
         }))
@@ -108,8 +103,8 @@ impl Scheduler for SchedulerAPIHandler {
     ) -> Result<Response<ResumeTriggerResponse>, Status> {
         let ctx = request.context()?;
         let request = request.into_inner();
-        let trigger_id: TriggerId = request.id.unwrap().into();
-        let trigger = self.scheduler.resume_trigger(ctx, trigger_id).await?;
+        let name = request.name;
+        let trigger = self.scheduler.resume_trigger(ctx, name).await?;
         Ok(Response::new(ResumeTriggerResponse {
             trigger: Some(trigger.into()),
         }))
@@ -121,8 +116,7 @@ impl Scheduler for SchedulerAPIHandler {
     ) -> Result<Response<CancelTriggerResponse>, Status> {
         let ctx = request.context()?;
         let request = request.into_inner();
-        let trigger_id: TriggerId = request.id.unwrap().into();
-        let trigger = self.scheduler.cancel_trigger(ctx, trigger_id).await?;
+        let trigger = self.scheduler.cancel_trigger(ctx, request.name).await?;
         Ok(Response::new(CancelTriggerResponse {
             trigger: Some(trigger.into()),
         }))
@@ -135,12 +129,11 @@ impl Scheduler for SchedulerAPIHandler {
         let ctx = request.context()?;
         let request = request.into_inner();
 
-        let (reference, statuses) = list_filter_into_parts(request.filter);
+        let statuses = list_filter_into_parts(request.filter);
         let manifests = self
             .scheduler
             .list_triggers(
                 ctx,
-                reference,
                 statuses,
                 request.limit as usize,
                 request.before.map(Into::into),
@@ -155,17 +148,13 @@ impl Scheduler for SchedulerAPIHandler {
 
 fn list_filter_into_parts(
     filter: Option<ListTriggersFilter>,
-) -> (Option<String>, Option<Vec<triggers::Status>>) {
+) -> Option<Vec<triggers::Status>> {
     let Some(filter) = filter else {
-        return (None, None);
+        return None;
     };
 
-    let ListTriggersFilter {
-        reference,
-        statuses,
-    } = filter;
-
-    let statuses = if !statuses.is_empty() {
+    let ListTriggersFilter { statuses } = filter;
+    if !statuses.is_empty() {
         Some(
             statuses
                 .into_iter()
@@ -174,7 +163,5 @@ fn list_filter_into_parts(
         )
     } else {
         None
-    };
-
-    (reference, statuses)
+    }
 }

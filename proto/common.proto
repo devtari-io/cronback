@@ -2,6 +2,12 @@ syntax = "proto3";
 
 package common;
 
+message Pagination {
+  optional uint64 limit = 1;
+  optional string before = 2;
+  optional string after = 3;
+}
+
 message DateTime {
   string rfc3339 = 1;
 }

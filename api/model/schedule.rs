@@ -7,6 +7,7 @@ use dto::{FromProto, IntoProto};
 use lib::timeutil::{default_timezone, iso8601_dateformat_vec_serde};
 use lib::validation::{validate_timezone, validation_error};
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use validator::{Validate, ValidationError};
 
 #[derive(
@@ -31,6 +32,7 @@ pub(crate) enum Schedule {
     Validate,
 )]
 #[proto(target = "proto::trigger_proto::Recurring")]
+#[skip_serializing_none]
 #[serde(deny_unknown_fields)]
 #[serde(rename_all = "snake_case")]
 pub struct Recurring {
@@ -58,6 +60,7 @@ pub struct Recurring {
 )]
 #[proto(target = "proto::trigger_proto::RunAt")]
 #[serde(deny_unknown_fields)]
+#[skip_serializing_none]
 #[serde(rename_all = "snake_case")]
 pub(crate) struct RunAt {
     #[validate(

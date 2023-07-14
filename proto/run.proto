@@ -1,7 +1,6 @@
 syntax = "proto3";
 
 import "common.proto";
-import "webhook.proto";
 import "trigger.proto";
 
 package run_proto;

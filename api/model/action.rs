@@ -1,7 +1,7 @@
 use dto::{FromProto, IntoProto};
 use monostate::MustBe;
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
+use serde_with::{serde_as, skip_serializing_none};
 use validator::Validate;
 
 use super::Webhook;
@@ -20,6 +20,7 @@ pub enum Action {
 }
 
 #[serde_as]
+#[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Event {

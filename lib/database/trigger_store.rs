@@ -33,22 +33,27 @@ pub trait TriggerStore {
         &self,
     ) -> Result<Vec<Trigger>, TriggerStoreError>;
 
-    async fn get_trigger(
+    async fn get_trigger_by_name(
         &self,
         project: &ProjectId,
-        id: &TriggerId,
+        name: &str,
     ) -> Result<Option<Trigger>, TriggerStoreError>;
+
+    async fn find_trigger_id_for_name(
+        &self,
+        project: &ProjectId,
+        name: &str,
+    ) -> Result<Option<TriggerId>, TriggerStoreError>;
 
     async fn get_status(
         &self,
         project: &ProjectId,
-        id: &TriggerId,
+        name: &str,
     ) -> Result<Option<Status>, TriggerStoreError>;
 
     async fn get_triggers_by_project(
         &self,
         project: &ProjectId,
-        reference: Option<String>,
         statuses: Option<Vec<Status>>,
         before: Option<TriggerId>,
         after: Option<TriggerId>,
@@ -108,7 +113,6 @@ impl TriggerStore for SqlTriggerStore {
     async fn get_triggers_by_project(
         &self,
         project: &ProjectId,
-        reference: Option<String>,
         statuses: Option<Vec<Status>>,
         before: Option<TriggerId>,
         after: Option<TriggerId>,
@@ -118,10 +122,6 @@ impl TriggerStore for SqlTriggerStore {
             .filter(triggers::Column::ProjectId.eq(project.value()))
             .order_by_desc(triggers::Column::Id)
             .limit(Some(limit as u64));
-
-        if let Some(reference) = reference {
-            query = query.filter(triggers::Column::Reference.eq(reference));
-        }
 
         if let Some(statuses) = statuses {
             query = query.filter(triggers::Column::Status.is_in(statuses));
@@ -140,27 +140,41 @@ impl TriggerStore for SqlTriggerStore {
         Ok(res)
     }
 
-    async fn get_trigger(
+    async fn get_trigger_by_name(
         &self,
         project_id: &ProjectId,
-        id: &TriggerId,
+        name: &str,
     ) -> Result<Option<Trigger>, TriggerStoreError> {
         let res =
-            Triggers::find_by_id((id.to_string(), project_id.to_string()))
+            Triggers::find_by_id((name.to_string(), project_id.to_string()))
                 .one(&self.db.orm)
                 .await?;
+        Ok(res)
+    }
+
+    async fn find_trigger_id_for_name(
+        &self,
+        project: &ProjectId,
+        name: &str,
+    ) -> Result<Option<TriggerId>, TriggerStoreError> {
+        let res = Triggers::find_by_id((name.to_string(), project.to_string()))
+            .select_only()
+            .column(triggers::Column::Id)
+            .into_tuple()
+            .one(&self.db.orm)
+            .await?;
         Ok(res)
     }
 
     async fn get_status(
         &self,
         project: &ProjectId,
-        id: &TriggerId,
+        name: &str,
     ) -> Result<Option<Status>, TriggerStoreError> {
         let res: Option<Status> = Triggers::find()
             .select_only()
             .column(triggers::Column::Status)
-            .filter(triggers::Column::Id.eq(id.to_string()))
+            .filter(triggers::Column::Name.eq(name))
             .filter(triggers::Column::ProjectId.eq(project.to_string()))
             .into_tuple()
             .one(&self.db.orm)
@@ -178,7 +192,6 @@ mod tests {
 
     use super::{SqlTriggerStore, TriggerStore};
     use crate::database::errors::DatabaseError;
-    use crate::database::trigger_store::TriggerStoreError;
     use crate::database::Database;
     use crate::model::ValidShardedId;
     use crate::types::{
@@ -216,7 +229,6 @@ mod tests {
                 retry: None,
             }),
             status,
-            reference: None,
             last_ran_at: None,
         }
     }
@@ -242,31 +254,28 @@ mod tests {
 
         // Test getters
         assert_eq!(
-            store.get_trigger(&project1, &t1.id).await?,
+            store.get_trigger_by_name(&project1, &t1.name).await?,
             Some(t1.clone())
         );
         assert_eq!(
-            store.get_trigger(&project1, &t2.id).await?,
+            store.get_trigger_by_name(&project1, &t2.name).await?,
             Some(t2.clone())
         );
         assert_eq!(
-            store.get_trigger(&project2, &t3.id).await?,
+            store.get_trigger_by_name(&project2, &t3.name).await?,
             Some(t3.clone())
         );
         assert_eq!(
-            store.get_trigger(&project2, &t4.id).await?,
+            store.get_trigger_by_name(&project2, &t4.name).await?,
             Some(t4.clone())
         );
         // Wrong project.
-        assert_eq!(store.get_trigger(&project1, &t4.id).await?, None);
+        assert_eq!(store.get_trigger_by_name(&project1, &t4.name).await?, None);
 
         // Test fetching non existent trigger
         assert_eq!(
             store
-                .get_trigger(
-                    &project1,
-                    &TriggerId::from("non_existent".to_string())
-                )
+                .get_trigger_by_name(&project1, &"non_existent".to_string())
                 .await?,
             None
         );
@@ -280,7 +289,7 @@ mod tests {
 
         // Test get by owner
         let mut results = store
-            .get_triggers_by_project(&project1, None, None, None, None, 100)
+            .get_triggers_by_project(&project1, None, None, None, 100)
             .await?;
         let mut expected = vec![t1.clone(), t2.clone()];
         expected.sort_by(|a, b| a.id.cmp(&b.id));
@@ -290,42 +299,17 @@ mod tests {
         // Test Get Status
         assert_eq!(
             Some(Status::Scheduled),
-            store.get_status(&project1, &t1.id).await?
+            store.get_status(&project1, &t1.name).await?
         );
         assert_eq!(
             Some(Status::Paused),
-            store.get_status(&project1, &t2.id).await?
+            store.get_status(&project1, &t2.name).await?
         );
-
-        // Test reference uniqueness
-        let mut t5 = build_trigger("t5", project1.clone(), Status::Scheduled);
-        t5.reference = Some("Ref".to_string());
-        let t6 = t5.clone();
-        store.install_trigger(t5.clone()).await?;
-
-        assert!(matches!(
-            store.install_trigger(t6.clone()).await,
-            Err(TriggerStoreError::DuplicateRecord)
-        ));
-
-        // Test get by reference
-        let results = store
-            .get_triggers_by_project(
-                &project1,
-                Some("Ref".to_string()),
-                None,
-                None,
-                None,
-                100,
-            )
-            .await?;
-        assert_eq!(results, vec![t5.clone()]);
 
         // Test get by status
         let results = store
             .get_triggers_by_project(
                 &project1,
-                None,
                 Some(vec![Status::Paused]),
                 None,
                 None,
@@ -340,7 +324,7 @@ mod tests {
 
         store.update_trigger(new_t1.clone()).await?;
         assert_eq!(
-            store.get_trigger(&project1, &t1.id).await?,
+            store.get_trigger_by_name(&project1, &t1.name).await?,
             Some(new_t1.clone())
         );
 
@@ -353,7 +337,7 @@ mod tests {
             Err(DatabaseError::DB(sea_orm::DbErr::RecordNotUpdated))
         ));
         assert_ne!(
-            store.get_trigger(&project1, &t1.id).await?,
+            store.get_trigger_by_name(&project1, &t1.name).await?,
             Some(mismatch_project_t1)
         );
 

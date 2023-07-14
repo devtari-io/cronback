@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
+use std::time::Duration;
 
+use async_recursion::async_recursion;
 use chrono::Utc;
 use lib::clients::dispatcher_client::ScopedDispatcherClient;
 use lib::database::trigger_store::{TriggerStore, TriggerStoreError};
@@ -8,8 +10,8 @@ use lib::grpc_client_provider::GrpcClientProvider;
 use lib::model::ValidShardedId;
 use lib::prelude::*;
 use lib::service::ServiceContext;
-use lib::types::{ProjectId, Run, Status, Trigger, TriggerId, TriggerManifest};
-use proto::scheduler_proto::{InstallTriggerRequest, InstallTriggerResponse};
+use lib::types::{ProjectId, Run, Status, Trigger, TriggerId};
+use proto::scheduler_proto::{UpsertTriggerRequest, UpsertTriggerResponse};
 use tracing::{debug, error, info, trace, warn};
 
 use super::dispatch::dispatch;
@@ -52,6 +54,7 @@ pub(crate) struct EventScheduler {
     triggers: Arc<RwLock<ActiveTriggerMap>>,
     spinner: Mutex<Option<SpinnerHandle>>,
     store: Box<dyn TriggerStore + Send + Sync>,
+    trigger_name_cache: Arc<RwLock<HashMap<String, TriggerId>>>,
     dispatcher_clients: Arc<GrpcClientProvider<ScopedDispatcherClient>>,
 }
 
@@ -65,6 +68,7 @@ impl EventScheduler {
             context,
             triggers: Arc::default(),
             spinner: Mutex::default(),
+            trigger_name_cache: Arc::default(),
             store,
             dispatcher_clients,
         }
@@ -170,105 +174,153 @@ impl EventScheduler {
         // TODO: Expired triggers should be removed from active map.
     }
 
+    pub async fn get_trigger_id_opt(
+        &self,
+        project_id: &ProjectId,
+        name: &str,
+    ) -> Result<Option<TriggerId>, TriggerStoreError> {
+        // find the id from the cache, if we can't find it, query from the
+        // database. We only acquire write lock when we update the
+        // cache.
+        {
+            let name_cache = self.trigger_name_cache.read().unwrap();
+            if let Some(trigger_id) = name_cache.get(name) {
+                return Ok(Some(trigger_id.clone()));
+            }
+        }
+        // Cache miss.
+        let trigger_id = self
+            .store
+            .find_trigger_id_for_name(project_id, name)
+            .await?;
+        if let Some(trigger_id) = trigger_id {
+            self.trigger_name_cache
+                .write()
+                .unwrap()
+                .insert(name.to_string(), trigger_id.clone());
+            Ok(Some(trigger_id))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub async fn get_trigger_id(
+        &self,
+        project_id: &ProjectId,
+        name: &str,
+    ) -> Result<TriggerId, TriggerError> {
+        let id = self.get_trigger_id_opt(project_id, name).await?;
+        if let Some(id) = id {
+            Ok(id)
+        } else {
+            Err(TriggerError::NotFound(name.to_string()))
+        }
+    }
+
     #[tracing::instrument(skip_all)]
     pub async fn update_trigger(
         &self,
-        mut existing_trigger: Trigger,
-        install_trigger: InstallTriggerRequest,
-    ) -> Result<InstallTriggerResponse, TriggerError> {
+        _existing_trigger: Trigger,
+        _upsert_request: UpsertTriggerRequest,
+    ) -> Result<UpsertTriggerResponse, TriggerError> {
+        todo!()
         // TODO: Take snapshots of previous triggers and store for auditing.
-        if install_trigger.fail_if_exists {
-            return Err(TriggerError::UpdateNotAllowed(existing_trigger.id));
-        }
-
-        // Is the updated trigger a "Scheduled" trigger?
-        // Do we have the existing trigger in memory?
-        let trigger_id = existing_trigger.id.clone();
-        let triggers_map = self.triggers.clone();
-        // Why clone? because we might need it if the trigger was not in the
-        // active map.
-        let install_cloned = install_trigger.clone();
-        let mut updated_trigger = tokio::task::spawn_blocking(move || {
-            let mut w = triggers_map.write().unwrap();
-            let Some(alive_trigger) = w.get(&trigger_id) else {
-                return None;
-            };
-            // are we attempting to install a `scheduled` replacement, or is
-            // the replacement an on_demand one?
-            let mut updated_trigger = alive_trigger.clone();
-            updated_trigger.update(
-                install_cloned.name,
-                install_cloned.description,
-                install_cloned.reference,
-                install_cloned.payload.map(Into::into),
-                install_cloned.schedule.map(Into::into),
-                install_cloned.action.unwrap().into(),
-            );
-            if updated_trigger.schedule.is_some() {
-                Some(w.add_or_update(
-                    updated_trigger,
-                    // We fast forward on update to avoid triggering old
-                    // events if the new trigger
-                    // has any old timestamps.
-                    /* fast_forward = */
-                    true,
-                ))
-            } else {
-                // If the old is scheduled and the new is not,
-                // we are in trouble, so we remove it from
-                // the map.
-                w.pop_trigger(&trigger_id);
-                Some(Ok(updated_trigger))
-            }
-        })
-        .await?
-        .transpose()?;
-
-        // if we don't have an updated_trigger, it means that we can merge with
-        // the `existing_trigger` to get the updated one.
-        if updated_trigger.is_none() {
-            existing_trigger.update(
-                install_trigger.name,
-                install_trigger.description,
-                install_trigger.reference,
-                install_trigger.payload.map(|p| p.into()),
-                install_trigger.schedule.map(|s| s.into()),
-                install_trigger.action.unwrap().into(),
-            );
-            updated_trigger = Some(existing_trigger);
-        }
-
-        // Guaranteed to be set at this point.
-        let updated_trigger = updated_trigger.unwrap();
-
-        // We have the updated trigger, let's save it to the database.
-        self.store.update_trigger(updated_trigger.clone()).await?;
-
+        // if upsert_request.fail_if_exists {
+        //     return Err(TriggerError::UpdateNotAllowed(existing_trigger.id));
+        // }
         //
-        // RESPOND
-        let reply = InstallTriggerResponse {
-            trigger: Some(updated_trigger.into()),
-            already_existed: true,
-        };
-        Ok(reply)
+        // // Is the updated trigger a "Scheduled" trigger?
+        // // Do we have the existing trigger in memory?
+        // let trigger_id = existing_trigger.id.clone();
+        // let triggers_map = self.triggers.clone();
+        // // Why clone? because we might need it if the trigger was not in the
+        // // active map.
+        // let install_cloned = upsert_request.clone();
+        // let mut updated_trigger = tokio::task::spawn_blocking(move || {
+        //     let mut w = triggers_map.write().unwrap();
+        //     let Some(alive_trigger) = w.get(&trigger_id) else {
+        //         return None;
+        //     };
+        //     // are we attempting to install a `scheduled` replacement, or is
+        //     // the replacement an on_demand one?
+        //     let mut updated_trigger = alive_trigger.clone();
+        //     updated_trigger.update(
+        //         install_cloned.name,
+        //         install_cloned.description,
+        //         install_cloned.reference,
+        //         install_cloned.payload.map(Into::into),
+        //         install_cloned.schedule.map(Into::into),
+        //         install_cloned.action.unwrap().into(),
+        //     );
+        //     if updated_trigger.schedule.is_some() {
+        //         Some(w.add_or_update(
+        //             updated_trigger,
+        //             // We fast forward on update to avoid triggering old
+        //             // events if the new trigger
+        //             // has any old timestamps.
+        //             /* fast_forward = */
+        //             true,
+        //         ))
+        //     } else {
+        //         // If the old is scheduled and the new is not,
+        //         // we are in trouble, so we remove it from
+        //         // the map.
+        //         w.pop_trigger(&trigger_id);
+        //         Some(Ok(updated_trigger))
+        //     }
+        // })
+        // .await?
+        // .transpose()?;
+        //
+        // // if we don't have an updated_trigger, it means that we can merge
+        // with // the `existing_trigger` to get the updated one.
+        // if updated_trigger.is_none() {
+        //     existing_trigger.update(
+        //         install_trigger.name,
+        //         install_trigger.description,
+        //         install_trigger.reference,
+        //         install_trigger.payload.map(|p| p.into()),
+        //         install_trigger.schedule.map(|s| s.into()),
+        //         install_trigger.action.unwrap().into(),
+        //     );
+        //     updated_trigger = Some(existing_trigger);
+        // }
+        //
+        // // Guaranteed to be set at this point.
+        // let updated_trigger = updated_trigger.unwrap();
+        //
+        // // We have the updated trigger, let's save it to the database.
+        // self.store.update_trigger(updated_trigger.clone()).await?;
+        //
+        // //
+        // // RESPOND
+        // let reply = UpsertTriggerResponse {
+        //     trigger: Some(updated_trigger.into()),
+        //     already_existed: true,
+        // };
+        // Ok(reply)
     }
 
-    pub async fn install_trigger(
+    #[async_recursion]
+    pub async fn upsert_trigger(
         &self,
         context: RequestContext,
-        mut install_trigger: InstallTriggerRequest,
-    ) -> Result<InstallTriggerResponse, TriggerError> {
+        upsert_request: UpsertTriggerRequest,
+    ) -> Result<UpsertTriggerResponse, TriggerError> {
+        // We assume that trigger will always be set.
+        let project_id = &context.project_id;
+        let mut trigger = upsert_request.trigger.clone().unwrap();
         // If we have an Id already, we must allow updates.
-        if install_trigger.id.is_some() && install_trigger.fail_if_exists {
-            return Err(TriggerError::UpdateNotAllowed(
-                install_trigger.id.unwrap().into(),
-            ));
-        }
+        // if install_trigger.fail_if_exists {
+        //     return Err(TriggerError::UpdateNotAllowed(
+        //         install_trigger.id.unwrap().into(),
+        //     ));
+        // }
 
         // Reset remaining if it was set.
         // TODO: When updating, allow the user to express their intent to
         // whether they want to reset the remaining or not.
-        if let Some(schedule) = install_trigger.schedule.as_mut() {
+        if let Some(schedule) = trigger.schedule.as_mut() {
             // the inner .schedule must be set at this point.
             // The spinner will update `remaining` to the accurate value as soon
             // as it runs.
@@ -290,38 +342,40 @@ impl EventScheduler {
 
         // ** Are we installing new or updating an existing trigger? **
         //
-        // find the existing trigger by id
-        if let Some(trigger_id) = install_trigger.id.clone() {
-            let trigger_id = trigger_id.into();
-
-            let existing_trigger = self
-                .store
-                .get_trigger(&context.project_id, &trigger_id)
-                .await?;
-            let Some(existing_trigger) = existing_trigger else {
-                return Err(TriggerError::NotFound(trigger_id));
-            };
-            return self
-                .update_trigger(existing_trigger, install_trigger)
-                .await;
+        // find the existing trigger by name
+        assert!(!trigger.name.is_empty());
+        let trigger_name = trigger.name.as_ref();
+        let existing_trigger = self
+            .store
+            .get_trigger_by_name(project_id, trigger_name)
+            .await?;
+        // We already have an existing trigger with the same name and the
+        // user asked us to fail if exists.
+        if upsert_request.fail_if_exists && existing_trigger.is_some() {
+            return Err(TriggerError::AlreadyExists(trigger_name.to_string()));
+        } else if let Some(existing_trigger) = existing_trigger {
+            // Update
+            return self.update_trigger(existing_trigger, upsert_request).await;
         }
+        // It doesn't exist and we are not updating, so we are installing.
+        //
+        assert!(existing_trigger.is_none());
 
-        let id = TriggerId::generate(&context.project_id);
+        let id = TriggerId::generate(project_id);
 
         // We want to keep a copy in case we have to call update later.
-        let copied_request = install_trigger.clone();
-        let is_scheduled = install_trigger.schedule.is_some();
+        //let copied_request = install_trigger.clone();
+        let is_scheduled = trigger.schedule.is_some();
         let trigger = Trigger {
             id: id.into(),
-            project_id: context.project_id.clone(),
-            reference: install_trigger.reference.clone(),
-            name: install_trigger.name,
-            description: install_trigger.description,
+            project_id: project_id.clone(),
+            name: trigger_name.to_string(),
+            description: trigger.description,
             created_at: Utc::now(),
             updated_at: None,
-            action: install_trigger.action.unwrap().into(),
-            payload: install_trigger.payload.map(|p| p.into()),
-            schedule: install_trigger.schedule.map(|s| s.into()),
+            action: trigger.action.unwrap().into(),
+            payload: trigger.payload.map(|p| p.into()),
+            schedule: trigger.schedule.map(|s| s.into()),
             status: if is_scheduled {
                 Status::Scheduled
             } else {
@@ -333,43 +387,35 @@ impl EventScheduler {
         let store_result = self.store.install_trigger(trigger.clone()).await;
 
         match store_result {
-            | Ok(_) => {}
+            | Ok(_) => { /* success */ }
             | Err(TriggerStoreError::DuplicateRecord) => {
-                // Do we have an existing trigger with this reference?
+                // Quite possibly a race with another install.
+                // Do we have an existing trigger with this name?
                 // if we search first, then we might end up inserting twice and
                 // failing with duplicate error to the user. If
                 // we always attempt to insert and fallback to
                 // update, we won't produce duplicate
                 // errors unless the user asks to fail if exists explicitly.
-                if copied_request.reference.is_some()
-                    && !copied_request.fail_if_exists
-                {
-                    let mut triggers = self
-                        .store
-                        .get_triggers_by_project(
-                            &context.project_id.clone(),
-                            copied_request.reference.clone(),
-                            /* statuses = */ None,
-                            /* before = */ None,
-                            /* after = */ None,
-                            /* limit = */ 1,
-                        )
-                        .await?;
-                    if let Some(trigger) = triggers.pop() {
-                        return self
-                            .update_trigger(trigger, copied_request)
-                            .await;
-                    }
+                if !upsert_request.fail_if_exists {
+                    // try again after 250ms.
+                    info!(
+                        "Hit a race while trying to install the trigger \
+                         {trigger_name} in project
+                    {project_id}. Will retry after 250ms!"
+                    );
+                    tokio::time::sleep(Duration::from_millis(250)).await;
+                    return self.upsert_trigger(context, upsert_request).await;
                 }
                 return Err(TriggerError::AlreadyExists(
-                    trigger.reference.unwrap(),
+                    trigger_name.to_string(),
                 ));
             }
             | Err(e) => return Err(e.into()),
         };
 
+        // Trigger installed, now we need that to be reflected in the active
+        // map (if needed). We only install scheduled triggers in the ActiveMap
         let trigger = if is_scheduled {
-            // We only install scheduled triggers in the ActiveMap
             let triggers = self.triggers.clone();
             tokio::task::spawn_blocking(move || {
                 let mut w = triggers.write().unwrap();
@@ -380,62 +426,65 @@ impl EventScheduler {
             Ok(trigger)
         }?;
 
-        let reply = InstallTriggerResponse {
+        let reply = UpsertTriggerResponse {
             trigger: Some(trigger.into()),
             already_existed: false,
         };
         Ok(reply)
     }
 
-    #[tracing::instrument(skip_all, fields(trigger_id = %id))]
+    #[tracing::instrument(skip_all, fields(trigger_name = %name, project_id = %context.project_id))]
     pub async fn get_trigger(
         &self,
         context: RequestContext,
-        id: TriggerId,
+        name: String,
     ) -> Result<Trigger, TriggerError> {
         let triggers = self.triggers.clone();
-        let inner_id = id.clone();
+        let trigger_id =
+            self.get_trigger_id(&context.project_id, &name).await?;
+
+        let cloned_name = name.clone();
         let trigger_res = tokio::task::spawn_blocking(move || {
             let r = triggers.read().unwrap();
-            r.get(&inner_id)
-                .ok_or_else(|| TriggerError::NotFound(inner_id))
+            r.get(&trigger_id)
+                .ok_or_else(|| TriggerError::NotFound(cloned_name))
                 .cloned()
         })
         .await?;
         // Get from the database if this is not an active trigger.
         match trigger_res {
+            // We must validate project ownership since we didn't check that
+            // when retrieving from active map.
             | Ok(trigger) if trigger.project_id == context.project_id => {
                 Ok(trigger)
             }
             // The trigger was found but owned by a different user!
-            | Ok(_) => Err(TriggerError::NotFound(id.clone())),
+            | Ok(_) => Err(TriggerError::NotFound(name.to_string())),
             | Err(TriggerError::NotFound(_)) => {
                 self.store
-                    .get_trigger(&context.project_id, &id)
+                    .get_trigger_by_name(&context.project_id, &name)
                     .await?
-                    .ok_or_else(|| TriggerError::NotFound(id))
+                    .ok_or_else(|| TriggerError::NotFound(name.to_string()))
             }
             | Err(e) => Err(e),
         }
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip_all, fields(project_id = %context.project_id))]
     pub async fn list_triggers(
         &self,
         context: RequestContext,
-        reference: Option<String>,
         statuses: Option<Vec<Status>>,
         limit: usize,
         before: Option<TriggerId>,
         after: Option<TriggerId>,
-    ) -> Result<Vec<TriggerManifest>, TriggerError> {
-        // Hopefully in the future we will be able to get the manifest directly
-        // from database instead of fetching the entire trigger.
+    ) -> Result<Vec<Trigger>, TriggerError> {
+        // Hopefully in the future we will be able to get the compact version
+        // directly from database instead of fetching the entire trigger.
         let triggers = self
             .store
             .get_triggers_by_project(
                 &context.project_id,
-                reference,
                 statuses,
                 before,
                 after,
@@ -448,36 +497,35 @@ impl EventScheduler {
 
         // Swap live triggers with ones from the scheduler in-memory state.
         let active_trigger_map = self.triggers.clone();
-        let alive_triggers: Vec<TriggerManifest> =
+        let alive_triggers: Vec<Trigger> =
             tokio::task::spawn_blocking(move || {
                 let r = active_trigger_map.read().unwrap();
                 alive
                     .into_iter()
-                    .filter_map(|t| r.get(&t.id))
-                    .map(Trigger::get_manifest)
+                    .filter_map(|t| r.get(&t.id).cloned())
                     .collect()
             })
             .await?;
 
-        let mut results: Vec<TriggerManifest> =
+        let mut results: Vec<Trigger> =
             Vec::with_capacity(dead.len() + alive_triggers.len());
 
         // merge live and dead
-        results.extend(dead.into_iter().map(Trigger::into_manifest));
+        results.extend(dead.into_iter());
         results.extend(alive_triggers);
         // reverse sort the list by created_at (newer first)
         results.sort_by(|a, b| b.created_at.cmp(&a.created_at));
         Ok(results)
     }
 
-    #[tracing::instrument(skip_all, fields(trigger_id = %id))]
+    #[tracing::instrument(skip_all, fields(trigger_name = %name, project_id = %context.project_id))]
     pub async fn run_trigger(
         &self,
         context: RequestContext,
-        id: TriggerId,
+        name: String,
         mode: DispatchMode,
     ) -> Result<Run, TriggerError> {
-        let trigger = self.get_trigger(context.clone(), id).await?;
+        let trigger = self.get_trigger(context.clone(), name).await?;
 
         if trigger.status == Status::Cancelled {
             return Err(TriggerError::InvalidStatus(
@@ -491,14 +539,18 @@ impl EventScheduler {
         Ok(run)
     }
 
-    #[tracing::instrument(skip_all, fields(trigger_id = %id))]
+    #[tracing::instrument(skip_all, fields(trigger_name = %name, project_id = %context.project_id))]
     pub async fn pause_trigger(
         &self,
         context: RequestContext,
-        id: TriggerId,
-    ) -> Result<TriggerManifest, TriggerError> {
+        name: String,
+    ) -> Result<Trigger, TriggerError> {
         let triggers = self.triggers.clone();
-        let status = self.get_trigger_status(&context.project_id, &id).await?;
+        let trigger_id =
+            self.get_trigger_id(&context.project_id, &name).await?;
+
+        let status =
+            self.get_trigger_status(&context.project_id, &name).await?;
         // if value, check that it's alive.
         if !status.alive() {
             return Err(TriggerError::InvalidStatus(
@@ -508,19 +560,24 @@ impl EventScheduler {
         }
         tokio::task::spawn_blocking(move || {
             let mut w = triggers.write().unwrap();
-            w.pause(&id).map(|_| w.get(&id).unwrap().get_manifest())
+            w.pause(&trigger_id)
+                .map(|_| w.get(&trigger_id).unwrap())
+                .cloned()
         })
         .await?
     }
 
-    #[tracing::instrument(skip_all, fields(trigger_id = %id))]
+    #[tracing::instrument(skip_all, fields(trigger_name = %name, project_id = %context.project_id))]
     pub async fn resume_trigger(
         &self,
         context: RequestContext,
-        id: TriggerId,
-    ) -> Result<TriggerManifest, TriggerError> {
+        name: String,
+    ) -> Result<Trigger, TriggerError> {
         let triggers = self.triggers.clone();
-        let status = self.get_trigger_status(&context.project_id, &id).await?;
+        let trigger_id =
+            self.get_trigger_id(&context.project_id, &name).await?;
+        let status =
+            self.get_trigger_status(&context.project_id, &name).await?;
         // if value, check that it's alive.
         if !status.alive() {
             return Err(TriggerError::InvalidStatus(
@@ -530,19 +587,24 @@ impl EventScheduler {
         }
         tokio::task::spawn_blocking(move || {
             let mut w = triggers.write().unwrap();
-            w.resume(&id).map(|_| w.get(&id).unwrap().get_manifest())
+            w.resume(&trigger_id)
+                .map(|_| w.get(&trigger_id).unwrap())
+                .cloned()
         })
         .await?
     }
 
-    #[tracing::instrument(skip_all, fields(trigger_id = %id))]
+    #[tracing::instrument(skip_all, fields(trigger_name = %name, project_id = %context.project_id))]
     pub async fn cancel_trigger(
         &self,
         context: RequestContext,
-        id: TriggerId,
-    ) -> Result<TriggerManifest, TriggerError> {
+        name: String,
+    ) -> Result<Trigger, TriggerError> {
+        let trigger_id =
+            self.get_trigger_id(&context.project_id, &name).await?;
         let triggers = self.triggers.clone();
-        let status = self.get_trigger_status(&context.project_id, &id).await?;
+        let status =
+            self.get_trigger_status(&context.project_id, &name).await?;
         // if value, check that it's alive.
         if !status.cancelleable() {
             return Err(TriggerError::InvalidStatus(
@@ -552,20 +614,20 @@ impl EventScheduler {
         }
 
         if status == Status::OnDemand {
-            let mut trigger = self.get_trigger(context, id).await?;
+            let mut trigger =
+                self.get_trigger(context, name.to_string()).await?;
             trigger.status = Status::Cancelled;
-            let manifest = trigger.get_manifest();
             self.store.update_trigger(trigger.clone()).await?;
-            Ok(manifest)
+            Ok(trigger)
         } else {
-            let inner_id = id.clone();
             tokio::task::spawn_blocking(move || {
                 let mut w = triggers.write().unwrap();
                 // We blindly cancel here since we have checked earlier that
                 // this trigger is owned by the right project.
                 // Otherwise, we won't reach this line.
-                w.cancel(&inner_id)
-                    .map(|_| w.get(&inner_id).unwrap().get_manifest())
+                w.cancel(&trigger_id)
+                    .map(|_| w.get(&trigger_id).unwrap())
+                    .cloned()
             })
             .await?
         }
@@ -611,10 +673,10 @@ impl EventScheduler {
     async fn get_trigger_status(
         &self,
         project: &ValidShardedId<ProjectId>,
-        trigger_id: &TriggerId,
+        name: &str,
     ) -> Result<Status, TriggerError> {
-        let status = self.store.get_status(project, trigger_id).await?;
+        let status = self.store.get_status(project, name).await?;
         // if None -> Trigger doesn't exist
-        status.ok_or_else(|| TriggerError::NotFound(trigger_id.clone()))
+        status.ok_or_else(|| TriggerError::NotFound(name.to_owned()))
     }
 }

@@ -4,7 +4,7 @@ use dto::{FromProto, IntoProto};
 use lib::validation::{validate_webhook_url, validation_error};
 use monostate::MustBe;
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, DurationSecondsWithFrac};
+use serde_with::{serde_as, skip_serializing_none, DurationSecondsWithFrac};
 use validator::{Validate, ValidationError};
 
 #[derive(
@@ -12,7 +12,6 @@ use validator::{Validate, ValidationError};
 )]
 #[proto(target = "proto::webhook_proto::HttpMethod")]
 #[serde(rename_all = "UPPERCASE")]
-#[serde(deny_unknown_fields)]
 pub enum HttpMethod {
     Delete,
     Get,
@@ -35,6 +34,7 @@ pub enum HttpMethod {
 )]
 #[proto(target = "proto::webhook_proto::Webhook")]
 #[serde(default)]
+#[skip_serializing_none]
 #[serde(deny_unknown_fields)]
 pub struct Webhook {
     // allows an optional "type" field to be passed in. This enables other
@@ -97,6 +97,7 @@ pub enum RetryConfig {
 #[proto(target = "proto::webhook_proto::SimpleRetry")]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
+#[skip_serializing_none]
 pub struct SimpleRetry {
     #[serde(rename = "type")]
     _kind: MustBe!("simple"),
@@ -133,6 +134,7 @@ impl Default for SimpleRetry {
 )]
 #[proto(target = "proto::webhook_proto::ExponentialBackoffRetry")]
 #[serde(deny_unknown_fields)]
+#[skip_serializing_none]
 pub struct ExponentialBackoffRetry {
     #[serde(rename = "type")]
     _kind: MustBe!("exponential_backoff"),

@@ -28,3 +28,6 @@ tonic = { workspace = true }
 tower = { workspace = true }
 tracing = { workspace = true }
 tracing-test = { workspace = true }
+
+# Dependencies specific to this crate
+async-recursion = "1.0.4"

@@ -29,12 +29,6 @@ message Recurring {
   optional uint64 remaining = 4;
 }
 
-enum RetryPolicy {
-  RetryPolicy_UNKNOWN = 0;
-  SIMPLE = 1;
-  EXPONENTIAL = 2;
-}
-
 message Payload {
   string content_type = 1;
   map<string, string> headers = 2;
@@ -63,34 +57,22 @@ message Schedule {
 }
 
 message Trigger {
-  common.TriggerId id = 1;
-  common.ProjectId project_id = 2;
   /// User supplied identifier, unique per project
-  optional string reference = 3;
-  string name = 4;
-  optional string description = 5;
+  string name = 1;
+  optional string description = 2;
+  Action action = 3;
+  Schedule schedule = 4;
+  // output only
+  optional TriggerStatus status = 5;
+  // output only
   common.DateTime created_at = 6;
   // output only
-  optional common.DateTime updated_at = 7;
-  Action action = 8;
-  Payload payload = 9;
-  Schedule schedule = 10;
-  TriggerStatus status = 11;
-  optional common.DateTime last_ran_at = 12;
+  optional common.DateTime last_ran_at = 7;
+  // output only
+  optional common.DateTime updated_at = 8;
+  optional Payload payload = 9;
+  // optional string etag = 9;
+  // TODO
+ //optional Run last_run_details = 3;
+  // TODO: Created/Updated details (updated by
 }
-
-message TriggerManifest {
-  string id = 1;
-  string project_id = 2;
-  /// User supplied identifier, unique per project
-  optional string reference = 3;
-  string name = 4;
-  optional string description = 5;
-  common.DateTime created_at = 6;
-  optional common.DateTime updated_at = 7;
-  Action action = 8;
-  Schedule schedule = 9;
-  TriggerStatus status = 10;
-  optional common.DateTime last_ran_at = 11;
-}
-

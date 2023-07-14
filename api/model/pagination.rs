@@ -15,8 +15,7 @@ pub(crate) struct Pagination<T> {
     pub limit: Option<usize>,
 }
 
-impl<T> ::std::convert::From<Pagination<T>>
-    for proto::scheduler_proto::Pagination
+impl<T> ::std::convert::From<Pagination<T>> for proto::common::Pagination
 where
     T: Into<String>,
 {
