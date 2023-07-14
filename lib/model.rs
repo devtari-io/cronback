@@ -2,7 +2,7 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 use derive_more::{Display, From, Into};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use thiserror::Error;
 use ulid::Ulid;
 
@@ -53,17 +53,7 @@ pub trait ModelId: Sized + std::fmt::Display + From<String> {
     }
 }
 
-#[derive(
-    Ord,
-    PartialOrd,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Display,
-    Serialize,
-    Deserialize,
-)]
+#[derive(Ord, PartialOrd, Debug, Clone, PartialEq, Eq, Display, Serialize)]
 pub struct ValidShardedId<T>(T);
 
 impl<T> ValidShardedId<T>
@@ -109,6 +99,20 @@ where
 
     pub fn into_inner(self) -> T {
         self.0
+    }
+}
+
+impl<'de, T> Deserialize<'de> for ValidShardedId<T>
+where
+    T: ModelId + From<String>,
+{
+    fn deserialize<D>(deserializer: D) -> Result<ValidShardedId<T>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        let id = T::from(s);
+        id.validated().map_err(serde::de::Error::custom)
     }
 }
 

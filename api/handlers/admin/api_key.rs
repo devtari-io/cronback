@@ -3,6 +3,7 @@ use std::sync::Arc;
 use axum::extract::State;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Json};
+use lib::model::ValidShardedId;
 use lib::types::ProjectId;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
@@ -15,7 +16,7 @@ use crate::{AppState, AppStateError};
 #[derive(Deserialize, Debug, Validate)]
 #[serde(deny_unknown_fields)]
 pub struct CreateAPIkeyRequest {
-    project: String,
+    project: ValidShardedId<ProjectId>,
 
     #[validate(length(
         min = 2,
