@@ -14,6 +14,7 @@ path = "lib.rs"
 # Internal Dependencies
 proto = { path = "../proto" }
 dto = { path = "../dto" }
+migration = { path = "../migration" }
 
 # Dependencies from workspace
 anyhow = { workspace = true }
@@ -25,6 +26,7 @@ derive_more = { workspace = true }
 iso8601-duration = { workspace = true }
 sea-query = { workspace = true }
 sea-query-binder = { workspace = true }
+sea-orm = { workspace = true }
 sqlx = { workspace = true }
 tonic = { workspace = true }
 tower = { workspace = true }

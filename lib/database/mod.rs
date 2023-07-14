@@ -1,44 +1,26 @@
 pub mod attempt_log_store;
 mod errors;
-mod helpers;
+pub mod models;
 pub mod run_store;
 pub mod trigger_store;
 
-use sea_query::{
-    PostgresQueryBuilder,
-    QueryBuilder,
-    SchemaBuilder,
-    SqliteQueryBuilder,
-};
-use sqlx::AnyPool;
+use migration::{Migrator, MigratorTrait};
 
 #[derive(Clone)]
 pub struct Database {
-    pub pool: AnyPool,
+    pub orm: sea_orm::DatabaseConnection,
 }
 
 impl Database {
-    pub async fn connect(conn_string: &str) -> Result<Self, sqlx::Error> {
+    pub async fn connect(conn_string: &str) -> Result<Self, anyhow::Error> {
         Ok(Self {
-            pool: AnyPool::connect(conn_string).await?,
+            orm: sea_orm::Database::connect(conn_string).await?,
         })
     }
 
-    pub async fn in_memory() -> Result<Self, sqlx::Error> {
-        Self::connect("sqlite::memory:").await
-    }
-
-    pub fn builder(&self) -> Box<dyn QueryBuilder> {
-        match self.pool.any_kind() {
-            | sqlx::any::AnyKind::Postgres => Box::new(PostgresQueryBuilder),
-            | sqlx::any::AnyKind::Sqlite => Box::new(SqliteQueryBuilder),
-        }
-    }
-
-    pub fn schema_builder(&self) -> Box<dyn SchemaBuilder> {
-        match self.pool.any_kind() {
-            | sqlx::any::AnyKind::Postgres => Box::new(PostgresQueryBuilder),
-            | sqlx::any::AnyKind::Sqlite => Box::new(SqliteQueryBuilder),
-        }
+    pub async fn in_memory() -> Result<Self, anyhow::Error> {
+        let conn = Self::connect("sqlite::memory:").await?;
+        Migrator::up(&conn.orm, None).await?;
+        Ok(conn)
     }
 }

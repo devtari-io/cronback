@@ -1,28 +1,18 @@
 use async_trait::async_trait;
+use lib::database::models::api_keys;
+use lib::database::models::prelude::ApiKeys;
 use lib::database::Database;
 use lib::model::{ModelId, ValidShardedId};
 use lib::types::ProjectId;
-use sea_query::{ColumnDef, Expr, Iden, Query, Table};
-use sea_query_binder::SqlxBinder;
-use sqlx::Row;
+use sea_orm::EntityTrait;
 use thiserror::Error;
 
 use crate::auth::{ApiKey, HashVersion};
 
-#[derive(Iden)]
-enum ApiKeysIden {
-    ApiKeys,
-    KeyId,
-    Hash,
-    HashVersion,
-    Project,
-    Name,
-}
-
 #[derive(Error, Debug)]
 pub enum AuthStoreError {
     #[error("database error: {0}")]
-    DatabaseError(#[from] sqlx::Error),
+    DatabaseError(#[from] sea_orm::DbErr),
     #[error("auth failed: {0}")]
     AuthFailed(String),
     #[error("internal error: {0}")]
@@ -55,20 +45,6 @@ impl SqlAuthStore {
     pub fn new(db: Database) -> Self {
         Self { db }
     }
-
-    pub async fn prepare(&self) -> Result<(), AuthStoreError> {
-        let sql = Table::create()
-            .table(ApiKeysIden::ApiKeys)
-            .if_not_exists()
-            .col(ColumnDef::new(ApiKeysIden::KeyId).text().primary_key())
-            .col(ColumnDef::new(ApiKeysIden::Hash).text())
-            .col(ColumnDef::new(ApiKeysIden::HashVersion).text())
-            .col(ColumnDef::new(ApiKeysIden::Project).text())
-            .col(ColumnDef::new(ApiKeysIden::Name).text())
-            .build_any(self.db.schema_builder().as_ref());
-        sqlx::query(&sql).execute(&self.db.pool).await?;
-        Ok(())
-    }
 }
 
 #[async_trait]
@@ -81,27 +57,17 @@ impl AuthStore for SqlAuthStore {
     ) -> Result<(), AuthStoreError> {
         let hashed = key.hash(HashVersion::default());
 
-        let (sql, values) = Query::insert()
-            .into_table(ApiKeysIden::ApiKeys)
-            .columns([
-                ApiKeysIden::KeyId,
-                ApiKeysIden::Hash,
-                ApiKeysIden::HashVersion,
-                ApiKeysIden::Project,
-                ApiKeysIden::Name,
-            ])
-            .values_panic([
-                hashed.key_id.into(),
-                hashed.hash.into(),
+        let model = api_keys::ActiveModel {
+            key_id: sea_orm::ActiveValue::Set(hashed.key_id.into()),
+            hash: sea_orm::ActiveValue::Set(hashed.hash.into()),
+            hash_version: sea_orm::ActiveValue::Set(
                 hashed.hash_version.to_string().into(),
-                project.to_string().into(),
-                key_name.to_string().into(),
-            ])
-            .build_any_sqlx(self.db.builder().as_ref());
+            ),
+            project: sea_orm::ActiveValue::Set(project.to_string().into()),
+            name: sea_orm::ActiveValue::Set(Some(key_name.to_string())),
+        };
 
-        sqlx::query_with(&sql, values)
-            .execute(&self.db.pool)
-            .await?;
+        api_keys::Entity::insert(model).exec(&self.db.orm).await?;
         Ok(())
     }
 
@@ -109,33 +75,17 @@ impl AuthStore for SqlAuthStore {
         &self,
         user_provided_key: &ApiKey,
     ) -> Result<ValidShardedId<ProjectId>, AuthStoreError> {
-        let (sql, values) = Query::select()
-            .columns([
-                ApiKeysIden::KeyId,
-                ApiKeysIden::Hash,
-                ApiKeysIden::HashVersion,
-                ApiKeysIden::Project,
-            ])
-            .from(ApiKeysIden::ApiKeys)
-            .and_where(
-                Expr::col(ApiKeysIden::KeyId).eq(user_provided_key.key_id()),
-            )
-            .build_any_sqlx(self.db.builder().as_ref());
-        let result = sqlx::query_with(&sql, values)
-            .fetch_one(&self.db.pool)
-            .await;
-        let row = match result {
-            | Ok(r) => r,
-            | Err(sqlx::Error::RowNotFound) => {
-                return Err(AuthStoreError::AuthFailed(
-                    "key_id not found".to_string(),
-                ));
-            }
-            | Err(e) => return Err(e.into()),
+        let result = ApiKeys::find_by_id(user_provided_key.key_id())
+            .one(&self.db.orm)
+            .await?;
+
+        let Some(result) = result else {
+            return Err(AuthStoreError::AuthFailed(
+                "key_id not found".to_string(),
+            ));
         };
 
-        let hash_version =
-            row.get::<String, _>(ApiKeysIden::HashVersion.to_string().as_str());
+        let hash_version = result.hash_version;
         let hash_version: HashVersion = hash_version.parse().map_err(|_| {
             AuthStoreError::InternalError(format!(
                 "Unknown version: {hash_version}"
@@ -143,8 +93,7 @@ impl AuthStore for SqlAuthStore {
         })?;
 
         let user_provided_hash = user_provided_key.hash(hash_version);
-        let stored_hash =
-            row.get::<String, _>(ApiKeysIden::Hash.to_string().as_str());
+        let stored_hash = result.hash;
 
         if user_provided_hash.hash != stored_hash {
             return Err(AuthStoreError::AuthFailed(
@@ -152,22 +101,16 @@ impl AuthStore for SqlAuthStore {
             ));
         }
 
-        Ok(ProjectId::from(
-            row.get::<String, _>(ApiKeysIden::Project.to_string().as_str()),
-        )
-        .validated()
-        .expect("Invalid ProjectId persisted in database"))
+        Ok(ProjectId::from(result.project)
+            .validated()
+            .expect("Invalid ProjectId persisted in database"))
     }
 
     async fn revoke_key(&self, key: &ApiKey) -> Result<bool, AuthStoreError> {
-        let (sql, values) = Query::delete()
-            .from_table(ApiKeysIden::ApiKeys)
-            .and_where(Expr::col(ApiKeysIden::KeyId).eq(key.key_id()))
-            .build_any_sqlx(self.db.builder().as_ref());
-        let res = sqlx::query_with(&sql, values)
-            .execute(&self.db.pool)
+        let res = ApiKeys::delete_by_id(key.key_id())
+            .exec(&self.db.orm)
             .await?;
-        Ok(res.rows_affected() > 0)
+        Ok(res.rows_affected > 0)
     }
 }
 
@@ -185,7 +128,6 @@ mod tests {
     async fn test_sql_auth_store() -> anyhow::Result<()> {
         let db = Database::in_memory().await?;
         let store = SqlAuthStore::new(db);
-        store.prepare().await?;
 
         let owner1 = ProjectId::generate();
         let owner2 = ProjectId::generate();

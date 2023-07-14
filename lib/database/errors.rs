@@ -7,27 +7,25 @@ const POSTGRES_UNIQUE_CONSTRAINT_FAILED_CODE: &str = "23505";
 
 #[derive(Error, Debug)]
 pub enum DatabaseError {
-    #[error("database error: {0}")]
-    Query(sqlx::Error),
-
     #[error("serialization error: {0}")]
     Parse(#[from] serde_json::Error),
 
     #[error("constraint error: violated unique constraint")]
     DuplicateRecord,
+
+    #[error("database error: {0}")]
+    DB(sea_orm::DbErr),
 }
 
-impl From<sqlx::Error> for DatabaseError {
-    fn from(value: sqlx::Error) -> Self {
+impl From<sea_orm::DbErr> for DatabaseError {
+    fn from(value: sea_orm::DbErr) -> Self {
         match value {
-            | sqlx::Error::Database(db_err) => {
-                if is_duplicate_record_error(db_err.as_ref()) {
-                    DatabaseError::DuplicateRecord
-                } else {
-                    DatabaseError::Query(sqlx::Error::Database(db_err))
-                }
+            | sea_orm::DbErr::Exec(sea_orm::RuntimeErr::SqlxError(
+                sqlx::Error::Database(db_err),
+            )) if is_duplicate_record_error(db_err.as_ref()) => {
+                DatabaseError::DuplicateRecord
             }
-            | _ => DatabaseError::Query(value),
+            | _ => DatabaseError::DB(value),
         }
     }
 }

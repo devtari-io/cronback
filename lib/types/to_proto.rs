@@ -1,10 +1,7 @@
-use proto::{attempt_proto, run_proto, trigger_proto, webhook_proto};
+use proto::{run_proto, trigger_proto, webhook_proto};
 
 use super::{
     Action,
-    ActionAttemptLog,
-    AttemptDetails,
-    AttemptStatus,
     HttpMethod,
     Payload,
     Recurring,
@@ -208,54 +205,5 @@ impl From<Run> for run_proto::Run {
             action: Some(value.action.into()),
             status: value.status.into(),
         }
-    }
-}
-
-// AttemptLog
-
-impl From<ActionAttemptLog> for attempt_proto::ActionAttemptLog {
-    fn from(value: ActionAttemptLog) -> Self {
-        Self {
-            id: value.id.into(),
-            run_id: value.run.into(),
-            trigger_id: value.trigger.into(),
-            project_id: value.project.into(),
-            status: value.status.into(),
-            details: Some(value.details.into()),
-            created_at: to_iso8601(&value.created_at),
-        }
-    }
-}
-
-impl From<AttemptDetails> for attempt_proto::AttemptDetails {
-    fn from(value: AttemptDetails) -> Self {
-        let details = match value {
-            | AttemptDetails::WebhookAttemptDetails(webhook_details) => {
-                attempt_proto::attempt_details::Details::WebhookDetails(
-                    attempt_proto::WebhookAttemptDetails {
-                        response_code: webhook_details.response_code,
-                        response_latency_s: webhook_details
-                            .response_latency_s
-                            .as_secs_f64(),
-                        error_msg: webhook_details.error_message,
-                    },
-                )
-            }
-        };
-        attempt_proto::AttemptDetails {
-            details: Some(details),
-        }
-    }
-}
-
-impl From<AttemptStatus> for i32 {
-    fn from(value: AttemptStatus) -> Self {
-        let enum_value: attempt_proto::AttemptStatus = match value {
-            | AttemptStatus::Failed => attempt_proto::AttemptStatus::Failed,
-            | AttemptStatus::Succeeded => {
-                attempt_proto::AttemptStatus::Succeeded
-            }
-        };
-        enum_value as i32
     }
 }

@@ -1,8 +1,7 @@
 use chrono::Utc;
-use chrono_tz::UTC;
 use lib::model::ModelId;
 use lib::service::ServiceContext;
-use lib::types::{ProjectId, Run, RunId};
+use lib::types::{ProjectId, Run, RunId, RunStatus};
 use metrics::counter;
 use proto::dispatcher_proto::dispatcher_server::Dispatcher;
 use proto::dispatcher_proto::{DispatchRequest, DispatchResponse};
@@ -44,10 +43,10 @@ impl Dispatcher for DispatcherAPIHandler {
             id: run_id.into(),
             trigger: request.trigger_id.into(),
             project,
-            created_at: Utc::now().with_timezone(&UTC),
+            created_at: Utc::now(),
             payload: request.payload.map(|p| p.into()),
             action: request.action.unwrap().into(),
-            status: lib::types::RunStatus::Attempting,
+            status: RunStatus::Attempting,
         };
 
         counter!("dispatcher.runs_total", 1);

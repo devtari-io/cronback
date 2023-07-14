@@ -529,8 +529,6 @@ mod tests {
         ProjectId,
         Recurring,
         RunAt,
-        Schedule,
-        Status,
         Trigger,
         TriggerId,
         Webhook,

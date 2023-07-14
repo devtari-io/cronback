@@ -2,7 +2,6 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use chrono::Utc;
-use chrono_tz::UTC;
 use futures::FutureExt;
 use lib::database::attempt_log_store::AttemptLogStore;
 use lib::model::ValidShardedId;
@@ -73,7 +72,7 @@ impl WebhookActionJob {
                             &self.run_id,
                         );
 
-                        let attempt_start_time = Utc::now().with_timezone(&UTC);
+                        let attempt_start_time = Utc::now();
 
                         let attempt_id = AttemptLogId::generate(&self.project);
                         let response = dispatch_webhook(
@@ -109,7 +108,7 @@ impl WebhookActionJob {
                         );
 
                         if let Err(e) =
-                            self.attempt_store.log_attempt(&attempt_log).await
+                            self.attempt_store.log_attempt(attempt_log).await
                         {
                             error!(
                                 "Failed to log attempt {attempt_id} to \

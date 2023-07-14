@@ -21,7 +21,6 @@ pub async fn start_scheduler_server(
 
     let db = Database::connect(&config.scheduler.database_uri).await?;
     let trigger_store = SqlTriggerStore::new(db);
-    trigger_store.prepare().await?;
 
     let dispatcher_clients = Arc::new(GrpcClientProvider::new(context.clone()));
 
@@ -94,7 +93,6 @@ pub mod test_helpers {
 
         let db = Database::in_memory().await.unwrap();
         let trigger_store = SqlTriggerStore::new(db);
-        trigger_store.prepare().await.unwrap();
         let event_scheduler = Arc::new(EventScheduler::new(
             context.clone(),
             Box::new(trigger_store),

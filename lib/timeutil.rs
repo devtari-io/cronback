@@ -1,4 +1,6 @@
-use chrono::{DateTime, Timelike, Utc};
+use std::fmt::Display;
+
+use chrono::{DateTime, TimeZone, Timelike, Utc};
 use chrono_tz::{Tz, UTC};
 use iso8601_duration::Duration as IsoDuration;
 
@@ -53,7 +55,11 @@ pub fn parse_iso8601_unsafe(input: &str) -> DateTime<Tz> {
     parse_iso8601_and_duration(input).unwrap()
 }
 
-pub fn to_iso8601(input: &DateTime<Tz>) -> String {
+pub fn to_iso8601<T>(input: &DateTime<T>) -> String
+where
+    T: TimeZone,
+    <T as TimeZone>::Offset: Display,
+{
     input.format("%+").to_string()
 }
 

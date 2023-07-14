@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
+use lib::database::models::triggers;
 use lib::prelude::*;
 use lib::service::ServiceContext;
-use lib::types::trigger;
 use proto::scheduler_proto::scheduler_server::Scheduler;
 use proto::scheduler_proto::{
     CancelTriggerRequest,
@@ -163,7 +163,7 @@ impl Scheduler for SchedulerAPIHandler {
 
 fn list_filter_into_parts(
     filter: Option<ListTriggersFilter>,
-) -> (Option<String>, Option<Vec<trigger::Status>>) {
+) -> (Option<String>, Option<Vec<triggers::Status>>) {
     let Some(filter) = filter else {
         return (None, None);
     };
@@ -178,7 +178,7 @@ fn list_filter_into_parts(
             statuses
                 .into_iter()
                 .map(Into::into)
-                .collect::<Vec<trigger::Status>>(),
+                .collect::<Vec<triggers::Status>>(),
         )
     } else {
         None

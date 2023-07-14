@@ -1,18 +1,17 @@
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
-use proto::{attempt_proto, run_proto, trigger_proto, webhook_proto};
+use proto::{run_proto, trigger_proto, webhook_proto};
 
 use super::{
     Action,
-    ActionAttemptLog,
-    AttemptDetails,
-    AttemptStatus,
     ExponentialBackoffRetry,
     HttpMethod,
     Payload,
+    Recurring,
     RetryConfig,
     Run,
+    RunAt,
     RunStatus,
     Schedule,
     SimpleRetry,
@@ -20,7 +19,6 @@ use super::{
     Trigger,
     TriggerManifest,
     Webhook,
-    WebhookAttemptDetails,
 };
 use crate::model::ValidShardedId;
 use crate::timeutil::parse_iso8601_and_duration;
@@ -121,7 +119,7 @@ impl From<trigger_proto::Schedule> for Schedule {
     }
 }
 
-impl From<trigger_proto::Recurring> for super::Recurring {
+impl From<trigger_proto::Recurring> for Recurring {
     fn from(value: trigger_proto::Recurring) -> Self {
         Self {
             cron: Some(value.cron),
@@ -132,7 +130,7 @@ impl From<trigger_proto::Recurring> for super::Recurring {
     }
 }
 
-impl From<trigger_proto::RunAt> for super::RunAt {
+impl From<trigger_proto::RunAt> for RunAt {
     fn from(value: trigger_proto::RunAt) -> Self {
         Self {
             timepoints: value
@@ -222,66 +220,15 @@ impl From<webhook_proto::ExponentialBackoffRetry> for ExponentialBackoffRetry {
     }
 }
 
-// AttemptLog
-
-impl From<i32> for AttemptStatus {
-    fn from(value: i32) -> Self {
-        let enum_value = attempt_proto::AttemptStatus::from_i32(value).unwrap();
-        match enum_value {
-            | attempt_proto::AttemptStatus::Unknown => {
-                panic!("We should never see AttemptStatus::Unknown")
-            }
-            | attempt_proto::AttemptStatus::Failed => AttemptStatus::Failed,
-            | attempt_proto::AttemptStatus::Succeeded => {
-                AttemptStatus::Succeeded
-            }
-        }
-    }
-}
-
-impl From<attempt_proto::ActionAttemptLog> for ActionAttemptLog {
-    fn from(value: attempt_proto::ActionAttemptLog) -> Self {
-        Self {
-            id: value.id.into(),
-            run: value.run_id.into(),
-            trigger: value.trigger_id.into(),
-            project: ValidShardedId::from_string_unsafe(value.project_id),
-            status: value.status.into(),
-            details: value.details.unwrap().into(),
-            created_at: parse_iso8601_and_duration(&value.created_at).unwrap(),
-        }
-    }
-}
-
-impl From<attempt_proto::WebhookAttemptDetails> for WebhookAttemptDetails {
-    fn from(value: attempt_proto::WebhookAttemptDetails) -> Self {
-        Self {
-            response_code: value.response_code,
-            response_latency_s: Duration::from_secs_f64(
-                value.response_latency_s,
-            ),
-            error_message: value.error_msg,
-        }
-    }
-}
-
-impl From<attempt_proto::AttemptDetails> for AttemptDetails {
-    fn from(value: attempt_proto::AttemptDetails) -> Self {
-        match value.details.unwrap() {
-            | attempt_proto::attempt_details::Details::WebhookDetails(
-                details,
-            ) => Self::WebhookAttemptDetails(details.into()),
-        }
-    }
-}
-
 impl From<run_proto::Run> for Run {
     fn from(value: run_proto::Run) -> Self {
         Self {
             id: value.id.into(),
             trigger: value.trigger_id.into(),
             project: ValidShardedId::from_string_unsafe(value.project_id),
-            created_at: parse_iso8601_and_duration(&value.created_at).unwrap(),
+            created_at: parse_iso8601_and_duration(&value.created_at)
+                .unwrap()
+                .with_timezone(&Utc),
             payload: value.payload.map(|p| p.into()),
             action: value.action.unwrap().into(),
             status: value.status.into(),

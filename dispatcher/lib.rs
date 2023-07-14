@@ -26,17 +26,11 @@ pub async fn start_dispatcher_server(
     .unwrap();
 
     let db = Database::connect(&config.dispatcher.database_uri).await?;
-    let attempt_store: Arc<dyn AttemptLogStore + Send + Sync> = Arc::new({
-        let s = SqlAttemptLogStore::new(db.clone());
-        s.prepare().await?;
-        s
-    });
+    let attempt_store: Arc<dyn AttemptLogStore + Send + Sync> =
+        Arc::new(SqlAttemptLogStore::new(db.clone()));
 
-    let run_store: Arc<dyn RunStore + Send + Sync> = Arc::new({
-        let s = SqlRunStore::new(db);
-        s.prepare().await?;
-        s
-    });
+    let run_store: Arc<dyn RunStore + Send + Sync> =
+        Arc::new(SqlRunStore::new(db));
 
     let dispatch_manager = DispatchManager::new(run_store, attempt_store);
     let handler =

@@ -40,7 +40,7 @@ impl DispatchManager {
         run: Run,
         mode: DispatchMode,
     ) -> Result<Run, DispatcherManagerError> {
-        self.run_store.store_run(&run).await?;
+        self.run_store.store_run(run.clone()).await?;
 
         let run_job = RunJob::from(
             run.clone(),
@@ -102,7 +102,7 @@ impl RunJob {
             | Action::Event(_) => unimplemented!(),
         };
         self.run.status = result;
-        if let Err(e) = self.run_store.update_run(&self.run).await {
+        if let Err(e) = self.run_store.update_run(self.run.clone()).await {
             error!(
                 "Failed to persist run status for run {} for action : {}",
                 self.run.id, e

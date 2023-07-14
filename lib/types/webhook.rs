@@ -7,7 +7,7 @@ use validator::Validate;
 
 use crate::validation::validate_webhook_url;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum HttpMethod {
     Delete,
@@ -19,7 +19,7 @@ pub enum HttpMethod {
 }
 
 #[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Validate)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Validate, Eq)]
 pub struct Webhook {
     #[serde(rename = "type")]
     // allows an optional "type" field to be passed in. This enables other
@@ -34,7 +34,7 @@ pub struct Webhook {
     pub retry: Option<RetryConfig>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 #[serde(untagged)]
 pub enum RetryConfig {
@@ -43,7 +43,7 @@ pub enum RetryConfig {
 }
 
 #[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SimpleRetry {
     #[serde(rename = "type")]
     pub _kind: MustBe!("simple"),
@@ -53,7 +53,7 @@ pub struct SimpleRetry {
 }
 
 #[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ExponentialBackoffRetry {
     #[serde(rename = "type")]
     pub _kind: MustBe!("exponential_backoff"),

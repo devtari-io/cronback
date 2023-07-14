@@ -1,32 +1,27 @@
 use async_trait::async_trait;
-use sea_query::{ColumnDef, Expr, Iden, Index, Table};
+use sea_orm::{
+    ActiveModelTrait,
+    ColumnTrait,
+    EntityTrait,
+    QueryFilter,
+    QueryOrder,
+    QuerySelect,
+};
 
 use super::errors::DatabaseError;
-use super::helpers::{
-    get_by_id_query,
-    insert_query,
-    paginated_query,
-    update_query,
-    GeneratedJsonField,
-    KVIden,
-};
+use super::models::runs::{self};
+use crate::database::models::prelude::Runs;
 use crate::database::Database;
 use crate::model::ModelId;
 use crate::types::{ProjectId, Run, RunId, TriggerId};
-
-#[derive(Iden)]
-enum RunsIden {
-    Runs,
-    TriggerId,
-}
 
 pub type RunStoreError = DatabaseError;
 
 #[async_trait]
 pub trait RunStore {
-    async fn store_run(&self, run: &Run) -> Result<(), RunStoreError>;
+    async fn store_run(&self, run: Run) -> Result<(), RunStoreError>;
 
-    async fn update_run(&self, run: &Run) -> Result<(), RunStoreError>;
+    async fn update_run(&self, run: Run) -> Result<(), RunStoreError>;
 
     async fn get_run(
         &self,
@@ -60,54 +55,26 @@ impl SqlRunStore {
     pub fn new(db: Database) -> Self {
         Self { db }
     }
-
-    pub async fn prepare(&self) -> Result<(), RunStoreError> {
-        let sql = Table::create()
-            .table(RunsIden::Runs)
-            .if_not_exists()
-            .col(ColumnDef::new(KVIden::Id).text().primary_key())
-            .col(ColumnDef::new(KVIden::Value).json_binary())
-            .col(
-                ColumnDef::new(KVIden::Project)
-                    .text()
-                    .generate_from_json_field(KVIden::Value, "project"),
-            )
-            .col(
-                ColumnDef::new(RunsIden::TriggerId)
-                    .text()
-                    .generate_from_json_field(KVIden::Value, "trigger"),
-            )
-            .build_any(self.db.schema_builder().as_ref());
-        sqlx::query(&sql).execute(&self.db.pool).await?;
-
-        // Create the indicies
-        let sql = Index::create()
-            .if_not_exists()
-            .name("IX_runs_project")
-            .table(RunsIden::Runs)
-            .col(KVIden::Project)
-            .build_any(self.db.schema_builder().as_ref());
-        sqlx::query(&sql).execute(&self.db.pool).await?;
-
-        let sql = Index::create()
-            .if_not_exists()
-            .name("IX_runs_triggerid")
-            .table(RunsIden::Runs)
-            .col(RunsIden::TriggerId)
-            .build_any(self.db.schema_builder().as_ref());
-        sqlx::query(&sql).execute(&self.db.pool).await?;
-        Ok(())
-    }
 }
 
 #[async_trait]
 impl RunStore for SqlRunStore {
-    async fn store_run(&self, run: &Run) -> Result<(), RunStoreError> {
-        insert_query(&self.db, RunsIden::Runs, &run.id, run).await
+    async fn store_run(&self, run: Run) -> Result<(), RunStoreError> {
+        let active_model: runs::ActiveModel = run.into();
+        active_model.insert(&self.db.orm).await?;
+        Ok(())
     }
 
-    async fn update_run(&self, run: &Run) -> Result<(), RunStoreError> {
-        update_query(&self.db, RunsIden::Runs, &run.project, &run.id, run).await
+    async fn update_run(&self, run: Run) -> Result<(), RunStoreError> {
+        let project = run.project.clone();
+        let active_model: runs::ActiveModel = run.into();
+        // Mark all the fields as dirty
+        let active_model = active_model.reset_all();
+        Runs::update(active_model)
+            .filter(runs::Column::Project.eq(project))
+            .exec(&self.db.orm)
+            .await?;
+        Ok(())
     }
 
     async fn get_run(
@@ -115,7 +82,10 @@ impl RunStore for SqlRunStore {
         project: &ProjectId,
         id: &RunId,
     ) -> Result<Option<Run>, RunStoreError> {
-        get_by_id_query(&self.db, RunsIden::Runs, project, id).await
+        let res = Runs::find_by_id((id.to_string(), project.to_string()))
+            .one(&self.db.orm)
+            .await?;
+        Ok(res)
     }
 
     async fn get_runs_by_trigger(
@@ -126,17 +96,22 @@ impl RunStore for SqlRunStore {
         after: Option<RunId>,
         limit: usize,
     ) -> Result<Vec<Run>, RunStoreError> {
-        paginated_query(
-            &self.db,
-            RunsIden::Runs,
-            Expr::col(RunsIden::TriggerId)
-                .eq(trigger_id.value())
-                .and(Expr::col(KVIden::Project).eq(project.value())),
-            &before,
-            &after,
-            Some(limit),
-        )
-        .await
+        let mut query = Runs::find()
+            .filter(runs::Column::Trigger.eq(trigger_id.value()))
+            .filter(runs::Column::Project.eq(project.value()))
+            .order_by_desc(runs::Column::Id)
+            .limit(Some(limit as u64));
+        if let Some(before) = before {
+            query = query.filter(runs::Column::Id.gt(before.value()));
+        }
+
+        if let Some(after) = after {
+            query = query.filter(runs::Column::Id.lt(after.value()));
+        }
+
+        let res = query.all(&self.db.orm).await?;
+
+        Ok(res)
     }
 
     async fn get_runs_by_project(
@@ -146,15 +121,21 @@ impl RunStore for SqlRunStore {
         after: Option<RunId>,
         limit: usize,
     ) -> Result<Vec<Run>, RunStoreError> {
-        paginated_query(
-            &self.db,
-            RunsIden::Runs,
-            Expr::col(KVIden::Project).eq(project.value()),
-            &before,
-            &after,
-            Some(limit),
-        )
-        .await
+        let mut query = Runs::find()
+            .filter(runs::Column::Project.eq(project.value()))
+            .order_by_desc(runs::Column::Id)
+            .limit(Some(limit as u64));
+        if let Some(before) = before {
+            query = query.filter(runs::Column::Id.gt(before.value()));
+        }
+
+        if let Some(after) = after {
+            query = query.filter(runs::Column::Id.lt(after.value()));
+        }
+
+        let res = query.all(&self.db.orm).await?;
+
+        Ok(res)
     }
 }
 
@@ -163,7 +144,7 @@ mod tests {
     use std::time::Duration;
 
     use chrono::{Timelike, Utc};
-    use chrono_tz::UTC;
+    use sea_orm::DbErr;
 
     use super::{RunStore, SqlRunStore};
     use crate::database::errors::DatabaseError;
@@ -185,7 +166,7 @@ mod tests {
     ) -> Run {
         // Serialization drops nanoseconds, so to let's zero it here for easier
         // equality comparisons
-        let now = Utc::now().with_timezone(&UTC).with_nanosecond(0).unwrap();
+        let now = Utc::now().with_nanosecond(0).unwrap();
 
         Run {
             id: RunId::generate(&project).into(),
@@ -208,7 +189,6 @@ mod tests {
     async fn test_sql_run_store() -> anyhow::Result<()> {
         let db = Database::in_memory().await?;
         let store = SqlRunStore::new(db);
-        store.prepare().await?;
 
         let project1 = ProjectId::generate();
         let project2 = ProjectId::generate();
@@ -220,9 +200,9 @@ mod tests {
         let i3 = build_run(t1.clone(), project1.clone());
 
         // Test stores
-        store.store_run(&i1).await?;
-        store.store_run(&i2).await?;
-        store.store_run(&i3).await?;
+        store.store_run(i1.clone()).await?;
+        store.store_run(i2.clone()).await?;
+        store.store_run(i3.clone()).await?;
 
         // Test getters
         assert_eq!(store.get_run(&project1, &i1.id).await?, Some(i1.clone()));
@@ -267,7 +247,7 @@ mod tests {
         i1.status = RunStatus::Failed;
 
         // Update the run
-        store.update_run(&i1).await?;
+        store.update_run(i1.clone()).await?;
         assert_eq!(store.get_run(&project1, &i1.id).await?, Some(i1.clone()));
 
         // Update should fail when using wrong project
@@ -275,8 +255,8 @@ mod tests {
         mismatch_project_i1.project = ProjectId::generate();
         mismatch_project_i1.status = RunStatus::Succeeded;
         assert!(matches!(
-            store.update_run(&mismatch_project_i1).await,
-            Err(DatabaseError::Query(sqlx::Error::RowNotFound))
+            store.update_run(mismatch_project_i1.clone()).await,
+            Err(DatabaseError::DB(DbErr::RecordNotUpdated))
         ));
         assert_ne!(
             store.get_run(&project1, &i1.id).await?,

@@ -77,7 +77,6 @@ pub async fn start_api_server(
     // Only the auth store needs to be prep-ed as it's owned by the API layer.
     // The other stores will be prep-ed by their owner component.
     let auth_store = SqlAuthStore::new(db.clone());
-    auth_store.prepare().await?;
 
     let stores = Db {
         trigger_store: Box::new(SqlTriggerStore::new(db.clone())),

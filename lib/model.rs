@@ -130,6 +130,62 @@ impl<T: ModelId> From<ValidShardedId<T>> for String {
     }
 }
 
+impl<T: ModelId> From<ValidShardedId<T>> for sea_query::Value {
+    fn from(id: ValidShardedId<T>) -> ::sea_query::Value {
+        ::sea_query::Value::String(Some(Box::new(id.value().to_owned())))
+    }
+}
+
+impl<T: ModelId> sea_orm::TryGetable for ValidShardedId<T> {
+    fn try_get_by<I: ::sea_orm::ColIdx>(
+        res: &::sea_orm::QueryResult,
+        index: I,
+    ) -> Result<Self, sea_orm::TryGetError> {
+        let val = res.try_get_by::<String, _>(index)?;
+        let val: T = val.into();
+
+        val.validated().map_err(|e| {
+            sea_orm::TryGetError::DbErr(sea_orm::DbErr::TryIntoErr {
+                from: "String",
+                into: "ValidShardedId",
+                source: Box::new(e),
+            })
+        })
+    }
+}
+
+impl<T: ModelId> sea_query::ValueType for ValidShardedId<T> {
+    fn try_from(
+        v: ::sea_query::Value,
+    ) -> Result<Self, ::sea_query::ValueTypeErr> {
+        match v {
+            | ::sea_query::Value::String(Some(x)) => {
+                let val: T = (*x).into();
+                val.validated().map_err(|_| sea_query::ValueTypeErr)
+            }
+            | _ => Err(sea_query::ValueTypeErr),
+        }
+    }
+
+    fn type_name() -> String {
+        stringify!($name).to_owned()
+    }
+
+    fn array_type() -> sea_orm::sea_query::ArrayType {
+        sea_orm::sea_query::ArrayType::String
+    }
+
+    fn column_type() -> sea_query::ColumnType {
+        sea_query::ColumnType::String(None)
+    }
+}
+
+impl<T: ModelId> sea_query::Nullable for ValidShardedId<T> {
+    fn null() -> ::sea_query::Value {
+        ::sea_query::Value::String(None)
+    }
+}
+
 /// Indicates that this is a top-level Id (does not follow sharding scheme of
 /// another Id)
 pub trait RootId: ModelId {}
@@ -204,6 +260,50 @@ macro_rules! define_model_id_base {
             type Error = $crate::model::ModelIdError;
             fn try_from(id: $name) -> Result<Self, Self::Error> {
                 crate::model::ModelId::validated(id)
+            }
+        }
+
+        impl From<$name> for ::sea_query::Value {
+            fn from(id: $name) -> ::sea_query::Value {
+                ::sea_query::Value::String(Some(Box::new(id.0.to_owned())))
+            }
+        }
+
+        impl ::sea_orm::TryGetable for $name {
+            fn try_get_by<I: ::sea_orm::ColIdx>(
+                res: &::sea_orm::QueryResult,
+                index: I
+            ) -> Result<Self, sea_orm::TryGetError> {
+                let val = res.try_get_by::<String, _>(index)?;
+                Ok(val.into())
+            }
+
+        }
+
+        impl ::sea_query::ValueType for $name {
+            fn try_from(v: ::sea_query::Value) -> Result<Self, ::sea_query::ValueTypeErr> {
+                match v {
+                    ::sea_query::Value::String(Some(x)) => Ok((*x).into()),
+                    _ => Err(sea_query::ValueTypeErr),
+                }
+            }
+
+            fn type_name() -> String {
+                stringify!($name).to_owned()
+            }
+
+            fn array_type() -> sea_orm::sea_query::ArrayType {
+                sea_orm::sea_query::ArrayType::String
+            }
+
+            fn column_type() -> sea_query::ColumnType {
+                sea_query::ColumnType::String(None)
+            }
+        }
+
+        impl sea_query::Nullable for $name {
+            fn null() -> ::sea_query::Value {
+                ::sea_query::Value::String(None)
             }
         }
 

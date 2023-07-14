@@ -1,23 +1,19 @@
 use async_trait::async_trait;
-use sea_query::{ColumnDef, Expr, Iden, Index, Table};
+use sea_orm::{
+    ActiveModelTrait,
+    ColumnTrait,
+    EntityTrait,
+    QueryFilter,
+    QueryOrder,
+    QuerySelect,
+};
 
 use super::errors::DatabaseError;
-use super::helpers::{
-    get_by_id_query,
-    insert_query,
-    paginated_query,
-    GeneratedJsonField,
-    KVIden,
-};
+use super::models::attempts;
+use crate::database::models::prelude::Attempts;
 use crate::database::Database;
 use crate::model::ModelId;
 use crate::types::{ActionAttemptLog, AttemptLogId, ProjectId, RunId};
-
-#[derive(Iden)]
-enum AttemptsIden {
-    Attempts,
-    RunId,
-}
 
 pub type AttemptLogStoreError = DatabaseError;
 
@@ -25,7 +21,7 @@ pub type AttemptLogStoreError = DatabaseError;
 pub trait AttemptLogStore {
     async fn log_attempt(
         &self,
-        attempt: &ActionAttemptLog,
+        attempt: ActionAttemptLog,
     ) -> Result<(), AttemptLogStoreError>;
 
     async fn get_attempts_for_run(
@@ -52,54 +48,17 @@ impl SqlAttemptLogStore {
     pub fn new(db: Database) -> Self {
         Self { db }
     }
-
-    pub async fn prepare(&self) -> Result<(), AttemptLogStoreError> {
-        let sql = Table::create()
-            .table(AttemptsIden::Attempts)
-            .if_not_exists()
-            .col(ColumnDef::new(KVIden::Id).text().primary_key())
-            .col(ColumnDef::new(KVIden::Value).json_binary())
-            .col(
-                ColumnDef::new(KVIden::Project)
-                    .text()
-                    .generate_from_json_field(KVIden::Value, "project"),
-            )
-            .col(
-                ColumnDef::new(AttemptsIden::RunId)
-                    .text()
-                    .generate_from_json_field(KVIden::Value, "run"),
-            )
-            .build_any(self.db.schema_builder().as_ref());
-        sqlx::query(&sql).execute(&self.db.pool).await?;
-
-        // Create the indices
-        let sql = Index::create()
-            .if_not_exists()
-            .name("IX_attempts_project")
-            .table(AttemptsIden::Attempts)
-            .col(KVIden::Project)
-            .build_any(self.db.schema_builder().as_ref());
-        sqlx::query(&sql).execute(&self.db.pool).await?;
-
-        let sql = Index::create()
-            .if_not_exists()
-            .name("IX_attempts_runid")
-            .table(AttemptsIden::Attempts)
-            .col(AttemptsIden::RunId)
-            .build_any(self.db.schema_builder().as_ref());
-        sqlx::query(&sql).execute(&self.db.pool).await?;
-        Ok(())
-    }
 }
 
 #[async_trait]
 impl AttemptLogStore for SqlAttemptLogStore {
     async fn log_attempt(
         &self,
-        attempt: &ActionAttemptLog,
+        attempt: ActionAttemptLog,
     ) -> Result<(), AttemptLogStoreError> {
-        insert_query(&self.db, AttemptsIden::Attempts, &attempt.id, attempt)
-            .await
+        let active_model: attempts::ActiveModel = attempt.into();
+        active_model.insert(&self.db.orm).await?;
+        Ok(())
     }
 
     async fn get_attempts_for_run(
@@ -110,17 +69,22 @@ impl AttemptLogStore for SqlAttemptLogStore {
         after: Option<AttemptLogId>,
         limit: usize,
     ) -> Result<Vec<ActionAttemptLog>, AttemptLogStoreError> {
-        paginated_query(
-            &self.db,
-            AttemptsIden::Attempts,
-            Expr::col(AttemptsIden::RunId)
-                .eq(id.value())
-                .and(Expr::col(KVIden::Project).eq(project.value())),
-            &before,
-            &after,
-            Some(limit),
-        )
-        .await
+        let mut query = Attempts::find()
+            .filter(attempts::Column::Run.eq(id.value()))
+            .filter(attempts::Column::Project.eq(project.value()))
+            .order_by_desc(attempts::Column::Id)
+            .limit(Some(limit as u64));
+        if let Some(before) = before {
+            query = query.filter(attempts::Column::Id.gt(before.value()));
+        }
+
+        if let Some(after) = after {
+            query = query.filter(attempts::Column::Id.lt(after.value()));
+        }
+
+        let res = query.all(&self.db.orm).await?;
+
+        Ok(res)
     }
 
     async fn get_attempt(
@@ -128,7 +92,11 @@ impl AttemptLogStore for SqlAttemptLogStore {
         project_id: &ProjectId,
         id: &AttemptLogId,
     ) -> Result<Option<ActionAttemptLog>, AttemptLogStoreError> {
-        get_by_id_query(&self.db, AttemptsIden::Attempts, project_id, id).await
+        let res =
+            Attempts::find_by_id((id.to_string(), project_id.to_string()))
+                .one(&self.db.orm)
+                .await?;
+        Ok(res)
     }
 }
 
@@ -137,14 +105,15 @@ mod tests {
     use std::time::Duration;
 
     use chrono::{Timelike, Utc};
-    use chrono_tz::UTC;
 
     use super::{AttemptLogStore, SqlAttemptLogStore};
     use crate::database::Database;
     use crate::model::ValidShardedId;
     use crate::types::{
         ActionAttemptLog,
+        AttemptDetails,
         AttemptLogId,
+        AttemptStatus,
         ProjectId,
         RunId,
         TriggerId,
@@ -157,15 +126,15 @@ mod tests {
     ) -> ActionAttemptLog {
         // Serialization drops nanoseconds, so to let's zero it here for easier
         // equality comparisons
-        let now = Utc::now().with_timezone(&UTC).with_nanosecond(0).unwrap();
+        let now = Utc::now().with_nanosecond(0).unwrap();
 
         ActionAttemptLog {
             id: AttemptLogId::generate(project).into(),
             run: run_id.clone(),
             trigger: TriggerId::generate(project).into(),
             project: project.clone(),
-            status: crate::types::AttemptStatus::Succeeded,
-            details: crate::types::AttemptDetails::WebhookAttemptDetails(
+            status: AttemptStatus::Succeeded,
+            details: AttemptDetails::WebhookAttemptDetails(
                 WebhookAttemptDetails {
                     response_code: Some(404),
                     response_latency_s: Duration::from_secs(10),
@@ -180,7 +149,6 @@ mod tests {
     async fn test_sql_trigger_store() -> anyhow::Result<()> {
         let db = Database::in_memory().await?;
         let store = SqlAttemptLogStore::new(db);
-        store.prepare().await?;
 
         let project = ProjectId::generate();
         let project2 = ProjectId::generate();
@@ -192,9 +160,9 @@ mod tests {
         let a3 = build_attempt(&project, &inv1);
 
         // Test log attempts
-        store.log_attempt(&a1).await?;
-        store.log_attempt(&a2).await?;
-        store.log_attempt(&a3).await?;
+        store.log_attempt(a1.clone()).await?;
+        store.log_attempt(a2.clone()).await?;
+        store.log_attempt(a3.clone()).await?;
 
         // Test getters
         assert_eq!(

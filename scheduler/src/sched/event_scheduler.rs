@@ -141,7 +141,7 @@ impl EventScheduler {
         for trigger in triggers_to_save {
             debug!(trigger_id = %trigger.id, "Checkpointing trigger");
             // TODO: Consider batch-inserting.
-            let res = self.store.update_trigger(&trigger).await;
+            let res = self.store.update_trigger(trigger.clone()).await;
             if let Err(e) = res {
                 error!(
                     trigger_id = %trigger.id,
@@ -242,7 +242,7 @@ impl EventScheduler {
         let updated_trigger = updated_trigger.unwrap();
 
         // We have the updated trigger, let's save it to the database.
-        self.store.update_trigger(&updated_trigger).await?;
+        self.store.update_trigger(updated_trigger.clone()).await?;
 
         //
         // RESPOND
@@ -329,7 +329,7 @@ impl EventScheduler {
             last_ran_at: None,
         };
 
-        let store_result = self.store.install_trigger(&trigger).await;
+        let store_result = self.store.install_trigger(trigger.clone()).await;
 
         match store_result {
             | Ok(_) => {}
@@ -554,7 +554,7 @@ impl EventScheduler {
             let mut trigger = self.get_trigger(context, id).await?;
             trigger.status = Status::Cancelled;
             let manifest = trigger.get_manifest();
-            self.store.update_trigger(&trigger).await?;
+            self.store.update_trigger(trigger.clone()).await?;
             Ok(manifest)
         } else {
             let inner_id = id.clone();
