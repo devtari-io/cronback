@@ -1,0 +1,18 @@
+services:
+  backend:
+    image: "cronback-backend:latest"
+    restart: unless-stopped
+    volumes:
+      - cronback_data:/data
+    environment:
+      - CRONBACK__SCHEDULER__DATABASE_URI=sqlite:///data/db.sqlite?mode=rwc
+      - CRONBACK__DISPATCHER__DATABASE_URI=sqlite:///data/db.sqlite?mode=rwc
+      - CRONBACK__API__DATABASE_URI=sqlite:///data/db.sqlite?mode=rwc
+    command:
+      - '--log-format'
+      - 'json'
+  docs:
+    image: "cronback-docs:latest"
+    restart: unless-stopped
+volumes:
+  cronback_data:
