@@ -21,6 +21,7 @@ async-trait = { workspace = true }
 chrono = { workspace = true }
 chrono-tz = { workspace = true }
 cron = { workspace = true }
+tonic = { workspace = true }
 
 # Unique Dependencies
 config = { version = "0.13", features = ["toml"] }
@@ -35,8 +36,7 @@ serde_with = { version = "2.2.0", features = ["chrono_0_4", "json"] }
 sqlx = { version = "0.6.3", features = ["runtime-tokio-native-tls", "sqlite"] }
 thiserror = "1.0.39"
 tokio = { version = "1", features = ["full"] }
-tonic = "0.8.3"
-tonic-reflection = "0.6.0"
+tonic-reflection = "0.9.0"
 tower = { version = "0.4.13", features = ["full"] }
 tracing = { version = "0.1", features = ["log"] }
 ulid = { version = "1.0" }

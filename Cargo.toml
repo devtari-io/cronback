@@ -29,8 +29,8 @@ sha2 = "0.10.6"
 sqlx = { version = "0.6.3", features = ["runtime-tokio-native-tls", "sqlite"] }
 thiserror = "1"
 tokio = { version = "1", features = ["full"] }
-tonic = "0.8"
-tonic-build = "0.8"
+tonic = "0.9"
+tonic-build = "0.9"
 tower = { version = "0.4", features = ["full"] }
 tracing = { version = "0.1", features = ["log"] }
 
