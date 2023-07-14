@@ -7,6 +7,7 @@ use ipext::IpExt;
 use monostate::MustBe;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none, DurationSecondsWithFrac};
+use strum::Display;
 #[cfg(feature = "validation")]
 use thiserror::Error;
 #[cfg(feature = "validation")]
@@ -17,7 +18,7 @@ use validator::{Validate, ValidationError};
 #[cfg(feature = "validation")]
 use crate::validation_util::validation_error;
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Display, Clone, Copy, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "client", non_exhaustive)]
 #[cfg_attr(
     feature = "dto",
@@ -27,6 +28,7 @@ use crate::validation_util::validation_error;
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[cfg_attr(feature = "clap", clap(rename_all = "UPPER"))]
 #[serde(rename_all = "UPPERCASE")]
+#[strum(serialize_all = "UPPERCASE")]
 pub enum HttpMethod {
     Delete,
     Get,
@@ -34,12 +36,6 @@ pub enum HttpMethod {
     Patch,
     Post,
     Put,
-}
-
-impl std::fmt::Display for HttpMethod {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", serde_variant::to_variant_name(self).unwrap())
-    }
 }
 
 #[serde_as]
@@ -288,7 +284,17 @@ impl From<WebhookUrlValidationError> for ValidationError {
 #[cfg(all(test, feature = "validation"))]
 mod tests {
 
-    use super::validate_webhook_url;
+    use super::{validate_webhook_url, HttpMethod};
+
+    #[test]
+    fn http_method_to_string() {
+        assert_eq!("GET", HttpMethod::Get.to_string());
+        assert_eq!("POST", HttpMethod::Post.to_string());
+        assert_eq!("PATCH", HttpMethod::Patch.to_string());
+        assert_eq!("DELETE", HttpMethod::Delete.to_string());
+        assert_eq!("PUT", HttpMethod::Put.to_string());
+        assert_eq!("HEAD", HttpMethod::Head.to_string());
+    }
 
     #[test]
     fn valid_urls() {

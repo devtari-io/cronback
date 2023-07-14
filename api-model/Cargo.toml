@@ -8,6 +8,7 @@ description = """\
 version = "0.1.0"
 edition.workspace = true
 authors.workspace = true
+license.workspace = true
 categories = ["network-programming", "api-bindings"]
 keywords = ["cron", "webhooks", "scheduler", "job", "periodic"]
 repository = "https://github.com/devtari-io/cronback"
@@ -32,16 +33,14 @@ server = ["dto", "validation"]
 clap = ["dep:clap"]
 
 [dependencies]
-lib = { path = "../lib", optional = true }
-proto = { path = "../proto", optional = true }
-dto = { path = "../dto", optional = true }
+# Internal Dependencies
+dto = { workspace = true, optional = true }
+lib = { workspace = true, optional = true }
+proto = { workspace = true, optional = true }
+
 validator = { version = "0.16.0", features = ["derive"], optional = true }
 cron = { workspace = true, optional = true }
-# A crate that re-exposes the unstable IP features that got introduced in
-# https://github.com/rust-lang/rust/issues/27709.
-# Given that this is an untrusted repo, we're pinning it to a particular
-# revision after reviewing the code at this revision.
-ipext = { git = "https://github.com/jedisct1/rust-ipext", rev = "0ebeb115bd67", optional = true }
+ipext = { workspace = true, optional = true }
 thiserror = { workspace = true, optional = true }
 url = { version = "2.3.1", features = ["serde"], optional = true }
 chrono-tz = { workspace = true, optional = true }
@@ -55,7 +54,7 @@ serde_json = { workspace = true }
 serde_with = { workspace = true }
 chrono = { workspace = true }
 derive_more = { workspace = true }
-serde_variant = { version = "0.1.2" }
+strum = { version = "0.25.0", features = ["derive"] }
 
 [dev-dependencies]
 anyhow = { workspace = true }

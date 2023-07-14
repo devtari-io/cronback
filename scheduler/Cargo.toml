@@ -5,12 +5,13 @@ edition.workspace = true
 authors.workspace = true
 rust-version.workspace = true
 publish.workspace = true
+license.workspace = true
 
 [dependencies]
 # Internal Dependencies
-dto = { path = "../dto" }
-lib = { path = "../lib" }
-proto = { path = "../proto" }
+dto = { workspace = true }
+lib = { workspace = true }
+proto = { workspace = true }
 
 # Dependencies from workspace
 anyhow = { workspace = true }

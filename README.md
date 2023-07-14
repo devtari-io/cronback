@@ -1,8 +1,14 @@
 # cronback
 
-Allows developers to schedule webhooks on-demand, with backoff, or on a cron recurring schedule.
 
-# Build
+> **Allows developers to schedule webhooks on-demand, with backoff, or on a cron recurring schedule.**
+
+
+[![License](https://img.shields.io/badge/license-BSD--2--Clause--Patent-blue?style=flat-square
+)](LICENSE)
+
+
+## Build
 
 Install protobuf
 
@@ -10,14 +16,14 @@ Install protobuf
 brew install protobuf
 ```
 
-# Tests
+## Tests
 
 Install the cargo-nextest test runner [link](https://nexte.st/book/installation.html)
 ```
 cargo nextest run --workspace
 ```
 
-# Run
+## Run
 
 ```
 cargo run -- -c <config-file>
@@ -34,8 +40,12 @@ export CRONBACK_SECRET_TOKEN=`http -j --auth adminkey --auth-type bearer http://
 
 ```
 
-# Prometheus
+## Prometheus Metrics
 
 ```
 curl http://localhost:9000/metrics
 ```
+
+# License
+The software is distributed under the terms of the GPLv2-compatible, OSI-approved, 
+permissive [BSD-2-Clause-Patent](LICENSE) license.

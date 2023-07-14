@@ -5,13 +5,16 @@ use dto::{FromProto, IntoProto};
 use lib::types::RunId;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none};
+use strum::Display;
 
 use super::{Action, Attempt, Payload};
 #[cfg(not(feature = "dto"))]
 use crate::RunId;
 
 #[cfg_attr(feature = "client", non_exhaustive)]
-#[derive(Debug, Deserialize, PartialEq, Serialize, Clone, Copy, Default)]
+#[derive(
+    Debug, Display, Deserialize, PartialEq, Serialize, Clone, Copy, Default,
+)]
 #[cfg_attr(
     feature = "dto",
     derive(IntoProto),
@@ -20,19 +23,14 @@ use crate::RunId;
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[cfg_attr(feature = "clap", clap(rename_all = "snake_case"))]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum RunMode {
     Sync,
     #[default]
     Async,
 }
 
-impl std::fmt::Display for RunMode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", serde_variant::to_variant_name(self).unwrap())
-    }
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Display, Clone, Copy, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "client", non_exhaustive)]
 #[cfg_attr(
     feature = "dto",
@@ -42,16 +40,11 @@ impl std::fmt::Display for RunMode {
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[cfg_attr(feature = "clap", clap(rename_all = "snake_case"))]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum RunStatus {
     Attempting,
     Succeeded,
     Failed,
-}
-
-impl std::fmt::Display for RunStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", serde_variant::to_variant_name(self).unwrap())
-    }
 }
 
 #[skip_serializing_none]
@@ -97,4 +90,22 @@ pub struct GetRunResponse {
     #[serde(flatten)]
     #[cfg_attr(feature = "dto", proto(required))]
     pub run: Run,
+}
+
+#[cfg(test)]
+mod test {
+    use super::{RunMode, RunStatus};
+
+    #[test]
+    fn run_mode_to_string() {
+        assert_eq!(RunMode::Sync.to_string(), "sync");
+        assert_eq!(RunMode::Async.to_string(), "async");
+    }
+
+    #[test]
+    fn run_status_to_string() {
+        assert_eq!(RunStatus::Attempting.to_string(), "attempting");
+        assert_eq!(RunStatus::Succeeded.to_string(), "succeeded");
+        assert_eq!(RunStatus::Failed.to_string(), "failed");
+    }
 }

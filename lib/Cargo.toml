@@ -4,17 +4,16 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 rust-version.workspace = true
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license.workspace = true
 
 [lib]
 path = "lib.rs"
 
 [dependencies]
 # Internal Dependencies
-proto = { path = "../proto" }
-dto = { path = "../dto" }
-migration = { path = "../migration" }
+proto = { workspace = true }
+dto = { workspace = true }
+migration = { workspace = true }
 
 # Dependencies from workspace
 anyhow = { workspace = true }
@@ -46,14 +45,10 @@ ulid = { workspace = true }
 validator = { workspace = true }
 
 # Unique Dependencies
-config = { version = "0.13", features = ["toml"] }
+config = { version = "0.13", default-features = false, features = ["toml"] }
 hyper = "0.14.24"
 tonic-reflection = "0.9.0"
 url = { version = "2.3.1", features = ["serde"] }
 tracing-subscriber = { version = "0.3", features = ["fmt", "registry"] }
 tracing-core = { version = "0.1.31" }
-# A crate that re-exposes the unstable IP features that got introduced in
-# https://github.com/rust-lang/rust/issues/27709.
-# Given that this is an untrusted repo, we're pinning it to a particular
-# revision after reviewing the code at this revision.
-ipext = { git = "https://github.com/jedisct1/rust-ipext", rev = "0ebeb115bd67" }
+ipext = { workspace = true }

@@ -16,7 +16,8 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.0"
+license = "BSD-2-Clause-Patent"
+version = "0.2.0"
 edition = "2021"
 authors = ["Ahmed Farghal <me@asoli.dev>", "Mohamed Bassem <me@mbassem.com>"]
 description = "Cronback Backend"
@@ -25,6 +26,17 @@ rust-version = "1.68.0"
 publish = false
 
 [workspace.dependencies]
+# Internal Dependencies
+cronback-api-model = { path = "api-model", version = "0.1.0" }
+dto = { path = "dto", version = "0.1.0" }
+lib = { path = "lib", version = "0.2.0" }
+migration = { path = "migration", version = "0.2.0" }
+proto = { path = "proto", version = "0.2.0" }
+# Internal Services
+api = { path = "api", version = "0.2.0" }
+scheduler = { path = "scheduler", version = "0.2.0" }
+dispatcher = { path = "dispatcher", version = "0.2.0" }
+
 anyhow = "1.0.69"
 async-trait = "0.1.68"
 axum = { version = "0.6.4", features = ["macros"] }
@@ -35,7 +47,7 @@ chrono = { version = "0.4", features = [
   "std",
 ], default-features = false }
 chrono-tz = "0.8"
-cron = { git = "https://github.com/devtari-io/cron.git", rev = "af134f5"}
+cron = { git = "https://github.com/devtari-io/cron.git", rev = "af134f5", version = "0.12.0" }
 derive_more = { version = "0.99.17" }
 futures = "0.3.28"
 iso8601-duration = "0.2.0"
@@ -67,6 +79,11 @@ tracing = { version = "0.1", features = ["log"] }
 tracing-test = { version = "0.2.4", features = ["no-env-filter"] }
 ulid = { version = "1.0" }
 validator = { version = "0.16.0", features = ["derive"] }
+# A crate that re-exposes the unstable IP features that got introduced in
+# https://github.com/rust-lang/rust/issues/27709.
+# Given that this is an untrusted repo, we're pinning it to a particular
+# revision after reviewing the code at this revision.
+ipext = { git = "https://github.com/jedisct1/rust-ipext", rev = "0ebeb115bd67", version = "0.1.0" }
 
 
 [profile.release]
@@ -79,18 +96,20 @@ lto = true
 
 [package]
 name = "cronbackd"
-version.workspace = true
-edition.workspace = true
 authors.workspace = true
-rust-version.workspace = true
+description.workspace = true
+edition.workspace = true
 publish.workspace = true
+rust-version.workspace = true
+version.workspace = true
+include = ["LICENSE"]
 
 [dependencies]
 # Internal Dependencies
-api = { path = "api" }
-dispatcher = { path = "dispatcher" }
-scheduler = { path = "scheduler" }
-lib = { path = "lib" }
+api = { workspace = true }
+scheduler = { workspace = true }
+dispatcher = { workspace = true }
+lib = { workspace = true }
 
 # Dependencies from workspace
 anyhow = { workspace = true }
@@ -108,5 +127,4 @@ dotenvy = "0.15"
 tracing-appender = "0.2"
 
 [dev-dependencies]
-proto = { path = "proto" }
 tonic = { workspace = true }

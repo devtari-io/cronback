@@ -5,16 +5,19 @@ edition.workspace = true
 authors.workspace = true
 rust-version.workspace = true
 publish.workspace = true
+license.workspace = true
 
 [lib]
 name = "proto"
 path = "lib.rs"
 
 [dependencies]
+# Internal dependencies
+dto = { workspace = true }
+
 chrono = { workspace = true }
 tonic = { workspace = true }
 prost = { workspace = true }
-dto = { path = "../dto" }
 ulid = { workspace = true }
 serde = { workspace = true }
 pbjson = { version = "0.5.1" }

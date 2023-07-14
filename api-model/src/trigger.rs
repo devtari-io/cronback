@@ -3,6 +3,7 @@ use chrono::{DateTime, Utc};
 use dto::{FromProto, IntoProto};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use strum::Display;
 #[cfg(feature = "validation")]
 use validator::Validate;
 
@@ -22,7 +23,7 @@ pub struct TriggersFilter {
     pub status: Vec<TriggerStatus>,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Display, Clone, Copy, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(feature = "client", non_exhaustive)]
 #[cfg_attr(
     feature = "dto",
@@ -32,18 +33,13 @@ pub struct TriggersFilter {
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[cfg_attr(feature = "clap", clap(rename_all = "snake_case"))]
 #[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum TriggerStatus {
     Scheduled,
     OnDemand,
     Expired,
     Cancelled,
     Paused,
-}
-
-impl std::fmt::Display for TriggerStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", serde_variant::to_variant_name(self).unwrap())
-    }
 }
 
 #[skip_serializing_none]
@@ -119,6 +115,16 @@ mod tests {
     use serde_json::json;
 
     use super::*;
+
+    // test that TriggerStatus to_string output is snake_case
+    #[test]
+    fn trigger_status_to_string() {
+        assert_eq!("scheduled", TriggerStatus::Scheduled.to_string());
+        assert_eq!("on_demand", TriggerStatus::OnDemand.to_string());
+        assert_eq!("expired", TriggerStatus::Expired.to_string());
+        assert_eq!("cancelled", TriggerStatus::Cancelled.to_string());
+        assert_eq!("paused", TriggerStatus::Paused.to_string());
+    }
 
     #[test]
     fn validate_install_trigger_01() -> Result<()> {

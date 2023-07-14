@@ -114,7 +114,7 @@ async fn main() -> Result<()> {
     let _tracing_file_guard =
         setup_logging_subscriber(&opts.log_format, &opts.api_tracing_dir);
 
-    debug!("** {} **", "CronBack.me".magenta());
+    debug!("** {} **", "cronback.me".magenta());
     trace!(config = opts.config, "Loading configuration");
     let config_loader = Arc::new(ConfigLoader::from_path(&opts.config));
 

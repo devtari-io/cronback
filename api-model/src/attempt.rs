@@ -5,6 +5,7 @@ use chrono::{DateTime, Utc};
 use dto::FromProto;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none, DurationSecondsWithFrac};
+use strum::Display;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(
@@ -69,7 +70,7 @@ impl AttemptDetails {
 }
 
 #[non_exhaustive]
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Display, Clone, Copy, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(
     feature = "dto",
     derive(FromProto),
@@ -78,13 +79,22 @@ impl AttemptDetails {
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[cfg_attr(feature = "clap", clap(rename_all = "snake_case"))]
 #[serde(rename_all = "snake_case")]
+// It's unfortunate that strum won't read serde's rename_all attribute. Maybe we
+// can contribute by addressing the [issue](https://github.com/Peternator7/strum/issues/113)
+#[strum(serialize_all = "snake_case")]
 pub enum AttemptStatus {
     Succeeded,
     Failed,
 }
 
-impl std::fmt::Display for AttemptStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", serde_variant::to_variant_name(self).unwrap())
+#[cfg(test)]
+mod test {
+    use crate::AttemptStatus;
+
+    #[test]
+    fn attempt_status_to_string() {
+        // swap the order of arguments of assert_eq in the next two lines
+        assert_eq!("succeeded", AttemptStatus::Succeeded.to_string());
+        assert_eq!("failed", AttemptStatus::Failed.to_string());
     }
 }

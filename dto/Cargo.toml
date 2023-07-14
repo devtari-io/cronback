@@ -1,19 +1,22 @@
 [package]
 name = "dto"
-version.workspace = true
+version = "0.1.0"
 edition.workspace = true
 authors.workspace = true
 rust-version.workspace = true
 publish.workspace = true
+license.workspace = true
 
 [[test]]
 name = "tests"
 path = "tests/tests.rs"
 
 [dependencies]
-dto-derive = { path = "../dto-derive" }
+# Internal dependencies
+dto-derive = { path = "../dto-derive", version = "0.1.0" }
+dto-core = { path = "../dto-core", version = "0.1.0" }
+
 once_cell = "1.17"
-dto-core = { path = "../dto-core" }
 
 [dev-dependencies]
 trybuild = { version = "1.0", features = ["diff"] }
