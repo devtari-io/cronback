@@ -246,10 +246,7 @@ mod tests {
     ) -> darling::Result<()> {
         let mut acc = Accumulator::default();
         let actual = acc.handle(field.gen_tokens(direction));
-        let o = acc.finish();
-        if o.is_err() {
-            return o;
-        }
+        acc.finish()?;
         let actual = actual.unwrap();
         assert_eq!(expected.to_string(), actual.to_string());
         Ok(())
@@ -296,7 +293,7 @@ mod tests {
             // default in FromProto
             gen_tokens_test_helper_from(
                 &field,
-                field_info.clone(),
+                field_info,
                 quote! { foo: ::std::default::Default::default(), },
             )?;
         }
@@ -312,7 +309,7 @@ mod tests {
             // default in FromProto
             gen_tokens_test_helper_from(
                 &field,
-                field_info.clone(),
+                field_info,
                 quote! { _foo: ::std::default::Default::default(), },
             )?;
         }
@@ -328,7 +325,7 @@ mod tests {
             // default in FromProto
             gen_tokens_test_helper_from(
                 &field,
-                field_info.clone(),
+                field_info,
                 quote! { foo: ::std::default::Default::default(), },
             )?;
         }
@@ -349,7 +346,7 @@ mod tests {
             )?;
             gen_tokens_test_helper_from(
                 &field,
-                field_info.clone(),
+                field_info,
                 quote! { foo: value.foo.into(), },
             )?;
         }
@@ -372,7 +369,7 @@ mod tests {
             // We unwrap only proto -> rust.
             gen_tokens_test_helper_from(
                 &field,
-                field_info.clone(),
+                field_info,
                 quote! { foo: value.foo.unwrap().into(), },
             )?;
         }
@@ -394,7 +391,7 @@ mod tests {
             // We map only proto -> rust. by value.
             gen_tokens_test_helper_from(
                 &field,
-                field_info.clone(),
+                field_info,
                 quote! { foo: String::from(value.foo).into(), },
             )?;
 
@@ -407,7 +404,7 @@ mod tests {
             // We map only proto -> rust. by value.
             gen_tokens_test_helper_from(
                 &field,
-                field_info.clone(),
+                field_info,
                 quote! { foo: String::from(&value.foo).into(), },
             )?;
         }
@@ -429,7 +426,7 @@ mod tests {
             // We map only rust -> proto. by value.
             gen_tokens_test_helper_into(
                 &field,
-                field_info.clone(),
+                field_info,
                 quote! { foo: String::from(value.foo).into(), },
             )?;
 
@@ -442,7 +439,7 @@ mod tests {
             // We map only proto -> rust. by value.
             gen_tokens_test_helper_into(
                 &field,
-                field_info.clone(),
+                field_info,
                 quote! { foo: String::from(&value.foo).into(), },
             )?;
         }
@@ -465,7 +462,7 @@ mod tests {
             // We map and rename the rust -> proto.
             gen_tokens_test_helper_into(
                 &field,
-                field_info.clone(),
+                field_info,
                 quote! { bar: String::from(value.foo).into(), },
             )?;
         }
@@ -487,7 +484,7 @@ mod tests {
             )?;
             gen_tokens_test_helper_from(
                 &field,
-                field_info.clone(),
+                field_info,
                 quote! { foo: value.foo.map(Into::into), },
             )?;
         }
@@ -509,7 +506,7 @@ mod tests {
             // In FromProto, we wrap the value in Some(v) and map it.
             gen_tokens_test_helper_from(
                 &field,
-                field_info.clone(),
+                field_info,
                 quote! { foo: Some(value.foo).map(Into::into), },
             )?;
         }
@@ -531,7 +528,7 @@ mod tests {
             // In FromProto, we always set to None.
             gen_tokens_test_helper_from(
                 &field,
-                field_info.clone(),
+                field_info,
                 quote! { foo: None, },
             )?;
         }
@@ -554,7 +551,7 @@ mod tests {
             )?;
             gen_tokens_test_helper_from(
                 &field,
-                field_info.clone(),
+                field_info,
                 quote! { foo: value.foo.map(Into::into), },
             )?;
         }
@@ -574,7 +571,7 @@ mod tests {
 
             gen_tokens_test_helper_from(
                 &field,
-                field_info.clone(),
+                field_info,
                 quote! { foo: value.foo.map(|v| String::from(v)), },
             )?;
         }
@@ -588,7 +585,7 @@ mod tests {
 
             gen_tokens_test_helper_from(
                 &field,
-                field_info.clone(),
+                field_info,
                 quote! { foo: value.foo.map(|v| String::from(&v)), },
             )?;
         }
@@ -612,7 +609,7 @@ mod tests {
             // .map()
             gen_tokens_test_helper_from(
                 &field,
-                field_info.clone(),
+                field_info,
                 quote! { foo: Some(value.foo).map(|v| String::from(&v)), },
             )?;
         }
@@ -634,7 +631,7 @@ mod tests {
             )?;
             gen_tokens_test_helper_from(
                 &field,
-                field_info.clone(),
+                field_info,
                 quote! { foo: value.foo.into_iter().map(Into::into).collect::<::std::vec::Vec<_>>(), },
             )?;
         }
@@ -652,7 +649,7 @@ mod tests {
             )?;
             gen_tokens_test_helper_from(
                 &field,
-                field_info.clone(),
+                field_info,
                 quote! { foo: value.foo.unwrap().into_iter().map(Into::into).collect::<::std::vec::Vec<_>>(), },
             )?;
         }
@@ -677,7 +674,7 @@ mod tests {
             )?;
             gen_tokens_test_helper_from(
                 &field,
-                field_info.clone(),
+                field_info,
                 quote! { foo: value.foo.into_iter().map(|v|
                 String::from(v)).collect::<::std::vec::Vec<_>>(), },
             )?;
@@ -706,7 +703,7 @@ mod tests {
             // here that the input coming from Proto is Option<Vec<T>>
             gen_tokens_test_helper_from(
                 &field,
-                field_info.clone(),
+                field_info,
                 quote! { foo: value.foo.unwrap().into_iter().map(|v|
                 String::from(&v)).collect::<::std::vec::Vec<_>>(), },
             )?;

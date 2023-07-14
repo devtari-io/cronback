@@ -25,7 +25,7 @@ impl RunAdminCommand for Create {
         common_options: &CommonOptions,
         admin_options: &AdminOptions,
     ) -> Result<()> {
-        let client = admin_options.new_admin_client(&common_options)?;
+        let client = admin_options.new_admin_client(common_options)?;
 
         let response = cronback_client::api_keys::gen(
             &client,

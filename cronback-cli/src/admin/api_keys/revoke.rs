@@ -35,7 +35,7 @@ impl RunAdminCommand for Revoke {
              this key will start failing.",
             self.id
         );
-        let client = admin_options.new_admin_client(&common_options)?;
+        let client = admin_options.new_admin_client(common_options)?;
 
         let response =
             cronback_client::api_keys::revoke(&client, &self.id).await?;

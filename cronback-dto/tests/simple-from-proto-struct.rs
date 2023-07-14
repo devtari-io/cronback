@@ -1,4 +1,3 @@
-#[allow(dead_code)]
 use cronback_dto::FromProto;
 
 mod sub {

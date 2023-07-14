@@ -71,10 +71,7 @@ mod tests {
         let mut acc = Accumulator::default();
         let actual =
             acc.handle(variant.gen_tokens(direction, source_type, target_type));
-        let o = acc.finish();
-        if o.is_err() {
-            return o;
-        }
+        acc.finish()?;
         let actual = actual.unwrap();
         assert_eq!(expected.to_string(), actual.to_string());
         Ok(())
@@ -94,7 +91,7 @@ mod tests {
         let target_type = &parse_quote! { Bar };
 
         let maybe_tokens = gen_tokens_test_helper(
-            variant_info.clone(),
+            variant_info,
             direction,
             source_type,
             target_type,
@@ -161,7 +158,7 @@ mod tests {
             )?);
 
             gen_tokens_test_helper(
-                variant_info.clone(),
+                variant_info,
                 direction,
                 source_type,
                 target_type,
@@ -205,7 +202,7 @@ mod tests {
             )?);
 
             gen_tokens_test_helper(
-                variant_info.clone(),
+                variant_info,
                 direction,
                 source_type,
                 target_type,
@@ -251,7 +248,7 @@ mod tests {
             )?);
 
             gen_tokens_test_helper(
-                variant_info.clone(),
+                variant_info,
                 direction,
                 source_type,
                 target_type,
@@ -296,7 +293,7 @@ mod tests {
             )?);
 
             gen_tokens_test_helper(
-                variant_info.clone(),
+                variant_info,
                 direction,
                 source_type,
                 target_type,

@@ -235,7 +235,7 @@ mod tests {
 
         let mut result = result.peekable();
         assert!(result.peek().is_some());
-        let head = result.peek().unwrap().clone();
+        let head = *result.peek().unwrap();
         assert_eq!(chrono_tz::UTC, head.timezone());
 
         // The immediate next tick should be on 2021-10-27 01:05:00 UTC.
@@ -250,7 +250,7 @@ mod tests {
         let expected = chrono_tz::UTC
             .with_ymd_and_hms(2021, 10, 27, 2, 5, 0)
             .unwrap();
-        let head = result.peek().unwrap().clone();
+        let head = *result.peek().unwrap();
         assert_eq!(expected, head);
         assert_eq!(head, result.next().unwrap());
 
