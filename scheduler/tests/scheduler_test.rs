@@ -23,7 +23,7 @@ async fn install_trigger_valid_test() {
         config_loader,
         shutdown,
     );
-    let project = ProjectId::new();
+    let project = ProjectId::generate();
     let (serve_future, mut client) =
         test_helpers::test_server_and_client(context).await;
     let install_trigger = InstallTriggerRequest {

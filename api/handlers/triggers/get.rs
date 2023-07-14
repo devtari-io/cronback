@@ -4,6 +4,7 @@ use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
+use lib::model::ValidShardedId;
 use lib::types::{ProjectId, RequestId, Trigger, TriggerId, TriggerManifest};
 use proto::scheduler_proto::{
     GetTriggerRequest,
@@ -23,7 +24,7 @@ use crate::AppState;
 pub(crate) async fn get(
     state: State<Arc<AppState>>,
     ValidatedId(id): ValidatedId<TriggerId>,
-    Extension(project): Extension<ProjectId>,
+    Extension(project): Extension<ValidShardedId<ProjectId>>,
     Extension(request_id): Extension<RequestId>,
 ) -> Result<impl IntoResponse, ApiError> {
     let mut scheduler = state.get_scheduler(&request_id, &project).await?;
@@ -60,7 +61,7 @@ pub(crate) async fn list(
     pagination: Option<Query<Pagination<TriggerId>>>,
     filters: Option<Query<ListFilters>>,
     state: State<Arc<AppState>>,
-    Extension(project): Extension<ProjectId>,
+    Extension(project): Extension<ValidShardedId<ProjectId>>,
     Extension(request_id): Extension<RequestId>,
 ) -> Result<impl IntoResponse, ApiError> {
     let Query(pagination) = pagination.unwrap_or_default();

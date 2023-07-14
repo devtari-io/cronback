@@ -4,6 +4,7 @@ use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
+use lib::model::ValidShardedId;
 use lib::types::{Invocation, ProjectId, RequestId, TriggerId};
 use proto::scheduler_proto::InvokeTriggerRequest;
 
@@ -16,7 +17,7 @@ use crate::AppState;
 #[debug_handler]
 pub(crate) async fn invoke(
     State(state): State<Arc<AppState>>,
-    Extension(project): Extension<ProjectId>,
+    Extension(project): Extension<ValidShardedId<ProjectId>>,
     Extension(request_id): Extension<RequestId>,
     ValidatedId(id): ValidatedId<TriggerId>,
     // The body of the request is optional, so we use Option<Json<...>>.

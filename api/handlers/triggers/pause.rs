@@ -4,6 +4,7 @@ use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
+use lib::model::ValidShardedId;
 use lib::types::{ProjectId, RequestId, TriggerId, TriggerManifest};
 use proto::scheduler_proto::PauseTriggerRequest;
 
@@ -16,7 +17,7 @@ use crate::AppState;
 pub(crate) async fn pause(
     state: State<Arc<AppState>>,
     ValidatedId(id): ValidatedId<TriggerId>,
-    Extension(project): Extension<ProjectId>,
+    Extension(project): Extension<ValidShardedId<ProjectId>>,
     Extension(request_id): Extension<RequestId>,
 ) -> Result<impl IntoResponse, ApiError> {
     let mut scheduler = state.get_scheduler(&request_id, &project).await?;

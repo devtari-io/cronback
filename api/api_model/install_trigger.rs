@@ -1,3 +1,4 @@
+use lib::model::ValidShardedId;
 use lib::types::*;
 use names::Generator;
 use proto::scheduler_proto;
@@ -42,7 +43,7 @@ pub(crate) struct InstallTrigger {
 impl InstallTrigger {
     pub fn into_proto(
         self,
-        project: ProjectId,
+        project: ValidShardedId<ProjectId>,
     ) -> scheduler_proto::InstallTriggerRequest {
         let mut generator = Generator::default();
         scheduler_proto::InstallTriggerRequest {

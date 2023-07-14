@@ -4,6 +4,7 @@ use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
+use lib::model::ValidShardedId;
 use lib::types::{ProjectId, RequestId, Schedule, Trigger};
 use proto::scheduler_proto::InstallTriggerRequest;
 
@@ -16,7 +17,7 @@ use crate::AppState;
 #[debug_handler]
 pub(crate) async fn install(
     State(state): State<Arc<AppState>>,
-    Extension(project): Extension<ProjectId>,
+    Extension(project): Extension<ValidShardedId<ProjectId>>,
     Extension(request_id): Extension<RequestId>,
     ValidatedJson(mut request): ValidatedJson<InstallTrigger>,
 ) -> Result<impl IntoResponse, ApiError> {

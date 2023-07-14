@@ -14,7 +14,8 @@ use super::helpers::{
     KVIden,
 };
 use crate::database::Database;
-use crate::types::{ProjectId, ShardedId, Status, Trigger, TriggerId};
+use crate::model::ModelId;
+use crate::types::{ProjectId, Status, Trigger, TriggerId};
 
 pub type TriggerStoreError = DatabaseError;
 
@@ -227,11 +228,12 @@ mod tests {
     use super::{SqlTriggerStore, TriggerStore};
     use crate::database::trigger_store::TriggerStoreError;
     use crate::database::Database;
+    use crate::model::ValidShardedId;
     use crate::types::{Emit, ProjectId, Status, Trigger, TriggerId, Webhook};
 
     fn build_trigger(
         name: &str,
-        project: ProjectId,
+        project: ValidShardedId<ProjectId>,
         status: Status,
     ) -> Trigger {
         // Serialization drops nanoseconds, so to let's zero it here for easier
@@ -239,7 +241,8 @@ mod tests {
         let now = Utc::now().with_nanosecond(0).unwrap();
 
         Trigger {
-            id: TriggerId::new(&project),
+            id: TriggerId::generate(&project).into(),
+
             project,
             name: name.to_string(),
             description: Some(format!("Desc: {}", name)),
@@ -265,8 +268,9 @@ mod tests {
         let store = SqlTriggerStore::new(db);
         store.prepare().await?;
 
-        let owner1 = ProjectId::new();
-        let owner2 = ProjectId::new();
+        let owner1 = ProjectId::generate();
+
+        let owner2 = ProjectId::generate();
 
         let t1 = build_trigger("t1", owner1.clone(), Status::Active);
         let t2 = build_trigger("t2", owner1.clone(), Status::Paused);

@@ -10,7 +10,8 @@ use super::helpers::{
     KVIden,
 };
 use crate::database::Database;
-use crate::types::{AttemptLogId, EmitAttemptLog, InvocationId, ShardedId};
+use crate::model::ModelId;
+use crate::types::{AttemptLogId, EmitAttemptLog, InvocationId};
 
 #[derive(Iden)]
 enum AttemptsIden {
@@ -148,11 +149,11 @@ mod tests {
         // equality comparisons
         let now = Utc::now().with_timezone(&UTC).with_nanosecond(0).unwrap();
 
-        let project = ProjectId::new();
+        let project = ProjectId::generate();
         EmitAttemptLog {
-            id: AttemptLogId::new(&project),
+            id: AttemptLogId::generate(&project).into(),
             invocation: invocation_id.clone(),
-            trigger: TriggerId::new(&project),
+            trigger: TriggerId::generate(&project).into(),
             project: project.clone(),
             status: crate::types::AttemptStatus::Succeeded,
             details: crate::types::AttemptDetails::WebhookAttemptDetails(
@@ -172,9 +173,9 @@ mod tests {
         let store = SqlAttemptLogStore::new(db);
         store.prepare().await?;
 
-        let owner = ProjectId::new();
-        let inv1 = InvocationId::new(&owner);
-        let inv2 = InvocationId::new(&owner);
+        let owner = ProjectId::generate();
+        let inv1 = InvocationId::generate(&owner);
+        let inv2 = InvocationId::generate(&owner);
 
         let a1 = build_attempt(&inv1);
         let a2 = build_attempt(&inv2);

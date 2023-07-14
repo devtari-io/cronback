@@ -1,5 +1,6 @@
 use chrono::Utc;
 use chrono_tz::UTC;
+use lib::model::ModelId;
 use lib::service::ServiceContext;
 use lib::types::{
     Emit,
@@ -43,11 +44,11 @@ impl Dispatcher for DispatcherAPIHandler {
         let (_metadata, _extensions, request) = request.into_parts();
 
         let dispatch_mode = request.mode();
-        let project = ProjectId::from(request.project_id);
-        let invocation_id = InvocationId::new(&project);
+        let project = ProjectId::from(request.project_id).validated()?;
+        let invocation_id = InvocationId::generate(&project);
 
         let invocation = Invocation {
-            id: invocation_id.clone(),
+            id: invocation_id.into(),
             trigger: request.trigger_id.into(),
             project,
             created_at: Utc::now().with_timezone(&UTC),

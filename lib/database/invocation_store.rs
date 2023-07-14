@@ -11,7 +11,8 @@ use super::helpers::{
     KVIden,
 };
 use crate::database::Database;
-use crate::types::{Invocation, InvocationId, ProjectId, ShardedId, TriggerId};
+use crate::model::ModelId;
+use crate::types::{Invocation, InvocationId, ProjectId, TriggerId};
 
 #[derive(Iden)]
 enum InvocationsIden {
@@ -184,6 +185,7 @@ mod tests {
 
     use super::{InvocationStore, SqlInvocationStore};
     use crate::database::Database;
+    use crate::model::ValidShardedId;
     use crate::types::{
         Invocation,
         InvocationId,
@@ -196,16 +198,16 @@ mod tests {
     };
 
     fn build_invocation(
-        trigger_id: TriggerId,
-        project: ProjectId,
+        trigger_id: ValidShardedId<TriggerId>,
+        project: ValidShardedId<ProjectId>,
     ) -> Invocation {
         // Serialization drops nanoseconds, so to let's zero it here for easier
         // equality comparisons
         let now = Utc::now().with_timezone(&UTC).with_nanosecond(0).unwrap();
 
         Invocation {
-            id: InvocationId::new(&project),
-            trigger: trigger_id,
+            id: InvocationId::generate(&project).into(),
+            trigger: trigger_id.into(),
             project,
             created_at: now,
             status: vec![InvocationStatus::WebhookStatus(WebhookStatus {
@@ -228,10 +230,10 @@ mod tests {
         let store = SqlInvocationStore::new(db);
         store.prepare().await?;
 
-        let owner1 = ProjectId::new();
-        let owner2 = ProjectId::new();
-        let t1 = TriggerId::new(&owner1);
-        let t2 = TriggerId::new(&owner2);
+        let owner1 = ProjectId::generate();
+        let owner2 = ProjectId::generate();
+        let t1 = TriggerId::generate(&owner1);
+        let t2 = TriggerId::generate(&owner2);
 
         let mut i1 = build_invocation(t1.clone(), owner1.clone());
         let i2 = build_invocation(t2.clone(), owner2.clone());

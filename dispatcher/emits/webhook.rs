@@ -5,6 +5,7 @@ use chrono::Utc;
 use chrono_tz::UTC;
 use futures::FutureExt;
 use lib::database::attempt_log_store::AttemptLogStore;
+use lib::model::ValidShardedId;
 use lib::types::{
     AttemptDetails,
     AttemptLogId,
@@ -40,7 +41,7 @@ fn to_reqwest_http_method(method: &HttpMethod) -> reqwest::Method {
 pub struct WebhookEmitJob {
     pub invocation_id: InvocationId,
     pub trigger_id: TriggerId,
-    pub project: ProjectId,
+    pub project: ValidShardedId<ProjectId>,
 
     pub webhook: Webhook,
     pub payload: Option<Payload>,
@@ -73,7 +74,7 @@ impl WebhookEmitJob {
 
                         let attempt_start_time = Utc::now().with_timezone(&UTC);
 
-                        let attempt_id = AttemptLogId::new(&self.project);
+                        let attempt_id = AttemptLogId::generate(&self.project);
                         let response = dispatch_webhook(
                             &self.trigger_id,
                             &self.invocation_id,
@@ -85,7 +86,7 @@ impl WebhookEmitJob {
                         .await;
 
                         let attempt_log = EmitAttemptLog {
-                            id: attempt_id.clone(),
+                            id: attempt_id.clone().into(),
                             invocation: self.invocation_id.clone(),
                             trigger: self.trigger_id.clone(),
                             project: self.project.clone(),

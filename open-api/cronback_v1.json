@@ -27,6 +27,10 @@
     {
       "url": "http://localhost:8888/v1",
       "description": "Local Development"
+    },
+    {
+      "url": "https://api-kg1.cronback.me/v1",
+      "description": "Preprod"
     }
   ],
   "paths": {

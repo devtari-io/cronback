@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex, RwLock};
 use chrono::Utc;
 use lib::database::trigger_store::{TriggerStore, TriggerStoreError};
 use lib::grpc_client_provider::DispatcherClientProvider;
+use lib::model::ValidShardedId;
 use lib::service::ServiceContext;
 use lib::types::{
     Invocation,
@@ -177,16 +178,15 @@ impl EventScheduler {
     #[tracing::instrument(skip_all)]
     pub async fn install_trigger(
         &self,
+        project: ValidShardedId<ProjectId>,
         install_trigger: InstallTriggerRequest,
     ) -> Result<Trigger, TriggerError> {
-        let id = TriggerId::new(&ProjectId::from(
-            install_trigger.project_id.clone(),
-        ));
+        let id = TriggerId::generate(&project);
 
         let is_scheduled = install_trigger.schedule.is_some();
         let trigger = Trigger {
-            id,
-            project: install_trigger.project_id.into(),
+            id: id.into(),
+            project,
             reference: install_trigger.reference,
             name: install_trigger.name,
             description: install_trigger.description,
@@ -230,7 +230,7 @@ impl EventScheduler {
     #[tracing::instrument(skip_all, fields(trigger_id = %id))]
     pub async fn get_trigger(
         &self,
-        project: ProjectId,
+        project: ValidShardedId<ProjectId>,
         id: TriggerId,
     ) -> Result<Trigger, TriggerError> {
         let triggers = self.triggers.clone();
@@ -260,7 +260,7 @@ impl EventScheduler {
     #[tracing::instrument(skip(self))]
     pub async fn list_triggers(
         &self,
-        project: ProjectId,
+        project: ValidShardedId<ProjectId>,
         reference: Option<String>,
         limit: usize,
         before: Option<TriggerId>,
@@ -303,7 +303,7 @@ impl EventScheduler {
     #[tracing::instrument(skip_all, fields(trigger_id = %id))]
     pub async fn invoke_trigger(
         &self,
-        project: ProjectId,
+        project: ValidShardedId<ProjectId>,
         id: TriggerId,
         mode: DispatchMode,
     ) -> Result<Invocation, TriggerError> {
@@ -324,7 +324,7 @@ impl EventScheduler {
     #[tracing::instrument(skip_all, fields(trigger_id = %id))]
     pub async fn pause_trigger(
         &self,
-        project: ProjectId,
+        project: ValidShardedId<ProjectId>,
         id: TriggerId,
     ) -> Result<TriggerManifest, TriggerError> {
         let triggers = self.triggers.clone();
@@ -346,7 +346,7 @@ impl EventScheduler {
     #[tracing::instrument(skip_all, fields(trigger_id = %id))]
     pub async fn resume_trigger(
         &self,
-        project: ProjectId,
+        project: ValidShardedId<ProjectId>,
         id: TriggerId,
     ) -> Result<TriggerManifest, TriggerError> {
         let triggers = self.triggers.clone();
@@ -368,7 +368,7 @@ impl EventScheduler {
     #[tracing::instrument(skip_all, fields(trigger_id = %id))]
     pub async fn cancel_trigger(
         &self,
-        project: ProjectId,
+        project: ValidShardedId<ProjectId>,
         id: TriggerId,
     ) -> Result<TriggerManifest, TriggerError> {
         let triggers = self.triggers.clone();
@@ -440,7 +440,7 @@ impl EventScheduler {
 
     async fn get_trigger_status(
         &self,
-        project: &ProjectId,
+        project: &ValidShardedId<ProjectId>,
         trigger_id: &TriggerId,
     ) -> Result<Status, TriggerError> {
         let status = self.store.get_status(project, trigger_id).await?;

@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none};
 
 use super::{InvocationId, Payload, ProjectId, TriggerId, Webhook};
+use crate::model::ValidShardedId;
 use crate::timeutil::iso8601_dateformat_serde;
 
 #[serde_as]
@@ -13,7 +14,7 @@ use crate::timeutil::iso8601_dateformat_serde;
 pub struct Invocation {
     pub id: InvocationId,
     pub trigger: TriggerId,
-    pub project: ProjectId,
+    pub project: ValidShardedId<ProjectId>,
     #[serde(with = "iso8601_dateformat_serde")]
     pub created_at: DateTime<Tz>,
     pub payload: Option<Payload>,

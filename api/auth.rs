@@ -7,6 +7,7 @@ use axum::http::{self, HeaderMap, HeaderValue, Request};
 use axum::middleware::Next;
 use axum::response::IntoResponse;
 use base64::Engine;
+use lib::model::{ModelId, ValidShardedId};
 use lib::types::ProjectId;
 use sha2::{Digest, Sha512};
 use tracing::error;
@@ -152,7 +153,7 @@ pub async fn admin_only_auth<B>(
 
 fn extract_project_from_request<B>(
     req: &Request<B>,
-) -> Result<ProjectId, ApiError> {
+) -> Result<ValidShardedId<ProjectId>, ApiError> {
     // This is an admin user which is acting on behalf of some project.
     const ON_BEHALF_OF_HEADER_NAME: &str = "X-On-Behalf-Of";
     if let Some(project) = req.headers().get(ON_BEHALF_OF_HEADER_NAME) {
@@ -161,7 +162,14 @@ fn extract_project_from_request<B>(
                 "{ON_BEHALF_OF_HEADER_NAME} header is not a valid UTF-8 string"
             ))
         })?;
-        return Ok(ProjectId::from(project.to_owned()));
+        let validated_project = ProjectId::from(project.to_owned())
+            .validated()
+            .map_err(|_| {
+                ApiError::BadRequest(format!(
+                    "Invalid project id in {ON_BEHALF_OF_HEADER_NAME} header"
+                ))
+            });
+        return validated_project;
     }
 
     error!("Admin user didn't set {} header", ON_BEHALF_OF_HEADER_NAME);

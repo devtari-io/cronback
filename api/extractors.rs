@@ -4,7 +4,7 @@ use axum::extract::{FromRequest, FromRequestParts, Path};
 use axum::http::request::Parts;
 use axum::http::Request;
 use axum::Json;
-use lib::types::ShardedId;
+use lib::model::{ModelId, ValidShardedId};
 use serde::de::DeserializeOwned;
 use validator::Validate;
 
@@ -35,12 +35,12 @@ where
 }
 
 #[derive(Debug)]
-pub struct ValidatedId<T>(pub T);
+pub struct ValidatedId<T>(pub ValidShardedId<T>);
 
 #[async_trait]
 impl<T, S> FromRequestParts<S> for ValidatedId<T>
 where
-    T: DeserializeOwned + Send + ShardedId,
+    T: DeserializeOwned + Send + ModelId,
     S: Send + Sync,
     Path<T>: FromRequestParts<S, Rejection = PathRejection>,
 {
@@ -53,12 +53,12 @@ where
         let Path(value) = Path::<T>::from_request_parts(parts, state)
             .await
             .map_err(|e| ApiError::BadRequest(e.to_string()))?;
-        if !value.is_valid() {
+        let raw_id = value.value().to_owned();
+        let validated = value.validated().map_err(|_|
             // We know the id is invalid so we won't bother even querying the
             // database for it.
-            return Err(ApiError::NotFound(value.to_string()));
-        }
+            ApiError::NotFound(raw_id))?;
 
-        Ok(ValidatedId(value))
+        Ok(ValidatedId(validated))
     }
 }

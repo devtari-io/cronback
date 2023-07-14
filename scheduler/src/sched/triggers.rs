@@ -557,8 +557,8 @@ mod tests {
     }
 
     fn create_trigger(sched: Schedule) -> Trigger {
-        let project = ProjectId::new();
-        let id = TriggerId::new(&project);
+        let project = ProjectId::generate();
+        let id = TriggerId::generate(&project).into();
         Trigger {
             id,
             project,

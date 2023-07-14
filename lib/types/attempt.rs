@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none, DurationSecondsWithFrac};
 
 use super::{AttemptLogId, InvocationId, ProjectId, TriggerId};
+use crate::model::ValidShardedId;
 use crate::timeutil::iso8601_dateformat_serde;
 
 #[serde_as]
@@ -16,7 +17,7 @@ pub struct EmitAttemptLog {
     pub id: AttemptLogId,
     pub invocation: InvocationId,
     pub trigger: TriggerId,
-    pub project: ProjectId,
+    pub project: ValidShardedId<ProjectId>,
     pub status: AttemptStatus,
     pub details: AttemptDetails,
     #[serde(with = "iso8601_dateformat_serde")]

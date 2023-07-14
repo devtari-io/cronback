@@ -10,7 +10,7 @@ use sqlx::Row;
 
 use super::errors::DatabaseError;
 use super::Database;
-use crate::types::ShardedId;
+use crate::model::ModelId;
 
 #[derive(Iden)]
 pub enum KVIden {
@@ -105,7 +105,7 @@ pub async fn paginated_query<'a, Table, IdType, Type>(
     limit: Option<usize>,
 ) -> Result<Vec<Type>, DatabaseError>
 where
-    IdType: Display + ShardedId,
+    IdType: Display + ModelId,
     Type: DeserializeOwned,
     Table: Iden + 'static,
 {

@@ -69,17 +69,27 @@
                 "properties": {
                   "project": {
                     "type": "string",
-                    "description": "The project Id associated with this key"
+                    "description": "The project Id associated with this key",
+                    "example": "prj_091601GY1K93P21QBBN7GS1ZZKZHQ6"
                   },
                   "key_name": {
                     "type": "string",
-                    "description": "A human-readable identifier for this key. Needs to be unique per project."
+                    "description": "A human-readable identifier for this key. Needs to be unique per project.",
+                    "example": "dev-key"
                   }
                 },
                 "required": [
                   "project",
                   "key_name"
                 ]
+              },
+              "examples": {
+                "Example 1": {
+                  "value": {
+                    "project": "prj_091601GY1K93P21QBBN7GS1ZZKZHQ6",
+                    "key_name": "dev-key"
+                  }
+                }
               }
             }
           }

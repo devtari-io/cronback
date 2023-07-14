@@ -24,14 +24,14 @@ define_model_id! {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::ShardedId;
 
     #[test]
-    fn test_id_sharding() {
-        let project = ProjectId::new();
+    fn test_id_sharding() -> Result<(), crate::model::ModelIdError> {
+        let project = ProjectId::generate();
         let project_shard = project.shard();
 
-        let trigger = TriggerId::new(&project);
+        let trigger = TriggerId::generate(&project);
         assert_eq!(trigger.shard(), project_shard);
+        Ok(())
     }
 }

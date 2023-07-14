@@ -1,5 +1,6 @@
 use async_trait::async_trait;
 use lib::database::Database;
+use lib::model::{ModelId, ValidShardedId};
 use lib::types::ProjectId;
 use sea_query::{ColumnDef, Expr, Iden, Query, Table};
 use sea_query_binder::SqlxBinder;
@@ -40,7 +41,7 @@ pub trait AuthStore {
     async fn validate_key(
         &self,
         key: &ApiKey,
-    ) -> Result<ProjectId, AuthStoreError>;
+    ) -> Result<ValidShardedId<ProjectId>, AuthStoreError>;
 
     /// Returns true if the key got revoked, false if the key didn't exist
     async fn revoke_key(&self, key: &ApiKey) -> Result<bool, AuthStoreError>;
@@ -107,7 +108,7 @@ impl AuthStore for SqlAuthStore {
     async fn validate_key(
         &self,
         user_provided_key: &ApiKey,
-    ) -> Result<ProjectId, AuthStoreError> {
+    ) -> Result<ValidShardedId<ProjectId>, AuthStoreError> {
         let (sql, values) = Query::select()
             .columns([
                 ApiKeysIden::KeyId,
@@ -151,9 +152,11 @@ impl AuthStore for SqlAuthStore {
             ));
         }
 
-        Ok(ProjectId::from(row.get::<String, _>(
-            ApiKeysIden::Project.to_string().as_str(),
-        )))
+        Ok(ProjectId::from(
+            row.get::<String, _>(ApiKeysIden::Project.to_string().as_str()),
+        )
+        .validated()
+        .expect("Invalid ProjectId persisted in database"))
     }
 
     async fn revoke_key(&self, key: &ApiKey) -> Result<bool, AuthStoreError> {
@@ -184,8 +187,8 @@ mod tests {
         let store = SqlAuthStore::new(db);
         store.prepare().await?;
 
-        let owner1 = ProjectId::new();
-        let owner2 = ProjectId::new();
+        let owner1 = ProjectId::generate();
+        let owner2 = ProjectId::generate();
 
         let key1 = ApiKey::from_str("sk_key1_secret1").unwrap();
         let key2 = ApiKey::from_str("sk_key2_secret2").unwrap();

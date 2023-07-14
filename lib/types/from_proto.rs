@@ -24,13 +24,14 @@ use super::{
     WebhookDeliveryStatus,
     WebhookStatus,
 };
+use crate::model::ValidShardedId;
 use crate::timeutil::parse_iso8601;
 
 impl From<trigger_proto::Trigger> for Trigger {
     fn from(value: trigger_proto::Trigger) -> Self {
         Self {
             id: value.id.into(),
-            project: value.project_id.into(),
+            project: ValidShardedId::from_string_unsafe(value.project_id),
             name: value.name,
             description: value.description,
             created_at: DateTime::parse_from_rfc3339(&value.created_at)
@@ -52,7 +53,7 @@ impl From<trigger_proto::TriggerManifest> for TriggerManifest {
     fn from(value: trigger_proto::TriggerManifest) -> Self {
         Self {
             id: value.id.into(),
-            project: value.project_id.into(),
+            project: ValidShardedId::from_string_unsafe(value.project_id),
             name: value.name,
             description: value.description,
             created_at: DateTime::parse_from_rfc3339(&value.created_at)
@@ -232,7 +233,7 @@ impl From<attempt_proto::EmitAttemptLog> for EmitAttemptLog {
             id: value.id.into(),
             invocation: value.invocation_id.into(),
             trigger: value.trigger_id.into(),
-            project: value.project_id.into(),
+            project: ValidShardedId::from_string_unsafe(value.project_id),
             status: value.status.into(),
             details: value.details.unwrap().into(),
             created_at: parse_iso8601(&value.created_at).unwrap(),
@@ -267,7 +268,7 @@ impl From<invocation_proto::Invocation> for Invocation {
         Self {
             id: value.id.into(),
             trigger: value.trigger_id.into(),
-            project: value.project_id.into(),
+            project: ValidShardedId::from_string_unsafe(value.project_id),
             created_at: parse_iso8601(&value.created_at).unwrap(),
             payload: value.payload.map(|p| p.into()),
             status: value.status.into_iter().map(|v| v.into()).collect(),

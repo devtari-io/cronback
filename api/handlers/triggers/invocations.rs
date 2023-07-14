@@ -4,6 +4,7 @@ use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
+use lib::model::ValidShardedId;
 use lib::types::{InvocationId, ProjectId, TriggerId};
 use validator::Validate;
 
@@ -16,7 +17,7 @@ use crate::{AppState, AppStateError};
 pub(crate) async fn list(
     pagination: Option<Query<Pagination<InvocationId>>>,
     state: State<Arc<AppState>>,
-    Extension(project): Extension<ProjectId>,
+    Extension(project): Extension<ValidShardedId<ProjectId>>,
     Path(trigger_id): Path<TriggerId>,
 ) -> Result<impl IntoResponse, ApiError> {
     let Query(pagination) = pagination.unwrap_or_default();

@@ -11,6 +11,7 @@ use serde_with::{serde_as, skip_serializing_none};
 use validator::{Validate, ValidationError};
 
 use super::webhook::Webhook;
+use crate::model::ValidShardedId;
 use crate::timeutil::iso8601_dateformat_vec_serde;
 use crate::types::{ProjectId, TriggerId};
 use crate::validation::{validate_timezone, validation_error};
@@ -21,7 +22,7 @@ use crate::validation::{validate_timezone, validation_error};
 #[serde(deny_unknown_fields)]
 pub struct Trigger {
     pub id: TriggerId,
-    pub project: ProjectId,
+    pub project: ValidShardedId<ProjectId>,
     pub name: String,
     pub description: Option<String>,
     pub created_at: DateTime<Utc>,
@@ -74,7 +75,7 @@ impl Trigger {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TriggerManifest {
     pub id: TriggerId,
-    pub project: ProjectId,
+    pub project: ValidShardedId<ProjectId>,
     pub name: String,
     pub description: Option<String>,
     pub created_at: DateTime<Utc>,
