@@ -1,4 +1,5 @@
 pub(crate) mod auth;
+pub(crate) mod auth_middleware;
 pub(crate) mod auth_store;
 pub mod errors;
 pub(crate) mod extractors;
@@ -9,7 +10,7 @@ mod paginated;
 use std::sync::Arc;
 use std::time::Instant;
 
-use auth_store::AuthStore;
+use auth::Authenticator;
 use axum::extract::MatchedPath;
 use axum::http::{Request, StatusCode};
 use axum::middleware::{self, Next};
@@ -44,14 +45,10 @@ pub enum AppStateError {
     DatabaseError(String),
 }
 
-pub struct Db {
-    pub auth_store: Box<dyn AuthStore + Send + Sync>,
-}
-
 pub struct AppState {
     pub _context: service::ServiceContext,
     pub config: Config,
-    pub db: Db,
+    pub authenicator: Authenticator,
     pub scheduler_clients:
         Box<dyn GrpcClientFactory<ClientType = ScopedSchedulerClient>>,
     pub dispatcher_clients:
@@ -73,18 +70,12 @@ pub async fn start_api_server(
     let db = Database::connect(&config.api.database_uri).await?;
     db.migrate().await?;
 
-    // Only the auth store needs to be prep-ed as it's owned by the API layer.
-    // The other stores will be prep-ed by their owner component.
-    let auth_store = SqlAuthStore::new(db.clone());
-
-    let stores = Db {
-        auth_store: Box::new(auth_store),
-    };
-
     let shared_state = Arc::new(AppState {
         _context: context.clone(),
         config: config.clone(),
-        db: stores,
+        authenicator: Authenticator::new(Box::new(SqlAuthStore::new(
+            db.clone(),
+        ))),
         scheduler_clients: Box::new(GrpcClientProvider::new(context.clone())),
         dispatcher_clients: Box::new(GrpcClientProvider::new(context.clone())),
     });

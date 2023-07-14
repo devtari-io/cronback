@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
@@ -10,6 +11,8 @@ pub struct CreateAPIkeyRequest {
         message = "name must be between 2 and 30 characters"
     ))]
     pub key_name: String,
+    #[serde(flatten)]
+    pub metadata: APIKeyMetaData,
 }
 
 #[derive(Serialize)]
@@ -18,7 +21,16 @@ pub struct CreateAPIKeyResponse {
 }
 
 #[derive(Serialize)]
-pub struct ListKeysItem {
+pub struct ApiKey {
     pub id: String,
     pub name: String,
+    pub created_at: DateTime<Utc>,
+    #[serde(flatten)]
+    pub metadata: APIKeyMetaData,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct APIKeyMetaData {
+    pub creator_user_id: Option<String>,
 }

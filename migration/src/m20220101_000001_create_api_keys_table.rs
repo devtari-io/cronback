@@ -20,6 +20,12 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(ApiKeys::HashVersion).text().not_null())
                     .col(ColumnDef::new(ApiKeys::ProjectId).text().not_null())
                     .col(ColumnDef::new(ApiKeys::Name).text().not_null())
+                    .col(
+                        ColumnDef::new(ApiKeys::CreatedAt)
+                            .date_time()
+                            .not_null(),
+                    )
+                    .col(ColumnDef::new(ApiKeys::Metadata).json())
                     .to_owned(),
             )
             .await?;
@@ -54,4 +60,6 @@ enum ApiKeys {
     HashVersion,
     ProjectId,
     Name,
+    Metadata,
+    CreatedAt,
 }

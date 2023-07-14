@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use axum::{middleware, Router};
 
-use crate::auth::{admin_only_auth, admin_only_auth_for_project};
+use crate::auth_middleware::{admin_only_auth, admin_only_auth_for_project};
 use crate::AppState;
 
 pub(crate) fn routes(shared_state: Arc<AppState>) -> Router {

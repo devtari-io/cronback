@@ -7,10 +7,14 @@ use lib::model::ValidShardedId;
 use lib::types::ProjectId;
 use proto::common::PaginationOut;
 
-use crate::auth::ApiKey;
 use crate::errors::ApiError;
 use crate::extractors::ValidatedJson;
-use crate::model::{CreateAPIKeyResponse, CreateAPIkeyRequest, ListKeysItem};
+use crate::model::{
+    APIKeyMetaData,
+    ApiKey,
+    CreateAPIKeyResponse,
+    CreateAPIkeyRequest,
+};
 use crate::paginated::Paginated;
 use crate::{AppState, AppStateError};
 
@@ -21,18 +25,10 @@ pub(crate) async fn create(
     Extension(project): Extension<ValidShardedId<ProjectId>>,
     ValidatedJson(req): ValidatedJson<CreateAPIkeyRequest>,
 ) -> Result<Json<CreateAPIKeyResponse>, ApiError> {
-    let key = ApiKey::generate();
+    let key = state.authenicator.gen_key(req, &project).await?;
 
     // This is the only legitimate place where this function should be used.
     let key_str = key.unsafe_to_string();
-
-    state
-        .db
-        .auth_store
-        .save_key(key, &project, &req.key_name)
-        .await
-        .map_err(|e| AppStateError::DatabaseError(e.to_string()))?;
-
     Ok(Json(CreateAPIKeyResponse { key: key_str }))
 }
 
@@ -41,18 +37,21 @@ pub(crate) async fn create(
 pub(crate) async fn list(
     state: State<Arc<AppState>>,
     Extension(project): Extension<ValidShardedId<ProjectId>>,
-) -> Result<Paginated<ListKeysItem>, ApiError> {
+) -> Result<Paginated<ApiKey>, ApiError> {
     let keys = state
-        .db
-        .auth_store
+        .authenicator
         .list_keys(&project)
         .await
         .map_err(|e| AppStateError::DatabaseError(e.to_string()))?
         .into_iter()
         .map(|k| {
-            ListKeysItem {
+            ApiKey {
                 name: k.name,
                 id: k.key_id,
+                created_at: k.created_at,
+                metadata: APIKeyMetaData {
+                    creator_user_id: k.metadata.creator_user_id,
+                },
             }
         })
         .collect::<Vec<_>>();
@@ -74,9 +73,8 @@ pub(crate) async fn revoke(
     Extension(project): Extension<ValidShardedId<ProjectId>>,
 ) -> Result<StatusCode, ApiError> {
     let deleted = state
-        .db
-        .auth_store
-        .delete_key(id.clone(), &project)
+        .authenicator
+        .revoke_key(&id, &project)
         .await
         .map_err(|e| AppStateError::DatabaseError(e.to_string()))?;
 

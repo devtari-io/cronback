@@ -1,42 +1,29 @@
 use async_trait::async_trait;
 use lib::database::models::api_keys;
 use lib::database::models::prelude::ApiKeys;
-use lib::database::Database;
-use lib::model::{ModelId, ValidShardedId};
+use lib::database::{Database, DatabaseError};
+use lib::model::ValidShardedId;
 use lib::types::ProjectId;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
-use thiserror::Error;
 
-use crate::auth::{ApiKey, HashVersion};
-
-#[derive(Error, Debug)]
-pub enum AuthStoreError {
-    #[error("database error: {0}")]
-    DatabaseError(#[from] sea_orm::DbErr),
-    #[error("auth failed: {0}")]
-    AuthFailed(String),
-    #[error("internal error: {0}")]
-    InternalError(String),
-}
+pub type AuthStoreError = DatabaseError;
 
 #[async_trait]
 pub trait AuthStore {
     async fn save_key(
         &self,
-        key: ApiKey,
-        project: &ValidShardedId<ProjectId>,
-        key_name: &str,
+        key: api_keys::Model,
     ) -> Result<(), AuthStoreError>;
 
-    async fn validate_key(
+    async fn get_key(
         &self,
-        key: &ApiKey,
-    ) -> Result<ValidShardedId<ProjectId>, AuthStoreError>;
+        key: &str,
+    ) -> Result<Option<api_keys::Model>, AuthStoreError>;
 
     /// Returns true if the key got deleted, false if the key didn't exist
     async fn delete_key(
         &self,
-        key_id: String,
+        key_id: &str,
         project: &ValidShardedId<ProjectId>,
     ) -> Result<bool, AuthStoreError>;
 
@@ -60,64 +47,26 @@ impl SqlAuthStore {
 impl AuthStore for SqlAuthStore {
     async fn save_key(
         &self,
-        key: ApiKey,
-        project_id: &ValidShardedId<ProjectId>,
-        key_name: &str,
+        key: api_keys::Model,
     ) -> Result<(), AuthStoreError> {
-        let hashed = key.hash(HashVersion::default());
-
-        let model = api_keys::ActiveModel {
-            key_id: sea_orm::ActiveValue::Set(hashed.key_id),
-            hash: sea_orm::ActiveValue::Set(hashed.hash),
-            hash_version: sea_orm::ActiveValue::Set(
-                hashed.hash_version.to_string(),
-            ),
-            project_id: sea_orm::ActiveValue::Set(project_id.clone()),
-            name: sea_orm::ActiveValue::Set(key_name.to_string()),
-        };
-
-        api_keys::Entity::insert(model).exec(&self.db.orm).await?;
+        let active_model: api_keys::ActiveModel = key.into();
+        api_keys::Entity::insert(active_model)
+            .exec(&self.db.orm)
+            .await?;
         Ok(())
     }
 
-    async fn validate_key(
+    async fn get_key(
         &self,
-        user_provided_key: &ApiKey,
-    ) -> Result<ValidShardedId<ProjectId>, AuthStoreError> {
-        let result = ApiKeys::find_by_id(user_provided_key.key_id())
-            .one(&self.db.orm)
-            .await?;
-
-        let Some(result) = result else {
-            return Err(AuthStoreError::AuthFailed(
-                "key_id not found".to_string(),
-            ));
-        };
-
-        let hash_version = result.hash_version;
-        let hash_version: HashVersion = hash_version.parse().map_err(|_| {
-            AuthStoreError::InternalError(format!(
-                "Unknown version: {hash_version}"
-            ))
-        })?;
-
-        let user_provided_hash = user_provided_key.hash(hash_version);
-        let stored_hash = result.hash;
-
-        if user_provided_hash.hash != stored_hash {
-            return Err(AuthStoreError::AuthFailed(
-                "Mismatched secret key".to_string(),
-            ));
-        }
-
-        Ok(ProjectId::from(result.project_id)
-            .validated()
-            .expect("Invalid ProjectId persisted in database"))
+        key_id: &str,
+    ) -> Result<Option<api_keys::Model>, AuthStoreError> {
+        let res = ApiKeys::find_by_id(key_id).one(&self.db.orm).await?;
+        Ok(res)
     }
 
     async fn delete_key(
         &self,
-        key_id: String,
+        key_id: &str,
         project: &ValidShardedId<ProjectId>,
     ) -> Result<bool, AuthStoreError> {
         let res = ApiKeys::delete_many()
@@ -142,13 +91,31 @@ impl AuthStore for SqlAuthStore {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
 
+    use chrono::Utc;
+    use lib::database::models::api_keys::{self, Metadata};
     use lib::database::Database;
+    use lib::prelude::ValidShardedId;
     use lib::types::ProjectId;
 
-    use super::{AuthStore, AuthStoreError, SqlAuthStore};
-    use crate::auth::ApiKey;
+    use super::{AuthStore, SqlAuthStore};
+
+    fn build_model(
+        key_id: &str,
+        project: &ValidShardedId<ProjectId>,
+    ) -> api_keys::Model {
+        api_keys::Model {
+            key_id: key_id.to_string(),
+            hash: "hashash".to_string(),
+            hash_version: "v1".to_string(),
+            project_id: project.clone(),
+            name: key_id.to_string(),
+            created_at: Utc::now(),
+            metadata: Metadata {
+                creator_user_id: None,
+            },
+        }
+    }
 
     #[tokio::test]
     async fn test_sql_auth_store() -> anyhow::Result<()> {
@@ -158,53 +125,37 @@ mod tests {
         let owner1 = ProjectId::generate();
         let owner2 = ProjectId::generate();
 
-        let key1 = ApiKey::from_str("sk_key1_secret1").unwrap();
-        let key2 = ApiKey::from_str("sk_key2_secret2").unwrap();
-        let key3 = ApiKey::from_str("sk_key3_secret3").unwrap();
-        let key4 = ApiKey::from_str("sk_key4_secret4").unwrap();
+        let key1 = build_model("key1", &owner1);
+        let key2 = build_model("key2", &owner2);
+        let key3 = build_model("key3", &owner1);
+        let key4 = build_model("key4", &owner2);
 
         // Test save keys
-        store.save_key(key1.clone(), &owner1, "key1").await?;
-        store.save_key(key2.clone(), &owner2, "key2").await?;
-        store.save_key(key3.clone(), &owner1, "key3").await?;
-        store.save_key(key4.clone(), &owner2, "key4").await?;
+        store.save_key(key1.clone()).await?;
+        store.save_key(key2.clone()).await?;
+        store.save_key(key3.clone()).await?;
+        store.save_key(key4.clone()).await?;
 
         // Test find owner by key
-        assert_eq!(owner1, store.validate_key(&key1).await?);
-        assert_eq!(owner2, store.validate_key(&key2).await?);
-        assert_eq!(owner1, store.validate_key(&key3).await?);
-        assert_eq!(owner2, store.validate_key(&key4).await?);
-
-        // Unknown key id
-        let key5 = ApiKey::from_str("sk_notfound_secret4").unwrap();
-        assert!(matches!(
-            store.validate_key(&key5).await,
-            Err(AuthStoreError::AuthFailed(_))
-        ));
-
-        // Wrong secret
-        let key5 = ApiKey::from_str("sk_key1_wrongsecret").unwrap();
-        assert!(matches!(
-            store.validate_key(&key5).await,
-            Err(AuthStoreError::AuthFailed(_))
-        ));
+        assert_eq!(Some(&key1), store.get_key("key1").await?.as_ref());
+        assert_eq!(Some(&key2), store.get_key("key2").await?.as_ref());
+        assert_eq!(Some(&key3), store.get_key("key3").await?.as_ref());
+        assert_eq!(Some(&key4), store.get_key("key4").await?.as_ref());
+        assert_eq!(None, store.get_key("notfound").await?);
 
         // Test delete key
-        assert!(store.delete_key(key1.key_id().clone(), &owner1).await?);
-        assert!(matches!(
-            store.validate_key(&key1).await,
-            Err(AuthStoreError::AuthFailed(_))
-        ));
+        assert!(store.delete_key("key1", &owner1).await?);
+        assert_eq!(None, store.get_key("key1").await?);
 
         // After deletion, other keys should continue to work
-        assert_eq!(owner2, store.validate_key(&key2).await?);
+        assert_eq!(Some(key2), store.get_key("key2").await?);
 
         // Deleting an already deleted key should return false.
-        assert!(!store.delete_key(key1.key_id().clone(), &owner1).await?);
+        assert!(!store.delete_key("key1", &owner1).await?);
 
         // Deleting a key with the wrong project returns false
-        assert!(!store.delete_key(key4.key_id().clone(), &owner1).await?);
-        assert_eq!(owner2, store.validate_key(&key4).await?);
+        assert!(!store.delete_key("key4", &owner1).await?);
+        assert_eq!(Some(key4), store.get_key("key4").await?);
 
         // Test List keys
         assert_eq!(

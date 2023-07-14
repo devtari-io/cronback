@@ -1,24 +1,130 @@
 use std::fmt::Display;
 use std::str::FromStr;
-use std::sync::Arc;
 
-use axum::extract::State;
-use axum::http::{self, HeaderMap, HeaderValue, Request};
-use axum::middleware::Next;
-use axum::response::IntoResponse;
 use base64::Engine;
-use lib::model::{ModelId, ValidShardedId};
+use chrono::Utc;
+use lib::database::models::api_keys;
+use lib::database::DatabaseError;
+use lib::prelude::ValidShardedId;
 use lib::types::ProjectId;
 use sha2::{Digest, Sha512};
+use thiserror::Error;
 use tracing::error;
 use uuid::Uuid;
 
-use crate::auth_store::AuthStoreError;
+use crate::auth_store::AuthStore;
 use crate::errors::ApiError;
-use crate::AppState;
+use crate::model::CreateAPIkeyRequest;
+
+#[derive(Error, Debug)]
+pub enum AuthError {
+    #[error("database error: {0}")]
+    Database(#[from] DatabaseError),
+    #[error("auth failed: {0}")]
+    AuthFailed(String),
+    #[error("internal error: {0}")]
+    Internal(String),
+}
+
+impl From<AuthError> for ApiError {
+    fn from(value: AuthError) -> Self {
+        match value {
+            | AuthError::Database(e) => {
+                error!("{}", e);
+                ApiError::ServiceUnavailable
+            }
+            | AuthError::Internal(e) => {
+                error!("{}", e);
+                ApiError::ServiceUnavailable
+            }
+            | AuthError::AuthFailed(_) => ApiError::Unauthorized,
+        }
+    }
+}
+
+pub struct Authenticator {
+    store: Box<dyn AuthStore + Send + Sync>,
+}
+
+impl Authenticator {
+    pub fn new(store: Box<dyn AuthStore + Send + Sync>) -> Self {
+        Self { store }
+    }
+
+    pub async fn gen_key(
+        &self,
+        req: CreateAPIkeyRequest,
+        project: &ValidShardedId<ProjectId>,
+    ) -> Result<SecretApiKey, AuthError> {
+        let key = SecretApiKey::generate();
+        let hashed = key.hash(HashVersion::default());
+
+        let model = api_keys::Model {
+            key_id: hashed.key_id,
+            hash: hashed.hash,
+            hash_version: hashed.hash_version.to_string(),
+            project_id: project.clone(),
+            name: req.key_name,
+            created_at: Utc::now(),
+            metadata: api_keys::Metadata {
+                creator_user_id: req.metadata.creator_user_id,
+            },
+        };
+
+        self.store.save_key(model).await?;
+
+        Ok(key)
+    }
+
+    pub async fn authenticate(
+        &self,
+        user_provided_secret: &SecretApiKey,
+    ) -> Result<ValidShardedId<ProjectId>, AuthError> {
+        let key_model =
+            self.store.get_key(user_provided_secret.key_id()).await?;
+
+        let Some(key_model) = key_model else {
+            // key_id doesn't exist in the database
+            return Err(AuthError::AuthFailed("key_id doesn't exist".to_string()));
+        };
+
+        let hash_version = key_model.hash_version;
+        let hash_version: HashVersion = hash_version.parse().map_err(|_| {
+            AuthError::Internal(format!("Unknown version: {hash_version}"))
+        })?;
+
+        let user_provided_hash = user_provided_secret.hash(hash_version);
+        let stored_hash = key_model.hash;
+
+        if user_provided_hash.hash != stored_hash {
+            return Err(AuthError::AuthFailed(
+                "Mismatched secret key".to_string(),
+            ));
+        }
+
+        Ok(key_model.project_id)
+    }
+
+    pub async fn revoke_key(
+        &self,
+        key_id: &str,
+        project: &ValidShardedId<ProjectId>,
+    ) -> Result<bool, AuthError> {
+        let res = self.store.delete_key(key_id, project).await?;
+        Ok(res)
+    }
+
+    pub async fn list_keys(
+        &self,
+        project: &ValidShardedId<ProjectId>,
+    ) -> Result<Vec<api_keys::Model>, AuthError> {
+        let res = self.store.list_keys(project).await?;
+        Ok(res)
+    }
+}
 
 #[derive(Default)]
-pub enum HashVersion {
+enum HashVersion {
     #[default]
     V1,
 }
@@ -42,7 +148,7 @@ impl FromStr for HashVersion {
     }
 }
 
-pub struct HashedApiKey {
+struct HashedApiKey {
     pub key_id: String,
     pub hash: String,
     pub hash_version: HashVersion,
@@ -51,12 +157,12 @@ pub struct HashedApiKey {
 // To avoid leaking the plaintext key anywhere, this struct doesn't allow you
 // to unwrap the inner plaintext key and doesn't implement Debug/Display
 #[cfg_attr(test, derive(Clone))]
-pub struct ApiKey {
+pub struct SecretApiKey {
     key_id: String,
     plain_secret: String,
 }
 
-impl FromStr for ApiKey {
+impl FromStr for SecretApiKey {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -76,15 +182,15 @@ impl FromStr for ApiKey {
     }
 }
 
-impl ApiKey {
-    pub fn generate() -> Self {
+impl SecretApiKey {
+    fn generate() -> Self {
         Self {
             key_id: Uuid::new_v4().simple().to_string(),
             plain_secret: Uuid::new_v4().simple().to_string(),
         }
     }
 
-    pub fn hash(&self, version: HashVersion) -> HashedApiKey {
+    fn hash(&self, version: HashVersion) -> HashedApiKey {
         match version {
             | HashVersion::V1 => {
                 let hash =
@@ -108,139 +214,21 @@ impl ApiKey {
     }
 }
 
-fn get_auth_key(
-    header_map: &HeaderMap<HeaderValue>,
-) -> Result<String, ApiError> {
-    let auth_header = header_map
-        .get(http::header::AUTHORIZATION)
-        .and_then(|header| header.to_str().ok());
-
-    let auth_header = if let Some(auth_header) = auth_header {
-        auth_header
-    } else {
-        return Err(ApiError::Unauthorized);
-    };
-
-    if auth_header.is_empty() {
-        return Err(ApiError::Unauthorized);
-    }
-
-    match auth_header.split_once(' ') {
-        | Some((name, content)) if name == "Bearer" => Ok(content.to_string()),
-        | _ => {
-            Err(ApiError::BadRequest(
-                "Authentication header is malformed, please use \
-                 `Authorization: Bearer sk_...`"
-                    .to_owned(),
-            ))
-        }
-    }
-}
-
-/// Ensures that the caller is authenticated with an admin key AND acting on
-/// behalf of a project. The `ProjectId` is then injected in the request
-/// extensions.
-pub async fn admin_only_auth_for_project<B>(
-    State(state): State<Arc<AppState>>,
-    mut req: Request<B>,
-    next: Next<B>,
-) -> Result<impl IntoResponse, ApiError> {
-    let auth_key = get_auth_key(req.headers())?;
-    let admin_keys = &state.config.api.admin_api_keys;
-    if admin_keys.contains(&auth_key) {
-        let project = extract_project_from_request(&req)?;
-        req.extensions_mut().insert(project.clone());
-        Ok(next.run(req).await)
-    } else {
-        Err(ApiError::Forbidden)
-    }
-}
-
-/// Ensures that the caller is authenticated with an admin key. No project is
-/// required. Handlers using this middleware shouldn't rely on a `ProjectId`
-/// being set in the request extensions.
-pub async fn admin_only_auth<B>(
-    State(state): State<Arc<AppState>>,
-    req: Request<B>,
-    next: Next<B>,
-) -> Result<impl IntoResponse, ApiError> {
-    let auth_key = get_auth_key(req.headers())?;
-    let admin_keys = &state.config.api.admin_api_keys;
-    if admin_keys.contains(&auth_key) {
-        Ok(next.run(req).await)
-    } else {
-        Err(ApiError::Forbidden)
-    }
-}
-
-fn extract_project_from_request<B>(
-    req: &Request<B>,
-) -> Result<ValidShardedId<ProjectId>, ApiError> {
-    // This is an admin user which is acting on behalf of some project.
-    const ON_BEHALF_OF_HEADER_NAME: &str = "X-On-Behalf-Of";
-    if let Some(project) = req.headers().get(ON_BEHALF_OF_HEADER_NAME) {
-        let project = project.to_str().map_err(|_| {
-            ApiError::BadRequest(format!(
-                "{ON_BEHALF_OF_HEADER_NAME} header is not a valid UTF-8 string"
-            ))
-        })?;
-        let validated_project = ProjectId::from(project.to_owned())
-            .validated()
-            .map_err(|_| {
-                ApiError::BadRequest(format!(
-                    "Invalid project id in {ON_BEHALF_OF_HEADER_NAME} header"
-                ))
-            });
-        return validated_project;
-    }
-
-    error!("Admin user didn't set {} header", ON_BEHALF_OF_HEADER_NAME);
-
-    Err(ApiError::BadRequest(
-        "Super privilege header(s) missing!".to_owned(),
-    ))
-}
-
-pub async fn auth<B>(
-    State(state): State<Arc<AppState>>,
-    mut req: Request<B>,
-    next: Next<B>,
-) -> Result<impl IntoResponse, ApiError> {
-    let auth_key = get_auth_key(req.headers())?;
-    let admin_keys = &state.config.api.admin_api_keys;
-    if admin_keys.contains(&auth_key) {
-        let project = extract_project_from_request(&req)?;
-        req.extensions_mut().insert(project.clone());
-        return Ok(next.run(req).await);
-    }
-
-    let Ok(api_key) = auth_key.to_string().parse() else {
-        return Err(ApiError::Unauthorized);
-    };
-
-    match state.db.auth_store.validate_key(&api_key).await {
-        | Ok(project) => {
-            req.extensions_mut().insert(project.clone());
-            let mut resp = next.run(req).await;
-            // Inject project_id in the response extensions as well.
-            resp.extensions_mut().insert(project);
-            Ok(resp)
-        }
-        | Err(AuthStoreError::AuthFailed(_)) => Err(ApiError::Unauthorized),
-        | Err(e) => {
-            error!("Failed to authenticate user: {}", e);
-            Err(ApiError::ServiceUnavailable)
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::ApiKey;
+    use std::str::FromStr;
+
+    use lib::database::Database;
+    use lib::types::ProjectId;
+
+    use super::SecretApiKey;
+    use crate::auth::{AuthError, Authenticator};
+    use crate::auth_store::SqlAuthStore;
+    use crate::model::CreateAPIkeyRequest;
 
     #[test]
     fn test_api_key() {
-        let api_key = ApiKey {
+        let api_key = SecretApiKey {
             key_id: "key1".to_string(),
             plain_secret: "supersecure".to_string(),
         };
@@ -249,9 +237,82 @@ mod tests {
 
         assert_eq!(serialized, "sk_key1_supersecure");
 
-        let parsed_api_key: ApiKey = serialized.parse().unwrap();
+        let parsed_api_key: SecretApiKey = serialized.parse().unwrap();
 
         assert_eq!(api_key.key_id, parsed_api_key.key_id);
         assert_eq!(api_key.plain_secret, parsed_api_key.plain_secret);
+    }
+
+    fn build_create_key_request(name: &str) -> CreateAPIkeyRequest {
+        CreateAPIkeyRequest {
+            key_name: name.to_string(),
+            metadata: crate::model::APIKeyMetaData {
+                creator_user_id: None,
+            },
+        }
+    }
+
+    #[tokio::test]
+    async fn test_sql_auth_store() -> anyhow::Result<()> {
+        let db = Database::in_memory().await?;
+        let store = SqlAuthStore::new(db);
+
+        let prj1 = ProjectId::generate();
+        let prj2 = ProjectId::generate();
+
+        let authenticator = Authenticator::new(Box::new(store));
+
+        let key1 = authenticator
+            .gen_key(build_create_key_request("key1"), &prj1)
+            .await?;
+        let key2 = authenticator
+            .gen_key(build_create_key_request("key2"), &prj2)
+            .await?;
+        let key3 = authenticator
+            .gen_key(build_create_key_request("key3"), &prj1)
+            .await?;
+        let key4 = authenticator
+            .gen_key(build_create_key_request("key4"), &prj2)
+            .await?;
+
+        // Test authenticate
+        assert_eq!(prj1, authenticator.authenticate(&key1).await?);
+        assert_eq!(prj2, authenticator.authenticate(&key2).await?);
+        assert_eq!(prj1, authenticator.authenticate(&key3).await?);
+        assert_eq!(prj2, authenticator.authenticate(&key4).await?);
+
+        // Unknown key id
+        let key5 = SecretApiKey::from_str("sk_notfound_secret4").unwrap();
+        assert!(matches!(
+            authenticator.authenticate(&key5).await,
+            Err(AuthError::AuthFailed(_))
+        ));
+
+        // Wrong secret
+        let key5 = SecretApiKey::from_str("sk_key1_wrongsecret").unwrap();
+        assert!(matches!(
+            authenticator.authenticate(&key5).await,
+            Err(AuthError::AuthFailed(_))
+        ));
+
+        // Test delete key
+        assert!(authenticator.revoke_key(key1.key_id(), &prj1).await?);
+        assert!(matches!(
+            authenticator.authenticate(&key1).await,
+            Err(AuthError::AuthFailed(_))
+        ));
+
+        // Test List keys
+        assert_eq!(
+            authenticator
+                .list_keys(&prj2)
+                .await?
+                .into_iter()
+                .map(|k| k.name)
+                .collect::<Vec<_>>(),
+            vec!["key2".to_string(), "key4".to_string()]
+        );
+
+        Ok(())
     }
 }

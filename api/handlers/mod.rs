@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use axum::{middleware, Router};
 
-use crate::auth::auth as auth_middleware;
+use crate::auth_middleware::auth as auth_middleware;
 use crate::AppState;
 
 pub(crate) mod admin;
