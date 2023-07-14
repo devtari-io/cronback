@@ -16,6 +16,7 @@ use url::Url;
 use crate::{emitln, runs, triggers, whoami, RunCommand};
 
 const CRONBACK_SECRET_TOKEN_VAR: &str = "CRONBACK_SECRET_TOKEN";
+const CRONBACK_PROJECT_ID_VAR: &str = "CRONBACK_PROJECT_ID";
 
 #[derive(Parser, Debug, Clone)]
 /// Command-line utility to manage cronback projects
@@ -46,6 +47,21 @@ pub struct CommonOptions {
     /// The API secret token. We attempt to read from `.env` if environment
     /// variable is not set, then fallback to `$HOME/.cronback/config`
     secret_token: Option<String>,
+
+    #[arg(
+        long,
+        global = true,
+        value_name = "PROJECT_ID",
+        env(CRONBACK_PROJECT_ID_VAR),
+        hide_env_values = true,
+        hide = true
+    )]
+    /// If the secret_token is an admin key, the client will act on behalf of
+    /// the project passed here. This flag is for cronback admin use only.
+    /// For normal users, the project id is infered from the secret token.
+    /// We attempt to read from `.env` if environment variable is not set, then
+    /// fallback to `$HOME/.cronback/config`
+    project_id: Option<String>,
     #[arg(long, global = true)]
     /// Displays a table with meta information about the response
     show_meta: bool,
@@ -130,6 +146,33 @@ impl CommonOptions {
         bail!("No secret token was specified!")
     }
 
+    pub fn project_id(&self) -> Result<Option<String>> {
+        if let Some(ref token) = self.project_id {
+            return Ok(Some(token.to_string()));
+        }
+
+        // is it set in env (loaded from .env)
+        let maybe_token = match std::env::var(CRONBACK_PROJECT_ID_VAR) {
+            | Ok(t) => Some(t),
+            | Err(VarError::NotPresent) => None,
+            | e => {
+                // Note that we land here, only when the environment is loaded
+                // through the .env file. If the environment variable was set
+                // directly, then self.secret_token would have been set.
+                return e
+                    .with_context(|| {
+                        format!(
+                            "Failed to load value of `{}` from .env file",
+                            CRONBACK_PROJECT_ID_VAR
+                        )
+                    })
+                    .map(|_| None);
+            }
+        };
+
+        Ok(maybe_token)
+    }
+
     pub fn base_url(&self) -> &Url {
         if self.localhost {
             static LOCALHOST_URL: OnceCell<Url> = OnceCell::new();
@@ -143,10 +186,12 @@ impl CommonOptions {
     pub fn new_client(&self) -> Result<Client> {
         let base_url = self.base_url();
         let secret_token = self.secret_token()?;
+        let project_id = self.project_id()?;
         Ok(ClientBuilder::new()
             .base_url(base_url.clone())
             .context("Error while parsing base url")?
             .secret_token(secret_token)
+            .on_behalf_of(project_id)
             .build()?)
     }
 

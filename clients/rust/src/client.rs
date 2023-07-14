@@ -67,6 +67,16 @@ impl ClientBuilder {
         self
     }
 
+    /// If the secret_token is an admin key, the client will act on behalf of
+    /// the project passed here.
+    /// This method is for cronback admin use only. For normal users, the
+    /// project id is infered from the secret token and this value is just
+    /// ignored.
+    pub fn on_behalf_of(mut self, project_id: Option<String>) -> Self {
+        self.config.on_behalf_of = project_id;
+        self
+    }
+
     /// Construct cronback client.
     pub fn build(self) -> Result<Client> {
         let http_client = match self.config.reqwest_client {
@@ -98,6 +108,7 @@ impl ClientBuilder {
                     .config
                     .secret_token
                     .ok_or(Error::SecretTokenRequired)?,
+                on_behalf_of: self.config.on_behalf_of,
             },
         })
     }
@@ -293,11 +304,15 @@ impl Client {
         T: DeserializeOwned,
     {
         info!("Sending a request '{} {}'", method, url);
-        let request = self.http_client.request(method, url);
-        let resp = request
-            .bearer_auth(&self.config.secret_token)
-            .send()
-            .await?;
+        let mut request = self
+            .http_client
+            .request(method, url)
+            .bearer_auth(&self.config.secret_token);
+
+        if let Some(prj) = &self.config.on_behalf_of {
+            request = request.header("X-On-Behalf-Of", prj);
+        }
+        let resp = request.send().await?;
         Response::from_raw_response(resp).await
     }
 
@@ -332,6 +347,7 @@ impl Default for Client {
 struct Config {
     base_url: Option<Url>,
     secret_token: Option<String>,
+    on_behalf_of: Option<String>,
     reqwest_client: Option<reqwest::Client>,
 }
 
@@ -339,6 +355,7 @@ struct Config {
 struct ClientConfig {
     base_url: Url,
     secret_token: String,
+    on_behalf_of: Option<String>,
 }
 
 // Ensure that Client is Send + Sync. Compiler will fail if it's not.
