@@ -137,4 +137,3 @@ where
 
     client.run(Method::DELETE, path).await
 }
-
