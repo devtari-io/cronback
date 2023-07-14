@@ -4,6 +4,7 @@ use chrono::Utc;
 use futures::TryFutureExt;
 use lib::database::run_store::RunStore;
 use lib::database::DatabaseError;
+use lib::e;
 use lib::prelude::TonicRequestExt;
 use lib::service::ServiceContext;
 use lib::types::{Run, RunId, RunStatus, TriggerId};
@@ -59,7 +60,7 @@ impl Dispatcher for DispatcherAPIHandler {
         let run = Run {
             id: run_id.into(),
             trigger_id: request.trigger_id.unwrap().into(),
-            project_id: ctx.project_id,
+            project_id: ctx.project_id.clone(),
             created_at: Utc::now(),
             payload: request.payload.map(|p| p.into()),
             action: request.action.unwrap().into(),
@@ -69,6 +70,12 @@ impl Dispatcher for DispatcherAPIHandler {
         };
 
         counter!("dispatcher.runs_total", 1);
+        e!(
+            context = ctx,
+            RunCreated {
+                meta: run.meta().into()
+            }
+        );
         let run = self
             .dispatch_manager
             .run(run, dispatch_mode)

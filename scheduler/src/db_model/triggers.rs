@@ -5,6 +5,7 @@ use dto::{FromProto, IntoProto};
 use lib::database::pagination::PaginatedEntity;
 use lib::prelude::ValidShardedId;
 use lib::types::{Action, Payload, ProjectId, TriggerId};
+use proto::events::TriggerMeta;
 use sea_orm::entity::prelude::*;
 use sea_orm::{DeriveActiveEnum, EnumIter};
 
@@ -27,6 +28,16 @@ pub struct Model {
     pub action: Action,
     pub status: Status,
     pub last_ran_at: Option<DateTime<Utc>>,
+}
+
+impl Model {
+    /// Metadata used in events tracking
+    pub fn meta(&self) -> TriggerMeta {
+        proto::events::TriggerMeta {
+            trigger_id: Some(self.id.clone().into()),
+            name: self.name.clone(),
+        }
+    }
 }
 
 impl PaginatedEntity for Entity {

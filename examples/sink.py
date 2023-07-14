@@ -40,7 +40,7 @@ class S(BaseHTTPRequestHandler):
         post_data = self.rfile.read(content_length)
         logging.info(COLOR + method + " request,\n" + RESET_COLOR + "Path: %s\nHeaders:\n%sBody:\n%s\n",
                 str(self.path), str(self.headers), post_data.decode('utf-8'))
-        sleep = random.random() * 8
+        sleep = random.random() * 5
         logging.info("Sleeping for %f seconds", sleep)
         time.sleep(sleep)
         self._set_response()

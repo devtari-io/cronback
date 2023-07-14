@@ -1,5 +1,9 @@
+pub mod events;
 pub mod common {
     tonic::include_proto!("common");
+
+    // pbjson generated code
+    include!(concat!(env!("OUT_DIR"), "/common.serde.rs"));
 
     impl<T> From<chrono::DateTime<T>> for DateTime
     where
@@ -55,6 +59,7 @@ pub mod dispatcher_proto {
 
 pub mod trigger_proto {
     tonic::include_proto!("trigger_proto");
+    include!(concat!(env!("OUT_DIR"), "/trigger_proto.serde.rs"));
 }
 
 pub mod run_proto {
@@ -63,6 +68,7 @@ pub mod run_proto {
 
 pub mod attempt_proto {
     tonic::include_proto!("attempt_proto");
+    include!(concat!(env!("OUT_DIR"), "/attempt_proto.serde.rs"));
 }
 
 pub const FILE_DESCRIPTOR_SET: &[u8] =

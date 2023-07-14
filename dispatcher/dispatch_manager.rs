@@ -1,9 +1,12 @@
 use std::debug_assert;
 use std::sync::Arc;
+use std::time::Duration;
 
+use chrono::Utc;
 use dispatcher_proto::DispatchMode;
 use lib::database::attempt_log_store::AttemptLogStore;
 use lib::database::run_store::{RunStore, RunStoreError};
+use lib::e;
 use lib::types::{Action, Run, RunStatus};
 use metrics::{decrement_gauge, increment_gauge};
 use proto::dispatcher_proto;
@@ -125,6 +128,39 @@ impl RunJob {
             }
         };
         decrement_gauge!("dispatcher.inflight_runs_total", 1.0);
+        let total_duration_s = Utc::now()
+            .signed_duration_since(run.created_at)
+            .to_std()
+            .unwrap_or_else(|_| Duration::default())
+            .as_secs_f64();
+
+        if run.status == RunStatus::Failed {
+            e!(
+                project_id = run.project_id,
+                RunFailed {
+                    meta: run.meta().into(),
+                    total_duration_s,
+                    latest_attempt_id: run
+                        .latest_attempt_id
+                        .as_ref()
+                        .cloned()
+                        .map(Into::into),
+                }
+            );
+        } else if run.status == RunStatus::Succeeded {
+            e!(
+                project_id = run.project_id,
+                RunSucceeded {
+                    meta: run.meta().into(),
+                    total_duration_s,
+                    latest_attempt_id: run
+                        .latest_attempt_id
+                        .as_ref()
+                        .cloned()
+                        .map(Into::into),
+                }
+            );
+        }
         run
     }
 }

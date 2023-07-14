@@ -11,10 +11,12 @@ pub mod service;
 pub mod shutdown;
 pub mod types;
 
+pub mod events;
 mod ext;
 
 pub mod prelude {
     pub use crate::consts::*;
+    pub use crate::events::e;
     pub use crate::ext::*;
     pub use crate::grpc_helpers::*;
     pub use crate::model::*;

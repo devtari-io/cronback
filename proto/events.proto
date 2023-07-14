@@ -1,0 +1,103 @@
+syntax = "proto3";
+
+import "common.proto";
+import "trigger.proto";
+import "attempt.proto";
+
+package events;
+
+message Event {
+  // An identifier for the event, not sharded but can be sorted lexographically.
+  string id = 1;
+  common.DateTime created_at = 2;
+  common.ProjectId project_id = 3;
+  oneof details {
+    // Please make sure you keep the type and value name consistent as in
+    // "FortranCase -> snake_case", the e! macro depends on it.
+    RunCreated run_created = 4;
+    RunSucceeded run_succeeded = 5;
+    RunFailed run_failed = 6;
+    TriggerStatusUpdated trigger_status_updated = 7;
+    TriggerCreated trigger_created = 8;
+    TriggerDeleted trigger_deleted = 9;
+    WebhookAttemptCreated webhook_attempt_created = 10;
+    WebhookAttemptSucceeded webhook_attempt_succeeded = 11;
+    WebhookAttemptFailed webhook_attempt_failed = 12;
+  }
+}
+
+message RunMeta {
+  common.TriggerId trigger_id = 1;
+  common.RunId run_id = 2;
+}
+
+message TriggerMeta {
+  common.TriggerId trigger_id = 1;
+  string name = 2;
+}
+
+message AttemptMeta {
+  common.TriggerId trigger_id = 1;
+  common.RunId run_id = 2;
+  common.AttemptId attempt_id = 3;
+}
+
+
+// ** EVENTS **
+message TriggerCreated {
+  TriggerMeta meta = 1;
+}
+
+message TriggerDeleted {
+  TriggerMeta meta = 1;
+}
+
+message TriggerStatusUpdated {
+  TriggerMeta meta = 1;
+  trigger_proto.TriggerStatus new_status = 2;
+  trigger_proto.TriggerStatus old_status = 3;
+}
+
+message RunCreated {
+  RunMeta meta = 1;
+}
+
+message RunSucceeded {
+  RunMeta meta = 1;
+  // Elapsed time since run was created.
+  double total_duration_s = 2;
+  common.AttemptId latest_attempt_id = 3;
+}
+
+message RunFailed {
+  RunMeta meta = 1;
+  // Elapsed time since run was created.
+  double total_duration_s = 2;
+  common.AttemptId latest_attempt_id = 3;
+}
+
+message WebhookAttemptCreated {
+  AttemptMeta meta = 1;
+  // Shows how many attempts happened on the same run.
+  uint32 attempt_num = 2;
+  uint32 attempt_limit = 3;
+  common.Webhook webhook = 4;
+}
+
+message WebhookAttemptSucceeded {
+  AttemptMeta meta = 1;
+  // Shows how many attempts happened on the same run.
+  uint32 attempt_num = 2;
+  uint32 attempt_limit = 3;
+  common.Webhook webhook = 4;
+  attempt_proto.WebhookAttemptDetails response_details= 5;
+}
+
+message WebhookAttemptFailed {
+  AttemptMeta meta = 1;
+  // Shows how many attempts happened on the same run.
+  uint32 attempt_num = 2;
+  uint32 attempt_limit = 3;
+  common.Webhook webhook = 4;
+  attempt_proto.WebhookAttemptDetails response_details = 5;
+}

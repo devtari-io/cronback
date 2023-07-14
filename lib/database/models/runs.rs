@@ -2,6 +2,7 @@
 
 use chrono::{DateTime, Utc};
 use dto::{FromProto, IntoProto};
+use proto::events::RunMeta;
 use sea_orm::entity::prelude::*;
 
 use super::attempts;
@@ -39,6 +40,16 @@ pub struct Model {
 impl PaginatedEntity for Entity {
     fn cursor_column() -> Self::Column {
         Column::Id
+    }
+}
+
+impl Model {
+    /// Metadata used in events tracking
+    pub fn meta(&self) -> RunMeta {
+        proto::events::RunMeta {
+            trigger_id: Some(self.trigger_id.clone().into()),
+            run_id: Some(self.id.clone().into()),
+        }
     }
 }
 

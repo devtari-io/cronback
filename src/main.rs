@@ -23,14 +23,16 @@ use tracing_subscriber::{EnvFilter, Layer};
 fn setup_logging_subscriber(
     f: &LogFormat,
     api_tracing_dir: &str,
-) -> tracing_appender::non_blocking::WorkerGuard {
+) -> Vec<tracing_appender::non_blocking::WorkerGuard> {
+    let mut guards = vec![];
+
     // The default stdout logging
     let stdout_layer = {
         let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
             .unwrap_or_else(|_| {
                 "cronbackd=debug,scheduler=debug,api=debug,dispatcher=debug,\
                  tower_http=debug,lib=debug,request_response_tracing=off,\
-                 request_response_tracing_metadata=info"
+                 request_response_tracing_metadata=info,events=off"
                     .into()
             });
 
@@ -64,12 +66,35 @@ fn setup_logging_subscriber(
             guard,
         )
     };
+    guards.push(file_guard);
+    // A special subscriber for events.
+    // TODO: This setup is temporary until we decide how this will be configured
+    // and whether we should use rolling file or not.
+    let (events_layer, file_guard) = {
+        let file_appender = tracing_appender::rolling::daily(
+            api_tracing_dir,
+            "cronback_events.log",
+        );
+        let (non_blocking, guard) =
+            tracing_appender::non_blocking(file_appender);
+        (
+            tracing_subscriber::fmt::layer()
+                // For events, we only log the message. The message is JSON
+                // serialized already.
+                .event_format(lib::events::Formatter)
+                .with_writer(non_blocking)
+                .with_filter(EnvFilter::new("off,events=info")),
+            guard,
+        )
+    };
+    guards.push(file_guard);
     tracing_subscriber::registry()
         .with(stdout_layer)
         .with(request_tracing_layer)
+        .with(events_layer)
         .init();
 
-    file_guard
+    guards
 }
 
 #[tokio::main(flavor = "multi_thread")]

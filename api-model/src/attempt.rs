@@ -32,7 +32,7 @@ pub struct Attempt {
 )]
 pub struct WebhookAttemptDetails {
     pub response_code: Option<i32>,
-    #[cfg_attr(feature = "dto", from_proto(map = "Duration::from_secs"))]
+    #[cfg_attr(feature = "dto", from_proto(map = "Duration::from_secs_f64"))]
     #[serde_as(as = "DurationSecondsWithFrac")]
     pub response_latency_s: Duration,
     pub error_message: Option<String>,

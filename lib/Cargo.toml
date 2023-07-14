@@ -50,6 +50,8 @@ config = { version = "0.13", features = ["toml"] }
 hyper = "0.14.24"
 tonic-reflection = "0.9.0"
 url = { version = "2.3.1", features = ["serde"] }
+tracing-subscriber = { version = "0.3", features = ["fmt", "registry"] }
+tracing-core = { version = "0.1.31" }
 # A crate that re-exposes the unstable IP features that got introduced in
 # https://github.com/rust-lang/rust/issues/27709.
 # Given that this is an untrusted repo, we're pinning it to a particular

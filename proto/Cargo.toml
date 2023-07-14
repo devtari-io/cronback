@@ -15,6 +15,11 @@ chrono = { workspace = true }
 tonic = { workspace = true }
 prost = { workspace = true }
 dto = { path = "../dto" }
+ulid = { workspace = true }
+serde = { workspace = true }
+pbjson = { version = "0.5.1" }
+pbjson-types = { version = "0.5.1" }
 
 [build-dependencies]
 tonic-build = "0.9"
+pbjson-build = "0.5.1"

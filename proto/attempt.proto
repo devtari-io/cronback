@@ -28,7 +28,7 @@ message AttemptDetails {
 
 message WebhookAttemptDetails {
   optional int32 response_code = 1;
-  uint64 response_latency_s = 2;
+  double response_latency_s = 2;
   optional string error_message = 3;
 }
 

@@ -4,6 +4,7 @@ use std::time::Instant;
 use chrono::Utc;
 use lib::database::attempt_log_store::AttemptLogStore;
 use lib::database::run_store::RunStore;
+use lib::e;
 use lib::model::ValidShardedId;
 use lib::prelude::{
     DELIVERY_ATTEMPT_NUM_HEADER,
@@ -27,9 +28,10 @@ use lib::types::{
     WebhookAttemptDetails,
 };
 use metrics::counter;
+use proto::events::AttemptMeta;
 use reqwest::header::HeaderValue;
 use reqwest::Method;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 use validator::Validate;
 
 use crate::retry::Retry;
@@ -100,6 +102,22 @@ impl WebhookActionJob {
             let attempt_start_time = Utc::now();
 
             let attempt_id = AttemptId::generate(&self.run.project_id);
+
+            let meta = Some(AttemptMeta {
+                trigger_id: Some(self.run.trigger_id.clone().into()),
+                run_id: Some(self.run.id.clone().into()),
+                attempt_id: Some(attempt_id.clone().into()),
+            });
+
+            e!(
+                project_id = self.run.project_id.clone(),
+                WebhookAttemptCreated {
+                    meta: meta.clone(),
+                    attempt_num,
+                    attempt_limit,
+                    webhook: Some(webhook.clone().into()),
+                }
+            );
             // Actually dispatch the webhook
             let response = dispatch_webhook(
                 &self.run.trigger_id,
@@ -141,6 +159,27 @@ impl WebhookActionJob {
             // We record the status if successful to avoid an extra DB write
             if response.is_success() {
                 self.run.status = RunStatus::Succeeded;
+                e!(
+                    project_id = self.run.project_id.clone(),
+                    WebhookAttemptSucceeded {
+                        meta: meta.clone(),
+                        attempt_num,
+                        attempt_limit,
+                        webhook: Some(webhook.clone().into()),
+                        response_details: Some(response.clone().into()),
+                    }
+                );
+            } else {
+                e!(
+                    project_id = self.run.project_id.clone(),
+                    WebhookAttemptFailed {
+                        meta,
+                        attempt_num,
+                        attempt_limit,
+                        webhook: Some(webhook.clone().into()),
+                        response_details: Some(response.clone().into()),
+                    }
+                );
             }
 
             if let Err(e) = self.run_store.update_run(self.run.clone()).await {
@@ -182,7 +221,8 @@ async fn dispatch_webhook(
     let validation_result = webhook.validate();
 
     if let Err(e) = validation_result {
-        debug!(
+        // We warn because API validation should have caught this!
+        warn!(
             project_id = %project_id,
             trigger_id = %trigger_id,
             run_id = %run_id,

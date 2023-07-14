@@ -59,7 +59,7 @@ impl ActiveModelBehavior for ActiveModel {}
 #[proto(target = "proto::attempt_proto::WebhookAttemptDetails")]
 pub struct WebhookAttemptDetails {
     pub response_code: Option<i32>,
-    #[into_proto(map = "Duration::as_secs", map_by_ref)]
+    #[into_proto(map = "Duration::as_secs_f64", map_by_ref)]
     pub response_latency_s: Duration,
     pub error_message: Option<String>,
 }

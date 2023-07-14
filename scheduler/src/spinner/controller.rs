@@ -6,6 +6,7 @@ use async_recursion::async_recursion;
 use chrono::Utc;
 use lib::clients::dispatcher_client::ScopedDispatcherClient;
 use lib::database::pagination::PaginatedResponse;
+use lib::e;
 use lib::grpc_client_provider::GrpcClientProvider;
 use lib::model::ValidShardedId;
 use lib::prelude::*;
@@ -13,6 +14,7 @@ use lib::service::ServiceContext;
 use lib::types::{ProjectId, TriggerId};
 use proto::common::request_precondition::PreconditionType;
 use proto::common::{PaginationIn, UpsertEffect};
+use proto::events::TriggerMeta;
 use proto::run_proto::Run;
 use proto::scheduler_proto::{UpsertTriggerRequest, UpsertTriggerResponse};
 use tracing::{debug, error, info, trace, warn};
@@ -430,6 +432,13 @@ impl SpinnerController {
             Ok(trigger)
         }?;
 
+        e!(
+            context = context,
+            TriggerCreated {
+                meta: trigger.meta().into(),
+            }
+        );
+
         let reply = UpsertTriggerResponse {
             trigger: Some(trigger.into()),
             effect: UpsertEffect::Created.into(),
@@ -511,7 +520,7 @@ impl SpinnerController {
             Vec::with_capacity(dead.len() + alive_triggers.len());
 
         // merge live and dead
-        results.extend(dead.into_iter());
+        results.extend(dead);
         results.extend(alive_triggers);
         // reverse sort the list by trigger id (newer first)
         results.sort_by(|a, b| b.id.cmp(&a.id));
@@ -615,9 +624,17 @@ impl SpinnerController {
 
         if status == Status::OnDemand {
             let mut trigger =
-                self.get_trigger(context, name.to_string()).await?;
+                self.get_trigger(context.clone(), name.to_string()).await?;
             trigger.status = Status::Cancelled;
             self.store.update_trigger(trigger.clone()).await?;
+            e!(
+                context = context,
+                TriggerStatusUpdated {
+                    meta: trigger.meta().into(),
+                    old_status: Status::OnDemand.into(),
+                    new_status: trigger.status.clone().into(),
+                }
+            );
             Ok(trigger)
         } else {
             tokio::task::spawn_blocking(move || {
@@ -643,6 +660,11 @@ impl SpinnerController {
             self.get_trigger_id(&context.project_id, &name).await?;
         let triggers = self.triggers.clone();
 
+        let meta = Some(TriggerMeta {
+            trigger_id: Some(trigger_id.clone().into()),
+            name: name.clone(),
+        });
+
         tokio::task::spawn_blocking({
             let trigger_id = trigger_id.clone();
             move || {
@@ -656,6 +678,7 @@ impl SpinnerController {
             .delete_trigger(&context.project_id, &trigger_id)
             .await?;
         self.remove_name_from_cache(&name);
+        e!(context = context, TriggerDeleted { meta });
         info!("Trigger '{name}' ({trigger_id}) has been deleted!");
         Ok(())
     }

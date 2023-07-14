@@ -3,6 +3,7 @@ use std::collections::{BinaryHeap, HashMap, HashSet};
 
 use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
+use lib::e;
 use lib::types::TriggerId;
 use tracing::{info, trace};
 
@@ -214,15 +215,26 @@ impl ActiveTriggerMap {
         let Some(trigger) = self.state.get_mut(trigger_id) else {
             return Err(TriggerError::NotFound(trigger_id.to_string()));
         };
+        let project_id = trigger.get().project_id.clone();
+        let current_status = trigger.get().status.clone();
+        let meta = trigger.get().meta();
 
-        if reject_statuses.contains(&trigger.get().status) {
+        if reject_statuses.contains(&current_status) {
             return Err(TriggerError::InvalidStatus(
                 new_status.as_operation(),
                 trigger.get().status.clone(),
             ));
         }
 
-        if trigger.update_status(new_status) {
+        if trigger.update_status(new_status.clone()) {
+            e!(
+                project_id = project_id,
+                TriggerStatusUpdated {
+                    meta: meta.into(),
+                    old_status: current_status.into(),
+                    new_status: new_status.into(),
+                }
+            );
             self.add_to_awaiting_db_flush(trigger_id.clone());
         }
         Ok(())
