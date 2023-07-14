@@ -4,7 +4,6 @@ use std::str::FromStr;
 use chrono::{DateTime, FixedOffset, Timelike};
 use cron::Schedule as CronSchedule;
 use dto::{FromProto, IntoProto};
-use lib::timeutil::{default_timezone, iso8601_dateformat_vec_serde};
 use lib::validation::{validate_timezone, validation_error};
 use monostate::MustBe;
 use serde::{Deserialize, Serialize};
@@ -51,6 +50,10 @@ pub struct Recurring {
     pub remaining: Option<u64>,
 }
 
+fn default_timezone() -> String {
+    "Etc/UTC".to_string()
+}
+
 #[skip_serializing_none]
 #[derive(
     IntoProto,
@@ -77,7 +80,6 @@ pub(crate) struct RunAt {
         ),
         custom = "validate_run_at"
     )]
-    #[serde(with = "iso8601_dateformat_vec_serde")]
     pub timepoints: Vec<DateTime<FixedOffset>>,
     #[serde(skip_deserializing)]
     pub remaining: Option<u64>,
@@ -136,7 +138,8 @@ mod tests {
         let run_at = json!(
             {
                 "type": "timepoints",
-                "timepoints": [ "PT1M", "PT2M" ]
+                // a minute difference
+                "timepoints": [ "2023-06-02T12:40:58+03:00", "2023-06-02T12:41:58+03:00" ]
             }
         );
         let parsed: RunAt = serde_json::from_value(run_at)?;
@@ -164,7 +167,10 @@ mod tests {
         let run_at = json!(
             {
                 "type": "timepoints",
-                "timepoints": [ "PT1M", "PT1M" ]
+                "timepoints": [
+                    "2023-06-02T12:40:58+03:00",
+                    "2023-06-02T12:40:58+03:00"
+                ]
             }
         );
         let parsed: RunAt = serde_json::from_value(run_at)?;

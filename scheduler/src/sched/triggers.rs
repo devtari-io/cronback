@@ -525,7 +525,6 @@ impl ActiveTrigger {
 mod tests {
     use std::time::Duration;
 
-    use lib::timeutil::parse_iso8601_and_duration;
     use lib::types::{
         Action,
         HttpMethod,
@@ -635,11 +634,11 @@ mod tests {
     fn future_ticks_parsing_run_at() -> Result<(), TriggerError> {
         // generating some time points, one in the past, and three in the
         // future.
-        let timepoints = vec![
-            parse_iso8601_and_duration("PT-1M").unwrap(), /* 1 minute ago (in the past) */
-            parse_iso8601_and_duration("PT2M").unwrap(),
-            parse_iso8601_and_duration("PT3M").unwrap(),
-        ];
+        let now = Utc::now().fixed_offset();
+        let past_1m = now - chrono::Duration::minutes(1);
+        let future_2m = now + chrono::Duration::minutes(2);
+        let future_3m = now + chrono::Duration::minutes(3);
+        let timepoints = vec![past_1m, future_2m, future_3m];
 
         let schedule = create_run_at(timepoints);
 
