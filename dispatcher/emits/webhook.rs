@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -201,33 +200,6 @@ async fn dispatch_webhook(
         | Ok(resp) => {
             WebhookAttemptDetails {
                 response_code: Some(resp.status().as_u16() as i32),
-                response_payload: Some(Payload {
-                    content_type: resp
-                        .headers()
-                        .get(reqwest::header::CONTENT_TYPE)
-                        .map(|v| v.to_str().unwrap_or("INVALID").to_string())
-                        .unwrap_or_default(),
-                    headers: resp
-                        .headers()
-                        .iter()
-                        .map(|(h, v)| {
-                            (
-                                h.to_string(),
-                                v.to_str().unwrap_or("INVALID").to_owned(),
-                            )
-                        })
-                        .collect::<HashMap<_, _>>(),
-                    // TODO: Don't attempt to read the payload if it's larger
-                    // than the max allowed payload size
-                    // (based on the Content-length
-                    // header) TODO: Reconsider the string type for
-                    // the payload. This can be a binary blob and the below
-                    // unwrap would fail.
-                    body: String::from_utf8(
-                        resp.bytes().await.unwrap().to_vec(),
-                    )
-                    .unwrap(),
-                }),
                 response_latency_s: latency,
                 error_message: None,
             }

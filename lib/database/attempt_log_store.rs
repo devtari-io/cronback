@@ -127,7 +127,6 @@ impl AttemptLogStore for SqlAttemptLogStore {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
     use std::time::Duration;
 
     use chrono::{Timelike, Utc};
@@ -139,7 +138,6 @@ mod tests {
         AttemptLogId,
         EmitAttemptLog,
         InvocationId,
-        Payload,
         ProjectId,
         TriggerId,
         WebhookAttemptDetails,
@@ -161,11 +159,6 @@ mod tests {
                 WebhookAttemptDetails {
                     response_code: Some(404),
                     response_latency_s: Duration::from_secs(10),
-                    response_payload: Some(Payload {
-                        headers: HashMap::new(),
-                        content_type: "application/json".to_string(),
-                        body: "body".to_string(),
-                    }),
                     error_message: None,
                 },
             ),

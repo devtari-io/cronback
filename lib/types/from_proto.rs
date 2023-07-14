@@ -245,7 +245,6 @@ impl From<attempt_proto::WebhookAttemptDetails> for WebhookAttemptDetails {
             response_latency_s: Duration::from_secs_f64(
                 value.response_latency_s,
             ),
-            response_payload: value.response_payload.map(|p| p.into()),
             error_message: value.error_msg,
         }
     }

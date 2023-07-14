@@ -263,9 +263,6 @@ impl From<AttemptDetails> for attempt_proto::AttemptDetails {
                         response_latency_s: webhook_details
                             .response_latency_s
                             .as_secs_f64(),
-                        response_payload: webhook_details
-                            .response_payload
-                            .map(|p| p.into()),
                         error_msg: webhook_details.error_message,
                     },
                 )

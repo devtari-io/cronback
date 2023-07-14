@@ -5,7 +5,7 @@ use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none, DurationSecondsWithFrac};
 
-use super::{AttemptLogId, InvocationId, Payload, ProjectId, TriggerId};
+use super::{AttemptLogId, InvocationId, ProjectId, TriggerId};
 use crate::timeutil::iso8601_dateformat_serde;
 
 #[serde_as]
@@ -31,7 +31,6 @@ pub struct WebhookAttemptDetails {
     pub response_code: Option<i32>,
     #[serde_as(as = "DurationSecondsWithFrac")]
     pub response_latency_s: Duration,
-    pub response_payload: Option<Payload>,
     pub error_message: Option<String>,
 }
 
@@ -44,7 +43,6 @@ impl WebhookAttemptDetails {
         Self {
             response_code: None,
             response_latency_s: Duration::default(),
-            response_payload: None,
             error_message: Some(err),
         }
     }

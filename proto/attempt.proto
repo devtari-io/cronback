@@ -31,6 +31,5 @@ message WebhookAttemptDetails {
   // We consider any 2xx status code as success.
   optional int32 response_code = 1;
   double response_latency_s = 2;
-  optional trigger_proto.Payload response_payload = 3;
-  optional string error_msg = 4;
+  optional string error_msg = 3;
 }
