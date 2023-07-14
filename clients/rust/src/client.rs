@@ -5,7 +5,15 @@ use tracing::log::info;
 use url::Url;
 
 use crate::constants::{BASE_URL_ENV, DEFAULT_BASE_URL};
-use crate::{Error, Response, Result, Trigger};
+use crate::{
+    Error,
+    Paginated,
+    Pagination,
+    Response,
+    Result,
+    Trigger,
+    TriggersFilter,
+};
 /// An asynchronous client for a cronback API service.
 ///
 /// The client has various configuration options, but has reasonable defaults
@@ -130,6 +138,33 @@ impl Client {
     {
         let path = format!("/v1/triggers/{}", name.as_ref());
         let path = self.config.base_url.join(&path)?;
+
+        self.execute_request(Method::GET, path).await
+    }
+
+    /// Retrieve list of triggers for a project.
+    pub async fn list_triggers(
+        &self,
+        pagination: Option<Pagination>,
+        filter: Option<TriggersFilter>,
+    ) -> Result<Response<Paginated<Trigger>>> {
+        let mut path = self.config.base_url.join("/v1/triggers")?;
+        if let Some(pagination) = pagination {
+            if let Some(cursor) = pagination.cursor {
+                path.query_pairs_mut().append_pair("cursor", &cursor);
+            }
+            if let Some(limit) = pagination.limit {
+                path.query_pairs_mut()
+                    .append_pair("limit", &limit.to_string());
+            }
+        }
+
+        if let Some(filter) = filter {
+            for status in filter.status {
+                path.query_pairs_mut()
+                    .append_pair("status", &status.to_string());
+            }
+        }
 
         self.execute_request(Method::GET, path).await
     }

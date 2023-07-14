@@ -11,6 +11,7 @@ use validator::{Validate, ValidationError};
 use crate::validation_util::validation_error;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "client", non_exhaustive)]
 #[cfg_attr(
     feature = "dto",
     derive(IntoProto, FromProto),
@@ -44,7 +45,8 @@ pub struct Recurring {
     pub cron: Option<String>,
     #[cfg_attr(feature = "validation", validate(custom = "validate_timezone"))]
     #[cfg_attr(feature = "server", serde(default = "default_timezone"))]
-    pub timezone: String,
+    #[cfg_attr(feature = "dto", proto(required))]
+    pub timezone: Option<String>,
     #[cfg_attr(feature = "validation", validate(range(min = 1)))]
     pub limit: Option<u64>,
     pub remaining: Option<u64>,
@@ -80,8 +82,8 @@ pub struct RunAt {
 }
 
 #[cfg(feature = "server")]
-fn default_timezone() -> String {
-    "Etc/UTC".to_string()
+fn default_timezone() -> Option<String> {
+    Some("Etc/UTC".to_string())
 }
 
 #[cfg(feature = "validation")]
@@ -227,7 +229,7 @@ mod tests {
         let parsed: Recurring = serde_json::from_value(recurring)?;
         parsed.validate()?;
         assert_eq!("0 * * * * *".to_owned(), parsed.cron.unwrap());
-        assert_eq!("Etc/UTC".to_owned(), parsed.timezone);
+        assert_eq!(Some("Etc/UTC".to_owned()), parsed.timezone);
         assert!(parsed.limit.is_none());
         assert!(parsed.remaining.is_none());
 

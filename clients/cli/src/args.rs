@@ -2,11 +2,18 @@ use std::env::VarError;
 
 use anyhow::{bail, Context, Result};
 use clap::clap_derive::Parser;
-use cronback::{Client, ClientBuilder, BASE_URL_ENV, DEFAULT_BASE_URL};
+use cronback::{
+    Client,
+    ClientBuilder,
+    Response,
+    BASE_URL_ENV,
+    DEFAULT_BASE_URL,
+};
 use once_cell::sync::OnceCell;
+use tokio::io::AsyncWriteExt;
 use url::Url;
 
-use crate::{triggers, whoami, RunCommand};
+use crate::{emitln, triggers, whoami, RunCommand};
 
 const CRONBACK_SECRET_TOKEN_VAR: &str = "CRONBACK_SECRET_TOKEN";
 
@@ -39,6 +46,9 @@ pub struct CommonOptions {
     /// The API secret token. We attempt to read from `.env` if environment
     /// variable is not set, then fallback to `$HOME/.cronback/config`
     secret_token: Option<String>,
+    #[arg(long, global = true)]
+    /// Displays a table with meta information about the response
+    show_meta: bool,
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -118,6 +128,48 @@ impl CommonOptions {
             .context("Error while parsing base url")?
             .secret_token(secret_token)
             .build()?)
+    }
+
+    pub async fn show_meta<
+        T,
+        A: tokio::io::AsyncWrite + Send + Sync + Unpin,
+        B: tokio::io::AsyncWrite + Send + Sync + Unpin,
+    >(
+        &self,
+        response: &Response<T>,
+        _out: &mut tokio::io::BufWriter<A>,
+        err: &mut tokio::io::BufWriter<B>,
+    ) -> Result<()> {
+        use colored::Colorize;
+        // Print extra information.
+        if self.show_meta {
+            emitln!(err);
+            emitln!(
+                err,
+                "{}",
+                "-------------------------------------------------".green()
+            );
+            emitln!(err, "URL: {}", response.url());
+            emitln!(err, "Status Code: {}", response.status_code());
+            emitln!(
+                err,
+                "Request Id: {}",
+                response.request_id().clone().unwrap_or_default().green()
+            );
+            emitln!(
+                err,
+                "Project Id: {}",
+                response.project_id().clone().unwrap_or_default().green()
+            );
+            emitln!(
+                err,
+                "{}",
+                "-------------------------------------------------".green()
+            );
+            emitln!(err);
+        }
+        err.flush().await?;
+        Ok(())
     }
 }
 

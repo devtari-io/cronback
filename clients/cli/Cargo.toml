@@ -15,6 +15,10 @@ path = "src/main.rs"
 
 [dependencies]
 cronback = { path = "../rust", version = "0.1.0" }
+cronback-api-model = { path = "../../api-model", version = "0.1.0", features = [
+  "client",
+  "clap",
+] }
 clap = { version = "4", features = ["env", "derive", "wrap_help"] }
 colored = { version = "2.0" }
 colored_json = { version = "3.2.0" }
@@ -36,3 +40,4 @@ env_logger = "0.10.0"
 once_cell = { version = "1.17.1" }
 dotenvy = "0.15"
 async-trait = { workspace = true }
+prettytable-rs = { version = "0.10.0" }

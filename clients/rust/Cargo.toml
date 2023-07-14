@@ -30,3 +30,4 @@ serde_json = { workspace = true }
 chrono = { workspace = true }
 monostate = { version = "0.1.6" }
 serde_with = { version = "3.0.0" }
+serde_variant = { version = "0.1.2" }

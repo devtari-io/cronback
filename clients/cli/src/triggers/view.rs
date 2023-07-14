@@ -1,7 +1,6 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use clap::Parser;
-use colored::Colorize;
 
 use crate::args::CommonOptions;
 use crate::{emitln, RunCommand};
@@ -22,37 +21,13 @@ impl RunCommand for View {
     >(
         &self,
         out: &mut tokio::io::BufWriter<A>,
-        _err: &mut tokio::io::BufWriter<B>,
+        err: &mut tokio::io::BufWriter<B>,
         common_options: &CommonOptions,
     ) -> Result<()> {
         let client = common_options.new_client()?;
         let response = client.get_trigger(&self.name).await?;
-        if self.extended {
-            // Print extra information.
-            emitln!(
-                out,
-                "{}",
-                "-------------------------------------------------".green()
-            );
-            emitln!(out, "Status Code: {}", response.status_code());
-            emitln!(
-                out,
-                "Request Id: {}",
-                response.request_id().clone().unwrap_or_default().green()
-            );
-            emitln!(
-                out,
-                "Project Id: {}",
-                response.project_id().clone().unwrap_or_default().green()
-            );
-            emitln!(
-                out,
-                "{}",
-                "-------------------------------------------------".green()
-            );
-        }
+        common_options.show_meta(&response, out, err).await?;
 
-        emitln!(out);
         let response = response.into_inner();
         match response {
             | Ok(good) => {

@@ -1,6 +1,7 @@
 mod action;
 mod attempt;
 mod ids;
+mod pagination;
 mod payload;
 mod run;
 mod schedule;
@@ -12,6 +13,7 @@ pub use action::*;
 pub use attempt::*;
 #[cfg(not(feature = "dto"))]
 pub use ids::*;
+pub use pagination::*;
 pub use payload::*;
 pub use run::*;
 pub use schedule::*;

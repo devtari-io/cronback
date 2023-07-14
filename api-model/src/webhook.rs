@@ -17,12 +17,15 @@ use validator::{Validate, ValidationError};
 #[cfg(feature = "validation")]
 use crate::validation_util::validation_error;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(feature = "client", non_exhaustive)]
 #[cfg_attr(
     feature = "dto",
     derive(IntoProto, FromProto),
     proto(target = "proto::webhook_proto::HttpMethod")
 )]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[cfg_attr(feature = "clap", clap(rename_all = "UPPER"))]
 #[serde(rename_all = "UPPERCASE")]
 pub enum HttpMethod {
     Delete,
@@ -31,6 +34,12 @@ pub enum HttpMethod {
     Patch,
     Post,
     Put,
+}
+
+impl std::fmt::Display for HttpMethod {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", serde_variant::to_variant_name(self).unwrap())
+    }
 }
 
 #[serde_as]
@@ -85,6 +94,7 @@ impl Default for Webhook {
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(feature = "client", non_exhaustive)]
 #[cfg_attr(
     feature = "dto",
     derive(IntoProto, FromProto),

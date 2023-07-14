@@ -4,6 +4,7 @@ use http::StatusCode;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use tracing::log::warn;
+use url::Url;
 
 pub const REQUEST_ID_HEADER: &str = "x-cronback-request-id";
 pub const PROJECT_ID_HEADER: &str = "x-cronback-project-id";
@@ -41,6 +42,7 @@ impl std::error::Error for ApiError {}
 #[derive(Debug, Clone)]
 pub struct Response<T> {
     inner: Result<T, ApiError>,
+    url: Url,
     request_id: Option<String>,
     project_id: Option<String>,
     status_code: StatusCode,
@@ -72,6 +74,10 @@ impl<T> Response<T> {
         self.status_code
     }
 
+    pub fn url(&self) -> &Url {
+        &self.url
+    }
+
     pub fn is_err(&self) -> bool {
         self.inner.is_err()
     }
@@ -88,6 +94,7 @@ where
     pub(crate) async fn from_raw_response(
         raw: reqwest::Response,
     ) -> Result<Self, crate::Error> {
+        let url = raw.url().clone();
         let status_code = raw.status();
         let headers = raw.headers().clone();
         let project_id = headers
@@ -129,6 +136,7 @@ where
 
         Ok(Self {
             inner,
+            url,
             project_id,
             request_id,
             status_code,

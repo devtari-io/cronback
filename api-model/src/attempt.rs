@@ -45,6 +45,7 @@ pub struct WebhookAttemptDetails {
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
+#[cfg_attr(feature = "client", non_exhaustive)]
 #[cfg_attr(
     feature = "dto",
     derive(FromProto),
@@ -56,14 +57,23 @@ pub enum AttemptDetails {
     WebhookAttemptDetails(WebhookAttemptDetails),
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq)]
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, Serialize, PartialEq)]
 #[cfg_attr(
     feature = "dto",
     derive(FromProto),
     proto(target = "proto::attempt_proto::AttemptStatus")
 )]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[cfg_attr(feature = "clap", clap(rename_all = "snake_case"))]
 #[serde(rename_all = "snake_case")]
 pub enum AttemptStatus {
     Succeeded,
     Failed,
+}
+
+impl std::fmt::Display for AttemptStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", serde_variant::to_variant_name(self).unwrap())
+    }
 }

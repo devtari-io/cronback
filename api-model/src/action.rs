@@ -7,6 +7,7 @@ use serde_with::{serde_as, skip_serializing_none};
 use super::Webhook;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(feature = "client", non_exhaustive)]
 /// non_exhaustive because proto doesn't have Event yet.
 #[cfg_attr(
     feature = "dto",

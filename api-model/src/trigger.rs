@@ -7,6 +7,7 @@ use serde_with::skip_serializing_none;
 use validator::Validate;
 
 use super::{Action, Payload, Schedule};
+use crate::{Recurring, RunAt, Webhook};
 
 #[derive(Debug, Deserialize, Default)]
 #[cfg_attr(feature = "validation", derive(Validate))]
@@ -15,18 +16,21 @@ use super::{Action, Payload, Schedule};
     derive(IntoProto),
     proto(target = "proto::scheduler_proto::ListTriggersFilter")
 )]
-pub struct ListFilters {
+pub struct TriggersFilter {
     #[serde(default)]
     #[cfg_attr(feature = "dto", proto(name = "statuses"))]
     pub status: Vec<TriggerStatus>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[cfg_attr(feature = "client", non_exhaustive)]
 #[cfg_attr(
     feature = "dto",
     derive(IntoProto, FromProto),
     proto(target = "proto::trigger_proto::TriggerStatus")
 )]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[cfg_attr(feature = "clap", clap(rename_all = "snake_case"))]
 #[serde(rename_all = "snake_case")]
 pub enum TriggerStatus {
     Scheduled,
@@ -34,6 +38,12 @@ pub enum TriggerStatus {
     Expired,
     Cancelled,
     Paused,
+}
+
+impl std::fmt::Display for TriggerStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", serde_variant::to_variant_name(self).unwrap())
+    }
 }
 
 #[skip_serializing_none]
@@ -72,6 +82,32 @@ pub struct Trigger {
     pub last_ran_at: Option<DateTime<Utc>>,
     #[cfg_attr(feature = "validate", validate)]
     pub payload: Option<Payload>,
+}
+
+impl Trigger {
+    /// Returns the webhook if the action is a webhook
+    pub fn webhook(&self) -> Option<&Webhook> {
+        match self.action.as_ref() {
+            | Some(Action::Webhook(webhook)) => Some(webhook),
+            | _ => None,
+        }
+    }
+
+    /// Returns the recurring schedule if the schedule is of type `recurring`
+    pub fn recurring(&self) -> Option<&Recurring> {
+        match self.schedule.as_ref() {
+            | Some(Schedule::Recurring(r)) => Some(r),
+            | _ => None,
+        }
+    }
+
+    /// Returns the run_at schedule if the schedule is of type `timepoints`
+    pub fn run_at(&self) -> Option<&RunAt> {
+        match self.schedule.as_ref() {
+            | Some(Schedule::RunAt(r)) => Some(r),
+            | _ => None,
+        }
+    }
 }
 
 #[cfg(all(test, feature = "validation"))]

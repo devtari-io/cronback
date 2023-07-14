@@ -28,6 +28,7 @@ validation = [
   "dep:url",
 ]
 server = ["dto", "validation"]
+clap = ["dep:clap"]
 
 [dependencies]
 lib = { path = "../lib", optional = true }
@@ -43,6 +44,9 @@ ipext = { git = "https://github.com/jedisct1/rust-ipext", rev = "0ebeb115bd67", 
 thiserror = { workspace = true, optional = true }
 url = { version = "2.3.1", features = ["serde"], optional = true }
 chrono-tz = { workspace = true, optional = true }
+clap = { version = "4", default-features = true, features = [
+  "derive",
+], optional = true }
 
 monostate = { version = "0.1" }
 serde = { workspace = true }
@@ -50,6 +54,7 @@ serde_json = { workspace = true }
 serde_with = { workspace = true }
 chrono = { workspace = true }
 derive_more = { workspace = true }
+serde_variant = { version = "0.1.2" }
 
 [dev-dependencies]
 anyhow = { workspace = true }

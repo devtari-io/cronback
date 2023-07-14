@@ -11,7 +11,7 @@ use proto::scheduler_proto::{GetTriggerRequest, ListTriggersRequest};
 use validator::Validate;
 
 use crate::errors::ApiError;
-use crate::model::{ListFilters, Trigger};
+use crate::model::{Trigger, TriggersFilter};
 use crate::paginated::{Paginated, Pagination};
 use crate::AppState;
 
@@ -42,7 +42,7 @@ pub(crate) async fn get(
 #[debug_handler]
 pub(crate) async fn list(
     Query(pagination): Query<Pagination>,
-    Query(filters): Query<ListFilters>,
+    Query(filters): Query<TriggersFilter>,
     state: State<Arc<AppState>>,
     Extension(project): Extension<ValidShardedId<ProjectId>>,
     Extension(request_id): Extension<RequestId>,
