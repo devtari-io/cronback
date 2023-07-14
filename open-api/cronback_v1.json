@@ -127,7 +127,7 @@
         ]
       },
       "put": {
-        "summary": "",
+        "summary": "Update trigger",
         "operationId": "put-triggers-trigger_id",
         "responses": {
           "200": {
@@ -151,7 +151,10 @@
             }
           },
           "description": ""
-        }
+        },
+        "tags": [
+          "Triggers"
+        ]
       }
     },
     "/triggers": {
