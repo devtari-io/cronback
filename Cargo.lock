@@ -785,6 +785,7 @@ version = "0.1.0"
 dependencies = [
  "dto-core",
  "dto-derive",
+ "once_cell",
  "trybuild",
 ]
 
@@ -1405,6 +1406,7 @@ dependencies = [
  "config",
  "cron",
  "derive_more",
+ "dto",
  "futures",
  "hyper",
  "ipext",
@@ -2155,6 +2157,7 @@ dependencies = [
 name = "proto"
 version = "0.1.0"
 dependencies = [
+ "dto",
  "prost",
  "tonic",
  "tonic-build",

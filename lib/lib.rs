@@ -9,3 +9,10 @@ pub mod shutdown;
 pub mod timeutil;
 pub mod types;
 pub mod validation;
+
+mod ext;
+
+pub mod prelude {
+    pub use crate::ext::*;
+    pub use crate::model::*;
+}

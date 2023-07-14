@@ -12,3 +12,9 @@ pub fn derive_from_proto(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     dto_core::derive_from_proto(input).into()
 }
+
+#[proc_macro_derive(ProstMessageExt, attributes(prost))]
+pub fn derive_prost_message_ext(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    dto_core::derive_prost_message_ext(input).into()
+}

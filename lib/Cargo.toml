@@ -13,6 +13,7 @@ path = "lib.rs"
 [dependencies]
 # Internal Dependencies
 proto = { path = "../proto" }
+dto = { path = "../dto" }
 
 # Dependencies from workspace
 anyhow = { workspace = true }

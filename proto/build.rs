@@ -5,6 +5,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let out_dir = PathBuf::from(env::var("OUT_DIR")?);
 
     tonic_build::configure()
+        .message_attribute(".", "#[derive(::dto::ProstMessageExt)]")
         .protoc_arg("--experimental_allow_proto3_optional")
         .file_descriptor_set_path(out_dir.join("file_descriptor.bin"))
         .compile(

@@ -110,3 +110,28 @@ impl Skip for ProtoVariantInfo {
         self.skip
     }
 }
+
+// Experiment
+#[derive(Debug, FromDeriveInput)]
+#[darling(attributes(prost))]
+pub(crate) struct ProstMessageInto {
+    pub ident: syn::Ident,
+}
+
+#[allow(unused)]
+#[derive(Debug, FromField)]
+#[cfg_attr(test, derive(Clone))]
+#[darling(attributes(prost), forward_attrs(doc), allow_unknown_fields)]
+pub(crate) struct ProstFieldInfo {
+    // automatically populated by darling
+    pub ident: Option<syn::Ident>,
+    pub vis: syn::Visibility,
+    pub ty: syn::Type,
+
+    pub attrs: Vec<syn::Attribute>,
+    is_enumeration: Option<syn::Path>,
+    #[darling(default, rename = "message")]
+    is_message: bool,
+    #[darling(default, rename = "optional")]
+    is_optional: bool,
+}

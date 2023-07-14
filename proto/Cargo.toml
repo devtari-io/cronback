@@ -12,6 +12,7 @@ path = "lib.rs"
 [dependencies]
 tonic = { workspace = true }
 prost = { workspace = true }
+dto = { path = "../dto" }
 
 [build-dependencies]
 tonic-build = { workspace = true }
