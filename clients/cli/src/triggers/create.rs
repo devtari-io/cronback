@@ -10,7 +10,15 @@ pub struct Create {}
 
 #[async_trait]
 impl RunCommand for Create {
-    async fn run(&self, _common_options: &CommonOptions) -> Result<()> {
+    async fn run<
+        A: tokio::io::AsyncWrite + Send + Sync + Unpin,
+        B: tokio::io::AsyncWrite + Send + Sync + Unpin,
+    >(
+        &self,
+        _out: &mut tokio::io::BufWriter<A>,
+        _err: &mut tokio::io::BufWriter<B>,
+        _common_options: &CommonOptions,
+    ) -> Result<()> {
         todo!()
     }
 }

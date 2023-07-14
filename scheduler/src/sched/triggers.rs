@@ -609,7 +609,7 @@ mod tests {
         //  A specific second in the future, this should yield exactly one time
         // point. FIXME: This will fail soon, see https://github.com/zslayton/cron/issues/97
 
-        let cron_pattern = "0 5 4 2 6 * 2040"; // fifth minute of every hour
+        let cron_pattern = "0 5 4 20 6 * 2040"; // fifth minute of every hour
         let schedule = create_cron_schedule(cron_pattern, Some(4));
 
         let mut result = TriggerFutureTicks::from_schedule(&schedule, None)?;

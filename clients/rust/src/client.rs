@@ -1,9 +1,11 @@
-use std::sync::Arc;
-
+use http::Method;
+use reqwest::IntoUrl;
+use serde::de::DeserializeOwned;
+use tracing::log::info;
 use url::Url;
 
 use crate::constants::{BASE_URL_ENV, DEFAULT_BASE_URL};
-use crate::Result;
+use crate::{Error, Response, Result, Trigger};
 /// An asynchronous client for a cronback API service.
 ///
 /// The client has various configuration options, but has reasonable defaults
@@ -18,7 +20,7 @@ use crate::Result;
 #[derive(Clone)]
 pub struct Client {
     http_client: reqwest::Client,
-    inner: Arc<CronbackClientRef>,
+    config: ClientConfig,
 }
 
 /// A `ClientBuilder` is what should be used to construct a `Client` with custom
@@ -40,6 +42,19 @@ impl ClientBuilder {
         Self {
             config: Config::default(),
         }
+    }
+
+    pub fn base_url<T: IntoUrl>(mut self, base_url: T) -> Result<Self> {
+        let mut base_url = base_url.into_url()?;
+        // We want to make sure that the query string is empty.
+        base_url.set_query(None);
+        self.config.base_url = Some(base_url);
+        Ok(self)
+    }
+
+    pub fn secret_token(mut self, secret_token: String) -> Self {
+        self.config.secret_token = Some(secret_token);
+        self
     }
 
     /// Construct cronback client.
@@ -67,7 +82,13 @@ impl ClientBuilder {
         };
         Ok(Client {
             http_client,
-            inner: Arc::new(CronbackClientRef { base_url }),
+            config: ClientConfig {
+                base_url,
+                secret_token: self
+                    .config
+                    .secret_token
+                    .ok_or(Error::SecretTokenRequired)?,
+            },
         })
     }
 
@@ -101,6 +122,34 @@ impl Client {
     pub fn builder() -> ClientBuilder {
         ClientBuilder::new()
     }
+
+    /// Retrieve a trigger by name.
+    pub async fn get_trigger<T>(&self, name: T) -> Result<Response<Trigger>>
+    where
+        T: AsRef<str>,
+    {
+        let path = format!("/v1/triggers/{}", name.as_ref());
+        let path = self.config.base_url.join(&path)?;
+
+        self.execute_request(Method::GET, path).await
+    }
+
+    async fn execute_request<T>(
+        &self,
+        method: http::Method,
+        url: Url,
+    ) -> Result<Response<T>>
+    where
+        T: DeserializeOwned,
+    {
+        info!("Sending a request '{} {}'", method, url);
+        let request = self.http_client.request(method, url);
+        let resp = request
+            .bearer_auth(&self.config.secret_token)
+            .send()
+            .await?;
+        Response::from_raw_response(resp).await
+    }
 }
 
 impl Default for Client {
@@ -112,12 +161,21 @@ impl Default for Client {
 #[derive(Default, Clone)]
 struct Config {
     base_url: Option<Url>,
+    secret_token: Option<String>,
     reqwest_client: Option<reqwest::Client>,
 }
 
-struct CronbackClientRef {
+#[derive(Clone)]
+struct ClientConfig {
     base_url: Url,
+    secret_token: String,
 }
+
+// Ensure that Client is Send + Sync. Compiler will fail if it's not.
+const _: () = {
+    fn assert_send<T: Send + Sync>() {}
+    let _ = assert_send::<Client>;
+};
 
 #[cfg(test)]
 mod tests {}

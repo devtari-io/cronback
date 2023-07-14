@@ -1,11 +1,11 @@
-use anyhow::Result;
 use clap::Parser;
+use colored::Colorize;
 use cronback_cli::{run_cli, Cli};
 use dotenvy::dotenv;
 use tracing::log::info;
 
 #[tokio::main(flavor = "multi_thread")]
-async fn main() -> Result<()> {
+async fn main() {
     let args = Cli::parse();
 
     env_logger::Builder::new()
@@ -15,5 +15,8 @@ async fn main() -> Result<()> {
     if let Err(e) = dotenv() {
         info!("Didn't load .env file: {e}");
     };
-    run_cli(args).await
+    if let Err(err) = run_cli(args).await {
+        eprintln!("{}", err.to_string().red());
+        std::process::exit(1);
+    };
 }

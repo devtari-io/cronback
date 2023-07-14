@@ -771,6 +771,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "colored_json"
+version = "3.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "74cb9ce6b86f6e54bfa9518df2eeeef65d424ec7244d083ed97229185e366a91"
+dependencies = [
+ "is-terminal",
+ "serde",
+ "serde_json",
+ "yansi",
+]
+
+[[package]]
 name = "concurrent-queue"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -859,8 +871,15 @@ dependencies = [
 name = "cronback"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
+ "chrono",
+ "http",
+ "monostate",
  "once_cell",
  "reqwest",
+ "serde",
+ "serde_json",
+ "serde_with",
  "thiserror",
  "tracing",
  "url",
@@ -875,6 +894,7 @@ dependencies = [
  "clap 4.3.0",
  "clap-verbosity-flag",
  "colored",
+ "colored_json",
  "cronback",
  "dotenvy",
  "env_logger",

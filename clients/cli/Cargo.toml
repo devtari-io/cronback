@@ -16,12 +16,19 @@ path = "src/main.rs"
 [dependencies]
 cronback = { path = "../rust", version = "0.1.0" }
 clap = { version = "4", features = ["env", "derive", "wrap_help"] }
-colored = "2.0"
+colored = { version = "2.0" }
+colored_json = { version = "3.2.0" }
 serde_json = { workspace = true }
 etcetera = { version = "0.8.0" }
 tracing = { workspace = true }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
-tokio = { workspace = true, features = ["signal", "rt-multi-thread", "macros"] }
+tokio = { workspace = true, features = [
+  "io-std",
+  "io-util",
+  "signal",
+  "rt-multi-thread",
+  "macros",
+] }
 anyhow = { version = "1.0.71" }
 url = { version = "2.3.1" }
 clap-verbosity-flag = { version = "2.0.1" }

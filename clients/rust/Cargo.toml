@@ -20,3 +20,10 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 url = { version = "2.3.1" }
 once_cell = "1.17"
+http = "0.2.9"
+async-trait = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+monostate = { version = "0.1.6" }
+serde_with = { version = "3.0.0" }

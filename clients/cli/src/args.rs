@@ -2,7 +2,7 @@ use std::env::VarError;
 
 use anyhow::{bail, Context, Result};
 use clap::clap_derive::Parser;
-use cronback::{BASE_URL_ENV, DEFAULT_BASE_URL};
+use cronback::{Client, ClientBuilder, BASE_URL_ENV, DEFAULT_BASE_URL};
 use once_cell::sync::OnceCell;
 use url::Url;
 
@@ -109,26 +109,54 @@ impl CommonOptions {
             self.base_url.as_ref().unwrap_or(&DEFAULT_BASE_URL)
         }
     }
+
+    pub fn new_client(&self) -> Result<Client> {
+        let base_url = self.base_url();
+        let secret_token = self.secret_token()?;
+        Ok(ClientBuilder::new()
+            .base_url(base_url.clone())
+            .context("Error while parsing base url")?
+            .secret_token(secret_token)
+            .build()?)
+    }
 }
 
 // TODO: Macro-fy this.
 impl CliCommand {
-    pub async fn run(&self, common_options: &CommonOptions) -> Result<()> {
+    pub async fn run<
+        A: tokio::io::AsyncWrite + Send + Sync + Unpin,
+        B: tokio::io::AsyncWrite + Send + Sync + Unpin,
+    >(
+        &self,
+        out: &mut tokio::io::BufWriter<A>,
+        err: &mut tokio::io::BufWriter<B>,
+        common_options: &CommonOptions,
+    ) -> Result<()> {
         match self {
             | CliCommand::Triggers { command } => {
-                command.run(common_options).await
+                command.run(out, err, common_options).await
             }
-            | CliCommand::WhoAmI(c) => c.run(common_options).await,
+            | CliCommand::WhoAmI(c) => c.run(out, err, common_options).await,
         }
     }
 }
 
 impl TriggerCommand {
-    pub async fn run(&self, common_options: &CommonOptions) -> Result<()> {
+    pub async fn run<
+        A: tokio::io::AsyncWrite + Send + Sync + Unpin,
+        B: tokio::io::AsyncWrite + Send + Sync + Unpin,
+    >(
+        &self,
+        out: &mut tokio::io::BufWriter<A>,
+        err: &mut tokio::io::BufWriter<B>,
+        common_options: &CommonOptions,
+    ) -> Result<()> {
         match self {
-            | TriggerCommand::List(c) => c.run(common_options).await,
-            | TriggerCommand::Create(c) => c.run(common_options).await,
-            | TriggerCommand::View(c) => c.run(common_options).await,
+            | TriggerCommand::List(c) => c.run(out, err, common_options).await,
+            | TriggerCommand::Create(c) => {
+                c.run(out, err, common_options).await
+            }
+            | TriggerCommand::View(c) => c.run(out, err, common_options).await,
         }
     }
 }
