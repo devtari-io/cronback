@@ -1,4 +1,0 @@
-services:
-  docs:
-    image: "cronback-docs:latest"
-    restart: unless-stopped

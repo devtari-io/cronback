@@ -57,8 +57,6 @@ jobs:
       - uses: actions/checkout@v3
       - name: Build the backend image
         run: DOCKER_BUILDKIT=1 docker build -f docker/Dockerfile.backend . --tag cronback-backend:latest
-      - name: Build the docs image
-        run: docker build -f docker/Dockerfile.docs doc --tag cronback-docs:latest
       - name: Build the openapi image
         run: docker build -f docker/Dockerfile.openapi open-api --tag cronback-openapi:latest
       - name: Fetch secrets
