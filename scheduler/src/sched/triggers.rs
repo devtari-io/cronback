@@ -69,10 +69,6 @@ impl ActiveTriggerMap {
         Ok(cloned_trigger)
     }
 
-    pub fn len(&self) -> usize {
-        self.state.len()
-    }
-
     pub fn is_dirty(&self) -> bool {
         self.dirty
     }
