@@ -6,12 +6,12 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use handler::SchedulerAPIHandler;
+use lib::database::trigger_store::SqlTriggerStore;
+use lib::database::SqliteDatabase;
+use lib::grpc_client_provider::DispatcherClientProvider;
+use lib::{netutils, service};
 use proto::scheduler_proto::scheduler_server::SchedulerServer;
 use sched::event_scheduler::EventScheduler;
-use shared::database::trigger_store::SqlTriggerStore;
-use shared::database::SqliteDatabase;
-use shared::grpc_client_provider::DispatcherClientProvider;
-use shared::{netutils, service};
 
 #[tracing::instrument(skip_all, fields(service = context.service_name()))]
 pub async fn start_scheduler_server(
@@ -68,12 +68,12 @@ pub mod test_helpers {
     use std::future::Future;
     use std::sync::Arc;
 
+    use lib::database::trigger_store::SqlTriggerStore;
+    use lib::database::SqliteDatabase;
+    use lib::grpc_client_provider::DispatcherClientProvider;
+    use lib::service::ServiceContext;
     use proto::scheduler_proto::scheduler_client::SchedulerClient;
     use proto::scheduler_proto::scheduler_server::SchedulerServer;
-    use shared::database::trigger_store::SqlTriggerStore;
-    use shared::database::SqliteDatabase;
-    use shared::grpc_client_provider::DispatcherClientProvider;
-    use shared::service::ServiceContext;
     use tempfile::NamedTempFile;
     use tokio::net::{UnixListener, UnixStream};
     use tokio_stream::wrappers::UnixListenerStream;

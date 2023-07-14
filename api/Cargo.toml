@@ -1,36 +1,40 @@
 [package]
 name = "api"
-version = "0.1.0"
-edition = "2021"
+description = "API server for cronback backend"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+rust-version.workspace = true
 
 [lib]
 path = "lib.rs"
 
 [dependencies]
-axum = { version = "0.6.4", features = ["macros"] }
-shared = { path = "../shared" }
+# Internal Dependencies
+lib = { path = "../lib" }
 proto = { path = "../proto" }
-serde = { version = "1", features = ["derive"] }
-thiserror = "1"
-anyhow = "1.0.69"
-tokio = { version = "1", features = ["full"] }
-colored = "2.0"
-tracing = { version = "0.1", features = ["log"] }
-tonic = "0.8"
-prost = "0.11"
-metrics = "0.20"
-chrono = { version = "0.4", features = ["serde"] }
-chrono-tz = "0.8"
-serde_json = "1.0.93"
-validator = { version = "0.16.0", features = ["derive"] }
-serde_urlencoded = "0.7.1"
-cron = "0.12"
-iso8601-duration = "0.2.0"
-rand = "0.8"
-serde_with = { version = "2.2.0", features = ["chrono_0_4", "json"] }
-tower-http = { version = "0.4.0", features = ["tracing"] }
-async-trait = "0.1.68"
-sqlx = {version= "0.6.3", features = ["runtime-tokio-native-tls", "sqlite"] }
+
+# Dependencies from workspace
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+axum = { workspace = true }
+base64 = { workspace = true }
+chrono = { workspace = true }
+chrono-tz = { workspace = true }
+iso8601-duration = { workspace = true }
+metrics = { workspace = true }
+prost = { workspace = true }
+rand = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_with = { workspace = true}
+sqlx = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tonic = { workspace = true }
+tracing = { workspace = true }
+
+# Unique Dependencies
 sha2 = "0.10.6"
-base64 = "0.21.0"
 uuid = { version = "1.2.2", features = ["v4"] }
+validator = { version = "0.16.0", features = ["derive"] }

@@ -1,6 +1,10 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use lib::config::{ConfigLoader, Role};
+use lib::service::ServiceContext;
+use lib::shutdown::Shutdown;
+use lib::types::*;
 use proto::scheduler_proto::{GetTriggerRequest, InstallTriggerRequest};
 use proto::trigger_proto::{
     Cron,
@@ -8,10 +12,6 @@ use proto::trigger_proto::{
     {self},
 };
 use scheduler::test_helpers;
-use shared::config::{ConfigLoader, Role};
-use shared::service::ServiceContext;
-use shared::shutdown::Shutdown;
-use shared::types::*;
 use tonic::Request;
 
 #[tokio::test]

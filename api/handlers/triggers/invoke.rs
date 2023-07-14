@@ -5,8 +5,8 @@ use axum::http::header::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
+use lib::types::{Invocation, OwnerId, TriggerId, ValidId};
 use proto::scheduler_proto::InvokeTriggerRequest;
-use shared::types::{Invocation, OwnerId, TriggerId, ValidId};
 
 use crate::api_model::InvokeTrigger;
 use crate::errors::ApiError;

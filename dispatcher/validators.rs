@@ -1,7 +1,7 @@
 use std::net::ToSocketAddrs;
 
 use anyhow::{anyhow, Result};
-use shared::types::{Emit, Webhook};
+use lib::types::{Emit, Webhook};
 use url::Url;
 
 fn validate_endpoint_scheme(scheme: &str) -> Result<()> {

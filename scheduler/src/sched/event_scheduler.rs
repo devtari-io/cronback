@@ -2,11 +2,11 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
 
 use chrono::Utc;
+use lib::database::trigger_store::TriggerStore;
+use lib::grpc_client_provider::DispatcherClientProvider;
+use lib::service::ServiceContext;
+use lib::types::{Invocation, OwnerId, Status, Trigger, TriggerId};
 use proto::scheduler_proto::InstallTriggerRequest;
-use shared::database::trigger_store::TriggerStore;
-use shared::grpc_client_provider::DispatcherClientProvider;
-use shared::service::ServiceContext;
-use shared::types::{Invocation, OwnerId, Status, Trigger, TriggerId};
 use tracing::{debug, error, info, warn};
 
 use super::dispatch::dispatch;

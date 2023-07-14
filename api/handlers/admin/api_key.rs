@@ -3,8 +3,8 @@ use std::sync::Arc;
 use axum::extract::State;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Json};
+use lib::types::OwnerId;
 use serde::{Deserialize, Serialize};
-use shared::types::OwnerId;
 use validator::Validate;
 
 use crate::auth::ApiKey;

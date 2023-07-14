@@ -1,0 +1,45 @@
+[package]
+name = "lib"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+# Internal Dependencies
+proto = { path = "../proto" }
+
+# Dependencies from workspace
+iso8601-duration = { workspace = true }
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+chrono = { workspace = true }
+chrono-tz = { workspace = true }
+cron = { workspace = true }
+
+# Unique Dependencies
+config = { version = "0.13", features = ["toml"] }
+derive_more = "0.99.17"
+futures = "0.3.26"
+hyper = "0.14.24"
+metrics = "0.20"
+rand = "0.8"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.93"
+serde_with = { version = "2.2.0", features = ["chrono_0_4", "json"] }
+sqlx = { version = "0.6.3", features = ["runtime-tokio-native-tls", "sqlite"] }
+thiserror = "1.0.39"
+tokio = { version = "1", features = ["full"] }
+tonic = "0.8.3"
+tonic-reflection = "0.6.0"
+tower = { version = "0.4.13", features = ["full"] }
+tracing = { version = "0.1", features = ["log"] }
+ulid = { version = "1.0" }
+url = { version = "2.3.1", features = ["serde"] }
+validator = { version = "0.16.0", features = ["derive"] }
+valuable = { version = "0.1.0", features = ["derive"] }

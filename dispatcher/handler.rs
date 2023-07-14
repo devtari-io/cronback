@@ -1,10 +1,7 @@
 use chrono::Utc;
 use chrono_tz::UTC;
-use metrics::counter;
-use proto::dispatcher_proto::dispatcher_server::Dispatcher;
-use proto::dispatcher_proto::{DispatchRequest, DispatchResponse};
-use shared::service::ServiceContext;
-use shared::types::{
+use lib::service::ServiceContext;
+use lib::types::{
     Emit,
     Invocation,
     InvocationId,
@@ -12,6 +9,9 @@ use shared::types::{
     OwnerId,
     WebhookStatus,
 };
+use metrics::counter;
+use proto::dispatcher_proto::dispatcher_server::Dispatcher;
+use proto::dispatcher_proto::{DispatchRequest, DispatchResponse};
 use tonic::{Request, Response, Status};
 
 use crate::dispatch_manager::DispatchManager;
@@ -60,7 +60,7 @@ impl Dispatcher for DispatcherAPIHandler {
                         | Emit::Webhook(webhook) => {
                             InvocationStatus::WebhookStatus(WebhookStatus {
                                 webhook,
-                                delivery_status: shared::types::WebhookDeliveryStatus::Attempting,
+                                delivery_status: lib::types::WebhookDeliveryStatus::Attempting,
                             })
                         }
                     }

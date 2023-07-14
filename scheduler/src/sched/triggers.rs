@@ -6,8 +6,8 @@ use std::str::FromStr;
 use chrono::{DateTime, Utc};
 use chrono_tz::{Tz, UTC};
 use cron::{OwnedScheduleIterator, Schedule as CronSchedule};
-use shared::database::trigger_store::TriggerStoreError;
-use shared::types::{Schedule, Status, Trigger, TriggerId};
+use lib::database::trigger_store::TriggerStoreError;
+use lib::types::{Schedule, Status, Trigger, TriggerId};
 use thiserror::Error;
 use tracing::info;
 
@@ -510,8 +510,8 @@ impl ActiveTrigger {
 mod tests {
     use std::time::Duration;
 
-    use shared::timeutil::parse_iso8601;
-    use shared::types::{
+    use lib::timeutil::parse_iso8601;
+    use lib::types::{
         Cron,
         OwnerId,
         Payload,

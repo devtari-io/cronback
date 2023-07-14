@@ -6,14 +6,11 @@ mod validators;
 
 use std::sync::Arc;
 
+use lib::database::attempt_log_store::{AttemptLogStore, SqlAttemptLogStore};
+use lib::database::invocation_store::{InvocationStore, SqlInvocationStore};
+use lib::database::SqliteDatabase;
+use lib::{netutils, service};
 use proto::dispatcher_proto::dispatcher_server::DispatcherServer;
-use shared::database::attempt_log_store::{
-    AttemptLogStore,
-    SqlAttemptLogStore,
-};
-use shared::database::invocation_store::{InvocationStore, SqlInvocationStore};
-use shared::database::SqliteDatabase;
-use shared::{netutils, service};
 use tracing::info;
 
 use crate::dispatch_manager::DispatchManager;

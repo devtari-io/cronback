@@ -12,6 +12,11 @@ Install protobuf
 brew install protobuf
 ```
 
+# Tests
+```
+cargo test --workspace
+```
+
 # Run
 ```
 cargo run -- -c <config-file>

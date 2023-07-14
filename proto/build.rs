@@ -13,7 +13,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "../proto/scheduler.proto",
                 "../proto/dispatcher.proto",
                 "../proto/trigger.proto",
-                "../proto/event.proto",
                 "../proto/invocation.proto",
                 "../proto/attempt.proto",
             ],

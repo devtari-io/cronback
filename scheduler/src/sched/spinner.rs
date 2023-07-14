@@ -6,10 +6,10 @@ use std::time::{Duration, Instant};
 use std::vec;
 
 use chrono::{DateTime, Utc};
+use lib::grpc_client_provider::DispatcherClientProvider;
+use lib::service::ServiceContext;
+use lib::types::{Status, TriggerId};
 use metrics::{counter, gauge, histogram};
-use shared::grpc_client_provider::DispatcherClientProvider;
-use shared::service::ServiceContext;
-use shared::types::{Status, TriggerId};
 use tokio::runtime::Handle;
 use tracing::{debug, info, trace, warn, Instrument};
 

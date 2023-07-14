@@ -5,8 +5,8 @@ use axum::http::header::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
+use lib::types::{OwnerId, Schedule, Trigger};
 use proto::scheduler_proto::InstallTriggerRequest;
-use shared::types::{OwnerId, Schedule, Trigger};
 
 use crate::api_model::InstallTrigger;
 use crate::errors::ApiError;

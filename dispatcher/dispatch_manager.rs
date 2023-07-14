@@ -3,14 +3,11 @@ use std::sync::Arc;
 use dispatcher_proto::DispatchMode;
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
+use lib::database::attempt_log_store::AttemptLogStore;
+use lib::database::invocation_store::{InvocationStore, InvocationStoreError};
+use lib::types::{Invocation, InvocationStatus, WebhookDeliveryStatus};
 use metrics::{decrement_gauge, increment_gauge};
 use proto::dispatcher_proto;
-use shared::database::attempt_log_store::AttemptLogStore;
-use shared::database::invocation_store::{
-    InvocationStore,
-    InvocationStoreError,
-};
-use shared::types::{Invocation, InvocationStatus, WebhookDeliveryStatus};
 use thiserror::Error;
 use tracing::{error, Instrument};
 

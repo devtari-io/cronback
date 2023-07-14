@@ -5,8 +5,8 @@ use axum::http::header::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
+use lib::types::{OwnerId, Trigger, TriggerId, ValidId};
 use proto::scheduler_proto::GetTriggerRequest;
-use shared::types::{OwnerId, Trigger, TriggerId, ValidId};
 use tracing::info;
 use validator::Validate;
 

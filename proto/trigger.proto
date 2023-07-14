@@ -2,8 +2,6 @@ syntax = "proto3";
 
 import "webhook.proto";
 
-import "google/protobuf/duration.proto";
-
 package trigger_proto;
 
 enum TriggerStatus {
@@ -31,16 +29,6 @@ enum RetryPolicy {
 enum NotificationType {
   Notifications_UNKNOWN = 0;
   Notifications_SLACK = 1;
-}
-
-// use enum instead
-message EventRetryPolicy {
-  optional RetryPolicy policy = 1;
-  int32 limit = 2;
-  google.protobuf.Duration delay = 3;
-  // Only relevant in the exponential policy
-  google.protobuf.Duration max_delay = 4;
-  repeated NotificationType notifications = 5;
 }
 
 message OnStatusHandler {

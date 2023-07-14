@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use shared::grpc_client_provider::DispatcherClientProvider;
-use shared::types::{Invocation, Trigger};
+use lib::grpc_client_provider::DispatcherClientProvider;
+use lib::types::{Invocation, Trigger};
 use tracing::info;
 
 use super::event_dispatcher::{DispatchError, DispatchMode};

@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use futures::future::BoxFuture;
-use shared::types::{ExponentialBackoffRetry, RetryConfig, SimpleRetry};
+use lib::types::{ExponentialBackoffRetry, RetryConfig, SimpleRetry};
 
 pub struct RetryPolicy {
     config: Option<RetryConfig>,
@@ -96,7 +96,7 @@ impl RetryPolicy {
 mod tests {
     use std::time::Duration;
 
-    use shared::types::{ExponentialBackoffRetry, RetryConfig, SimpleRetry};
+    use lib::types::{ExponentialBackoffRetry, RetryConfig, SimpleRetry};
 
     use super::RetryPolicy;
 

@@ -1,6 +1,6 @@
 use async_trait::async_trait;
-use shared::database::SqliteDatabase;
-use shared::types::OwnerId;
+use lib::database::SqliteDatabase;
+use lib::types::OwnerId;
 use sqlx::Row;
 use thiserror::Error;
 
@@ -140,8 +140,8 @@ impl AuthStore for SqlAuthStore {
 mod tests {
     use std::str::FromStr;
 
-    use shared::database::SqliteDatabase;
-    use shared::types::OwnerId;
+    use lib::database::SqliteDatabase;
+    use lib::types::OwnerId;
 
     use super::{AuthStore, AuthStoreError, SqlAuthStore};
     use crate::auth::ApiKey;

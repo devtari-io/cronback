@@ -5,7 +5,7 @@ use axum::http::header::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
-use shared::types::{InvocationId, OwnerId, ValidId};
+use lib::types::{InvocationId, OwnerId, ValidId};
 use tracing::info;
 use validator::Validate;
 

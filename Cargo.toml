@@ -1,13 +1,39 @@
 [workspace]
+members = [".", "api", "lib", "proto", "scheduler", "dispatcher"]
 
-members = [
-  "api",
-  "shared",
-  "proto",
-  "scheduler",
-  "server",
-  "dispatcher",
-]
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Ahmed Farghal <me@asoli.dev>", "Mohamed Bassem <me@mbassem.com>"]
+description = "Cronback Backend"
+documentation = "https://docs.cronback.me"
+rust-version = "1.68.0"
+
+[workspace.dependencies]
+anyhow = "1.0.69"
+async-trait = "0.1.68"
+axum = { version = "0.6.4", features = ["macros"] }
+base64 = "0.21.0"
+chrono = { version = "0.4", features = ["serde"] }
+chrono-tz = "0.8"
+cron = "0.12"
+futures = "0.3.28"
+iso8601-duration = "0.2.0"
+metrics = "0.20"
+prost = "0.11"
+rand = "0.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1.0.93"
+serde_with = { version = "2.2.0", features = ["chrono_0_4", "json"] }
+sha2 = "0.10.6"
+sqlx = { version = "0.6.3", features = ["runtime-tokio-native-tls", "sqlite"] }
+thiserror = "1"
+tokio = { version = "1", features = ["full"] }
+tonic = "0.8"
+tonic-build = "0.8"
+tower = { version = "0.4", features = ["full"] }
+tracing = { version = "0.1", features = ["log"] }
+
 
 [profile.release]
 lto = "thin"
@@ -16,3 +42,34 @@ strip = "debuginfo"
 [profile.release-lto]
 inherits = "release"
 lto = true
+
+[package]
+name = "cronbackd"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+# Internal Dependencies
+api = { path = "api" }
+dispatcher = { path = "dispatcher" }
+scheduler = { path = "scheduler" }
+lib = { path = "lib" }
+
+# Dependencies from workspace
+anyhow = { workspace = true }
+metrics = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+
+# Unique Dependencies
+clap = { version = "4", features = ["color", "derive"] }
+colored = "2.0"
+metrics-exporter-prometheus = { version = "0.11", features = ["async-runtime"] }
+metrics-util = "0.14.0"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+[dev-dependencies]
+proto = { path = "proto" }
+tonic = { workspace = true }

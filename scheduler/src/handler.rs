@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use lib::service::ServiceContext;
 use proto::scheduler_proto::scheduler_server::Scheduler;
 use proto::scheduler_proto::{
     CancelTriggerRequest,
@@ -17,7 +18,6 @@ use proto::scheduler_proto::{
     ResumeTriggerRequest,
     ResumeTriggerResponse,
 };
-use shared::service::ServiceContext;
 use tonic::{Request, Response, Status};
 use tracing::info;
 
