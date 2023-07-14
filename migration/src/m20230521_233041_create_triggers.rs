@@ -30,7 +30,7 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(Triggers::LastRanAt).date_time())
                     .primary_key(
                         Index::create()
-                            .col(Triggers::Name)
+                            .col(Triggers::Id)
                             .col(Triggers::ProjectId),
                     )
                     .to_owned(),
@@ -55,18 +55,6 @@ impl MigrationTrait for Migration {
                     .table(Triggers::Table)
                     .col(Triggers::ProjectId)
                     .col(Triggers::Name)
-                    .unique()
-                    .to_owned(),
-            )
-            .await?;
-        manager
-            .create_index(
-                Index::create()
-                    .if_not_exists()
-                    .name("UQ_triggers_project_trigger_id")
-                    .table(Triggers::Table)
-                    .col(Triggers::ProjectId)
-                    .col(Triggers::Id)
                     .unique()
                     .to_owned(),
             )

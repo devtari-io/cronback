@@ -12,34 +12,21 @@ use crate::database::pagination::PaginatedEntity;
 use crate::model::ValidShardedId;
 use crate::types::{AttemptLogId, ProjectId, RunId, TriggerId};
 
-#[derive(Copy, Clone, Default, Debug, DeriveEntity)]
-pub struct Entity;
-
-impl EntityName for Entity {
-    fn table_name(&self) -> &str {
-        "attempts"
-    }
-}
-
 // TODO: Remove serde and implement an API model instead.
 #[derive(
-    Clone,
-    Debug,
-    Serialize,
-    IntoProto,
-    PartialEq,
-    DeriveModel,
-    DeriveActiveModel,
-    Eq,
+    Clone, Debug, Serialize, IntoProto, PartialEq, DeriveEntityModel, Eq,
 )]
 #[proto(target = "proto::attempt_proto::ActionAttemptLog")]
+#[sea_orm(table_name = "attempts")]
 pub struct Model {
+    #[sea_orm(primary_key, auto_increment = false)]
     #[proto(required)]
     pub id: AttemptLogId,
     #[proto(required)]
     pub run_id: RunId,
     #[proto(required)]
     pub trigger_id: TriggerId,
+    #[sea_orm(primary_key, auto_increment = false)]
     #[proto(required)]
     pub project_id: ValidShardedId<ProjectId>,
     pub status: AttemptStatus,
@@ -55,55 +42,8 @@ impl PaginatedEntity for Entity {
     }
 }
 
-#[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
-pub enum Column {
-    Id,
-    RunId,
-    TriggerId,
-    ProjectId,
-    Status,
-    Details,
-    CreatedAt,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
-pub enum PrimaryKey {
-    Id,
-    ProjectId,
-}
-
-impl PrimaryKeyTrait for PrimaryKey {
-    type ValueType = (String, String);
-
-    fn auto_increment() -> bool {
-        false
-    }
-}
-
-#[derive(Copy, Clone, Debug, EnumIter)]
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
-
-impl ColumnTrait for Column {
-    type EntityName = Entity;
-
-    fn def(&self) -> ColumnDef {
-        match self {
-            | Self::Id => ColumnType::String(None).def(),
-            | Self::RunId => ColumnType::String(None).def(),
-            | Self::TriggerId => ColumnType::String(None).def(),
-            | Self::ProjectId => ColumnType::String(None).def(),
-            | Self::Status => ColumnType::String(None).def(),
-            | Self::Details => ColumnType::Json.def(),
-            | Self::CreatedAt => ColumnType::DateTime.def(),
-        }
-    }
-}
-
-impl RelationTrait for Relation {
-    fn def(&self) -> RelationDef {
-        panic!("No RelationDef")
-    }
-}
 
 impl ActiveModelBehavior for ActiveModel {}
 

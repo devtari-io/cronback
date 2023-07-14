@@ -133,10 +133,11 @@ impl TriggerStore for SqlTriggerStore {
         project_id: &ProjectId,
         name: &str,
     ) -> Result<Option<Trigger>, TriggerStoreError> {
-        let res =
-            Triggers::find_by_id((name.to_string(), project_id.to_string()))
-                .one(&self.db.orm)
-                .await?;
+        let res = Triggers::find()
+            .filter(triggers::Column::Name.eq(name))
+            .filter(triggers::Column::ProjectId.eq(project_id.clone()))
+            .one(&self.db.orm)
+            .await?;
         Ok(res)
     }
 
@@ -145,7 +146,9 @@ impl TriggerStore for SqlTriggerStore {
         project: &ProjectId,
         name: &str,
     ) -> Result<Option<TriggerId>, TriggerStoreError> {
-        let res = Triggers::find_by_id((name.to_string(), project.to_string()))
+        let res = Triggers::find()
+            .filter(triggers::Column::Name.eq(name))
+            .filter(triggers::Column::ProjectId.eq(project.clone()))
             .select_only()
             .column(triggers::Column::Id)
             .into_tuple()
@@ -263,9 +266,7 @@ mod tests {
 
         // Test fetching non existent trigger
         assert_eq!(
-            store
-                .get_trigger_by_name(&project1, &"non_existent".to_string())
-                .await?,
+            store.get_trigger_by_name(&project1, "non_existent").await?,
             None
         );
 

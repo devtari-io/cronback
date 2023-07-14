@@ -9,27 +9,19 @@ use sea_orm::{DeriveActiveEnum, EnumIter, FromJsonQueryResult};
 use serde::{Deserialize, Serialize};
 
 use crate::database::pagination::PaginatedEntity;
-use crate::model::ValidShardedId;
+use crate::prelude::ValidShardedId;
 use crate::types::{ProjectId, TriggerId, Webhook};
 
-#[derive(Copy, Clone, Default, Debug, DeriveEntity)]
-pub struct Entity;
-
-impl EntityName for Entity {
-    fn table_name(&self) -> &str {
-        "triggers"
-    }
-}
-
-#[derive(
-    Clone, IntoProto, Debug, PartialEq, DeriveModel, DeriveActiveModel, Eq,
-)]
+#[derive(Clone, IntoProto, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[proto(target = "proto::trigger_proto::Trigger")]
+#[sea_orm(table_name = "triggers")]
 pub struct Model {
+    #[sea_orm(primary_key, auto_increment = false)]
     #[proto(required)]
     pub id: TriggerId,
     // unique
     pub name: String,
+    #[sea_orm(primary_key, auto_increment = false)]
     #[proto(skip)]
     pub project_id: ValidShardedId<ProjectId>,
     pub description: Option<String>,
@@ -51,63 +43,8 @@ impl PaginatedEntity for Entity {
     }
 }
 
-#[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
-pub enum Column {
-    Id,
-    Name,
-    ProjectId,
-    Description,
-    CreatedAt,
-    UpdatedAt,
-    Payload,
-    Schedule,
-    Action,
-    Status,
-    LastRanAt,
-}
-
-#[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
-pub enum PrimaryKey {
-    Name,
-    ProjectId,
-}
-
-impl PrimaryKeyTrait for PrimaryKey {
-    type ValueType = (String, String);
-
-    fn auto_increment() -> bool {
-        false
-    }
-}
-
-#[derive(Copy, Clone, Debug, EnumIter)]
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
-
-impl ColumnTrait for Column {
-    type EntityName = Entity;
-
-    fn def(&self) -> ColumnDef {
-        match self {
-            | Self::Id => ColumnType::String(None).def(),
-            | Self::Name => ColumnType::String(None).def(),
-            | Self::ProjectId => ColumnType::String(None).def(),
-            | Self::Description => ColumnType::String(None).def().null(),
-            | Self::CreatedAt => ColumnType::String(None).def(),
-            | Self::UpdatedAt => ColumnType::String(None).def(),
-            | Self::Payload => ColumnType::String(None).def().null(),
-            | Self::Schedule => ColumnType::String(None).def().null(),
-            | Self::Action => ColumnType::String(None).def().null(),
-            | Self::Status => ColumnType::String(None).def(),
-            | Self::LastRanAt => ColumnType::String(None).def().null(),
-        }
-    }
-}
-
-impl RelationTrait for Relation {
-    fn def(&self) -> RelationDef {
-        panic!("No RelationDef")
-    }
-}
 
 impl ActiveModelBehavior for ActiveModel {}
 

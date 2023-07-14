@@ -8,6 +8,7 @@ use super::pagination::{PaginatedResponse, PaginatedSelect};
 use crate::database::models::prelude::Runs;
 use crate::database::Database;
 use crate::model::ModelId;
+use crate::prelude::ValidShardedId;
 use crate::types::{ProjectId, Run, RunId, TriggerId};
 
 pub type RunStoreError = DatabaseError;
@@ -20,20 +21,20 @@ pub trait RunStore {
 
     async fn get_run(
         &self,
-        project: &ProjectId,
+        project: &ValidShardedId<ProjectId>,
         id: &RunId,
     ) -> Result<Option<Run>, RunStoreError>;
 
     async fn get_runs_by_trigger(
         &self,
-        project: &ProjectId,
+        project: &ValidShardedId<ProjectId>,
         trigger_id: &TriggerId,
         pagination: PaginationIn,
     ) -> Result<PaginatedResponse<Run>, RunStoreError>;
 
     async fn get_runs_by_project(
         &self,
-        project: &ProjectId,
+        project: &ValidShardedId<ProjectId>,
         pagination: PaginationIn,
     ) -> Result<PaginatedResponse<Run>, RunStoreError>;
 }
@@ -70,10 +71,10 @@ impl RunStore for SqlRunStore {
 
     async fn get_run(
         &self,
-        project: &ProjectId,
+        project: &ValidShardedId<ProjectId>,
         id: &RunId,
     ) -> Result<Option<Run>, RunStoreError> {
-        let res = Runs::find_by_id((id.to_string(), project.to_string()))
+        let res = Runs::find_by_id((id.clone(), project.clone()))
             .one(&self.db.orm)
             .await?;
         Ok(res)
@@ -81,7 +82,7 @@ impl RunStore for SqlRunStore {
 
     async fn get_runs_by_trigger(
         &self,
-        project: &ProjectId,
+        project: &ValidShardedId<ProjectId>,
         trigger_id: &TriggerId,
         pagination: PaginationIn,
     ) -> Result<PaginatedResponse<Run>, RunStoreError> {
@@ -96,7 +97,7 @@ impl RunStore for SqlRunStore {
 
     async fn get_runs_by_project(
         &self,
-        project: &ProjectId,
+        project: &ValidShardedId<ProjectId>,
         pagination: PaginationIn,
     ) -> Result<PaginatedResponse<Run>, RunStoreError> {
         let query = Runs::find()

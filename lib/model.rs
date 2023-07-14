@@ -180,6 +180,12 @@ impl<T: ModelId> sea_query::Nullable for ValidShardedId<T> {
     }
 }
 
+impl<T: ModelId> sea_orm::TryFromU64 for ValidShardedId<T> {
+    fn try_from_u64(_: u64) -> Result<Self, ::sea_orm::DbErr> {
+        Err(::sea_orm::DbErr::ConvertFromU64(stringify!(T)))
+    }
+}
+
 /// Indicates that this is a top-level Id (does not follow sharding scheme of
 /// another Id)
 pub trait RootId: ModelId {}
@@ -299,6 +305,12 @@ macro_rules! define_model_id_base {
         impl sea_query::Nullable for $name {
             fn null() -> ::sea_query::Value {
                 ::sea_query::Value::String(None)
+            }
+        }
+
+        impl ::sea_orm::TryFromU64 for $name {
+            fn try_from_u64(_: u64) -> Result<Self, ::sea_orm::DbErr> {
+                Err(::sea_orm::DbErr::ConvertFromU64(stringify!($name)))
             }
         }
 

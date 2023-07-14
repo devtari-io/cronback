@@ -8,6 +8,7 @@ use super::pagination::{PaginatedResponse, PaginatedSelect};
 use crate::database::models::prelude::Attempts;
 use crate::database::Database;
 use crate::model::ModelId;
+use crate::prelude::ValidShardedId;
 use crate::types::{ActionAttemptLog, AttemptLogId, ProjectId, RunId};
 
 pub type AttemptLogStoreError = DatabaseError;
@@ -21,14 +22,14 @@ pub trait AttemptLogStore {
 
     async fn get_attempts_for_run(
         &self,
-        project: &ProjectId,
+        project: &ValidShardedId<ProjectId>,
         id: &RunId,
         pagination: PaginationIn,
     ) -> Result<PaginatedResponse<ActionAttemptLog>, AttemptLogStoreError>;
 
     async fn get_attempt(
         &self,
-        project: &ProjectId,
+        project: &ValidShardedId<ProjectId>,
         id: &AttemptLogId,
     ) -> Result<Option<ActionAttemptLog>, AttemptLogStoreError>;
 }
@@ -56,7 +57,7 @@ impl AttemptLogStore for SqlAttemptLogStore {
 
     async fn get_attempts_for_run(
         &self,
-        project: &ProjectId,
+        project: &ValidShardedId<ProjectId>,
         id: &RunId,
         pagination: PaginationIn,
     ) -> Result<PaginatedResponse<ActionAttemptLog>, AttemptLogStoreError> {
@@ -72,13 +73,12 @@ impl AttemptLogStore for SqlAttemptLogStore {
 
     async fn get_attempt(
         &self,
-        project_id: &ProjectId,
+        project_id: &ValidShardedId<ProjectId>,
         id: &AttemptLogId,
     ) -> Result<Option<ActionAttemptLog>, AttemptLogStoreError> {
-        let res =
-            Attempts::find_by_id((id.to_string(), project_id.to_string()))
-                .one(&self.db.orm)
-                .await?;
+        let res = Attempts::find_by_id((id.clone(), project_id.clone()))
+            .one(&self.db.orm)
+            .await?;
         Ok(res)
     }
 }
