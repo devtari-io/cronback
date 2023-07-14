@@ -12,9 +12,8 @@ use config::{
     FileFormat,
 };
 use serde::Deserialize;
-use valuable::Valuable;
 
-#[derive(Debug, Valuable, Clone, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "snake_case")]
 #[allow(unused)]
 pub enum Role {

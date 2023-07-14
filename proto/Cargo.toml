@@ -16,4 +16,4 @@ prost = { workspace = true }
 dto = { path = "../dto" }
 
 [build-dependencies]
-tonic-build = { workspace = true }
+tonic-build = "0.9"

@@ -42,7 +42,7 @@ fn setup_logging_subscriber(
     }
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread")]
 async fn main() -> Result<()> {
     // Load .env file if it exists
     match dotenvy::dotenv() {
