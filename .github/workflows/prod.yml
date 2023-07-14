@@ -19,7 +19,6 @@ jobs:
           SSH_KEY_BASE64: ${{ secrets.SSH_KEY_BASE64 }}
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan $PROD_MACHINE_IP >> ~/.ssh/known_hosts
           echo $SSH_KEY_BASE64 | base64 --decode > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
       - name: Export and copy docker images
