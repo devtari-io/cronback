@@ -542,7 +542,7 @@ mod tests {
     }
 
     fn create_trigger(sched: Schedule) -> Trigger {
-        let project = ProjectId("asoli".to_owned());
+        let project = ProjectId::new();
         let id = TriggerId::new(&project);
         Trigger {
             id,

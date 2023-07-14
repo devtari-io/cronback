@@ -23,10 +23,11 @@ async fn install_trigger_valid_test() {
         config_loader,
         shutdown,
     );
+    let project = ProjectId::new();
     let (serve_future, mut client) =
         test_helpers::test_server_and_client(context).await;
     let install_trigger = InstallTriggerRequest {
-        project_id: "asoli".to_owned(),
+        project_id: project.to_string(),
         reference: None,
         name: "sample-trigger".to_owned(),
         description: None,
@@ -60,7 +61,7 @@ async fn install_trigger_valid_test() {
         // No errors. Let's try and get it from server.
         let response = client
             .get_trigger(Request::new(GetTriggerRequest {
-                project_id: "asoli".to_owned(),
+                project_id: project.to_string(),
                 id: created_trigger.id.clone().into(),
             }))
             .await

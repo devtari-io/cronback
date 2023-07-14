@@ -14,7 +14,7 @@ brew install protobuf
 
 # Tests
 ```
-cargo test --workspace
+cargo nextest run --workspace
 ```
 
 # Run
@@ -24,6 +24,9 @@ cargo run -- -c <config-file>
 # Skip missed invocations by 
 
 CRONBACK__SCHEDULER__DANGEROUS_FAST_FORWARD=true cargo run
+
+# Set the admin key
+CRONBACK__API__ADMIN_API_KEYS=adminkey cargo run
 
 ```
 

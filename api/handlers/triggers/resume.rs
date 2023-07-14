@@ -1,32 +1,29 @@
 use std::sync::Arc;
 
-use axum::extract::{Path, State};
+use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
-use lib::types::{ProjectId, RequestId, TriggerId, TriggerManifest, ValidId};
+use lib::types::{ProjectId, RequestId, TriggerId, TriggerManifest};
 use proto::scheduler_proto::ResumeTriggerRequest;
 
 use crate::errors::ApiError;
+use crate::extractors::ValidatedId;
 use crate::AppState;
 
 #[tracing::instrument(skip(state))]
 #[debug_handler]
 pub(crate) async fn resume(
     state: State<Arc<AppState>>,
-    Path(id): Path<TriggerId>,
+    ValidatedId(id): ValidatedId<TriggerId>,
     Extension(project): Extension<ProjectId>,
     Extension(request_id): Extension<RequestId>,
 ) -> Result<impl IntoResponse, ApiError> {
-    if !id.is_valid() {
-        return Err(ApiError::NotFound(id.to_string()));
-    }
-
     let mut scheduler = state.get_scheduler(&request_id, &project).await?;
     let trigger = scheduler
         .resume_trigger(ResumeTriggerRequest {
-            project_id: project.0.clone(),
-            id: id.0,
+            project_id: project.into(),
+            id: id.into(),
         })
         .await?
         .into_inner()

@@ -165,9 +165,10 @@ fn extract_project_from_request<B>(
     }
 
     error!("Admin user didn't set {} header", ON_BEHALF_OF_HEADER_NAME);
-    return Err(ApiError::BadRequest(
+
+    Err(ApiError::BadRequest(
         "Super privilege header(s) missing!".to_owned(),
-    ));
+    ))
 }
 
 pub async fn auth<B>(

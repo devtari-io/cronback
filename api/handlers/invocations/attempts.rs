@@ -1,14 +1,15 @@
 use std::sync::Arc;
 
-use axum::extract::{Path, Query, State};
+use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
-use lib::types::{AttemptLogId, InvocationId, ProjectId, ValidId};
+use lib::types::{AttemptLogId, InvocationId, ProjectId};
 use validator::Validate;
 
 use crate::api_model::{paginate, Pagination};
 use crate::errors::ApiError;
+use crate::extractors::ValidatedId;
 use crate::{AppState, AppStateError};
 
 #[tracing::instrument(skip(state))]
@@ -17,12 +18,8 @@ pub(crate) async fn list(
     pagination: Option<Query<Pagination<AttemptLogId>>>,
     state: State<Arc<AppState>>,
     Extension(project): Extension<ProjectId>,
-    Path(id): Path<InvocationId>,
+    ValidatedId(id): ValidatedId<InvocationId>,
 ) -> Result<impl IntoResponse, ApiError> {
-    if !id.is_valid() {
-        return Err(ApiError::NotFound(id.to_string()));
-    }
-
     let Query(pagination) = pagination.unwrap_or_default();
     pagination.validate()?;
 

@@ -178,7 +178,9 @@ impl EventScheduler {
         &self,
         install_trigger: InstallTriggerRequest,
     ) -> Result<Trigger, TriggerError> {
-        let id = TriggerId::new(&ProjectId(install_trigger.project_id.clone()));
+        let id = TriggerId::new(&ProjectId::from(
+            install_trigger.project_id.clone(),
+        ));
 
         let trigger = Trigger {
             id,
