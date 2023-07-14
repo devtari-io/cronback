@@ -1,3 +1,10 @@
+use async_trait::async_trait;
+use cronback_api_model::admin::{
+    APIKeyMetaData,
+    ApiKey,
+    CreateAPIKeyResponse,
+    CreateAPIkeyRequest,
+};
 use cronback_api_model::{GetRunResponse, Run, RunMode, RunTrigger};
 use http::Method;
 use reqwest::IntoUrl;
@@ -367,6 +374,69 @@ const _: () = {
     fn assert_send<T: Send + Sync>() {}
     let _ = assert_send::<Client>;
 };
+
+#[async_trait]
+pub trait AdminApiExt {
+    async fn gen_api_key<T>(
+        &self,
+        key_name: T,
+        metadata: APIKeyMetaData,
+    ) -> Result<Response<CreateAPIKeyResponse>>
+    where
+        T: AsRef<str> + Send;
+    async fn list_api_keys(&self) -> Result<Response<Paginated<ApiKey>>>;
+    async fn revoke_api_key<T>(&self, name: T) -> Result<Response<()>>
+    where
+        T: AsRef<str> + Send;
+}
+
+#[async_trait]
+impl AdminApiExt for Client {
+    /// Generates a new API key
+    async fn gen_api_key<T>(
+        &self,
+        key_name: T,
+        metadata: APIKeyMetaData,
+    ) -> Result<Response<CreateAPIKeyResponse>>
+    where
+        T: AsRef<str> + Send,
+    {
+        let path = "/v1/admin/api_keys";
+        let path = self.config.base_url.join(path)?;
+
+        let body = CreateAPIkeyRequest {
+            key_name: key_name.as_ref().to_owned(),
+            metadata,
+        };
+
+        self.execute_request_body::<CreateAPIKeyResponse, _>(
+            Method::POST,
+            path,
+            body,
+        )
+        .await
+    }
+
+    /// Lists all api keys associated with this project
+    async fn list_api_keys(&self) -> Result<Response<Paginated<ApiKey>>> {
+        let path = "/v1/admin/api_keys";
+        let path = self.config.base_url.join(path)?;
+
+        self.execute_request::<Paginated<ApiKey>>(Method::GET, path)
+            .await
+    }
+
+    /// Revokes an API key given its id
+    async fn revoke_api_key<T>(&self, key_id: T) -> Result<Response<()>>
+    where
+        T: AsRef<str> + Send,
+    {
+        let path = format!("/v1/admin/api_keys/{}", key_id.as_ref());
+        let path = self.config.base_url.join(&path)?;
+
+        self.execute_request::<()>(Method::DELETE, path).await
+    }
+}
 
 #[cfg(test)]
 mod tests {}

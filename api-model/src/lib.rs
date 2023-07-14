@@ -1,4 +1,5 @@
 mod action;
+pub mod admin;
 mod attempt;
 mod ids;
 mod pagination;

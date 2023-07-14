@@ -1,3 +1,5 @@
+#[cfg(feature = "admin")]
+mod admin;
 mod args;
 mod command;
 mod confirm;

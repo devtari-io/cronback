@@ -13,6 +13,8 @@ use once_cell::sync::OnceCell;
 use tokio::io::AsyncWriteExt;
 use url::Url;
 
+#[cfg(feature = "admin")]
+use crate::admin;
 use crate::{emitln, runs, triggers, whoami, RunCommand};
 
 const CRONBACK_SECRET_TOKEN_VAR: &str = "CRONBACK_SECRET_TOKEN";
@@ -82,6 +84,13 @@ pub enum CliCommand {
     #[command(name = "whoami")]
     /// Prints information about the current context/environment
     WhoAmI(whoami::WhoAmI),
+
+    /// Set of commands that require admin privillages.
+    #[cfg(feature = "admin")]
+    Admin {
+        #[command(subcommand)]
+        command: admin::AdminCommand,
+    },
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -254,6 +263,10 @@ impl CliCommand {
                 command.run(out, err, common_options).await
             }
             | CliCommand::Runs { command } => {
+                command.run(out, err, common_options).await
+            }
+            #[cfg(feature = "admin")]
+            | CliCommand::Admin { command } => {
                 command.run(out, err, common_options).await
             }
             | CliCommand::WhoAmI(c) => c.run(out, err, common_options).await,

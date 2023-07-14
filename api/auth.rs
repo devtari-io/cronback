@@ -3,6 +3,7 @@ use std::str::FromStr;
 
 use base64::Engine;
 use chrono::Utc;
+use cronback_api_model::admin::CreateAPIkeyRequest;
 use lib::database::models::api_keys;
 use lib::database::DatabaseError;
 use lib::prelude::ValidShardedId;
@@ -14,7 +15,6 @@ use uuid::Uuid;
 
 use crate::auth_store::AuthStore;
 use crate::errors::ApiError;
-use crate::model::CreateAPIkeyRequest;
 
 pub static API_KEY_PREFIX: &str = "sk_";
 
@@ -220,13 +220,13 @@ impl SecretApiKey {
 mod tests {
     use std::str::FromStr;
 
+    use cronback_api_model::admin::CreateAPIkeyRequest;
     use lib::database::Database;
     use lib::types::ProjectId;
 
     use super::SecretApiKey;
     use crate::auth::{AuthError, Authenticator};
     use crate::auth_store::SqlAuthStore;
-    use crate::model::CreateAPIkeyRequest;
 
     #[test]
     fn test_api_key() {
@@ -248,7 +248,7 @@ mod tests {
     fn build_create_key_request(name: &str) -> CreateAPIkeyRequest {
         CreateAPIkeyRequest {
             key_name: name.to_string(),
-            metadata: crate::model::APIKeyMetaData {
+            metadata: cronback_api_model::admin::APIKeyMetaData {
                 creator_user_id: None,
             },
         }

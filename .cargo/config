@@ -2,4 +2,4 @@
 rustflags = ["--cfg", "tracing_unstable"]
 
 [alias]
-cli = "run -q -p cronback-cli --"
+cli = "run -F admin -q -p cronback-cli --"

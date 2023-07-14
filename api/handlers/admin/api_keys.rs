@@ -3,18 +3,18 @@ use std::sync::Arc;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::{debug_handler, Extension, Json};
+use cronback_api_model::admin::{
+    APIKeyMetaData,
+    ApiKey,
+    CreateAPIKeyResponse,
+    CreateAPIkeyRequest,
+};
 use lib::model::ValidShardedId;
 use lib::types::ProjectId;
 use proto::common::PaginationOut;
 
 use crate::errors::ApiError;
 use crate::extractors::ValidatedJson;
-use crate::model::{
-    APIKeyMetaData,
-    ApiKey,
-    CreateAPIKeyResponse,
-    CreateAPIkeyRequest,
-};
 use crate::paginated::Paginated;
 use crate::{AppState, AppStateError};
 
