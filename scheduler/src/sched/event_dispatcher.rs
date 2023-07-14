@@ -45,8 +45,8 @@ impl DispatchJob {
         Self {
             context,
             dispatch_request: DispatchRequest {
-                trigger_id: trigger.id.to_string(),
-                project_id: trigger.project_id.to_string(),
+                trigger_id: Some(trigger.id.into()),
+                project_id: Some(trigger.project_id.into()),
                 action: Some(trigger.action.into()),
                 payload: trigger.payload.map(|p| p.into()),
                 mode: dispatcher_proto::DispatchMode::from(mode).into(),
@@ -56,7 +56,7 @@ impl DispatchJob {
     }
 
     pub fn trigger_id(&self) -> &str {
-        &self.dispatch_request.trigger_id
+        &self.dispatch_request.trigger_id.unwrap_ref().value
     }
 
     pub async fn run(&mut self) -> Result<Run, DispatchError> {

@@ -16,6 +16,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "../proto/dispatcher.proto",
                 "../proto/trigger.proto",
                 "../proto/run.proto",
+                "../proto/attempt.proto",
             ],
             &["../proto"],
         )?;

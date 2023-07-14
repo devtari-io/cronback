@@ -26,7 +26,7 @@ impl EntityName for Entity {
 )]
 #[proto(target = "proto::trigger_proto::Trigger")]
 pub struct Model {
-    #[proto(skip)]
+    #[proto(required)]
     pub id: TriggerId,
     // unique
     pub name: String,

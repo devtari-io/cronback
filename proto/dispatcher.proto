@@ -1,12 +1,16 @@
 syntax = "proto3";
 
+import "common.proto";
 import "run.proto";
 import "trigger.proto";
+import "attempt.proto";
 
 package dispatcher_proto;
 
 service Dispatcher {
   rpc Dispatch (DispatchRequest) returns (DispatchResponse);
+  rpc GetRun (GetRunRequest) returns (GetRunResponse);
+  rpc ListRuns (ListRunsRequest) returns (ListRunsResponse);
 }
 
 enum DispatchMode {
@@ -16,8 +20,8 @@ enum DispatchMode {
 }
 
 message DispatchRequest {
-  string trigger_id = 1;
-  string project_id = 2;
+  common.TriggerId trigger_id = 1;
+  common.ProjectId project_id = 2;
   trigger_proto.Action action = 3;
   trigger_proto.Payload payload = 4;
   DispatchMode mode = 5;
@@ -25,4 +29,24 @@ message DispatchRequest {
 
 message DispatchResponse {
   run_proto.Run run = 1;
+}
+
+message GetRunRequest {
+  common.RunId run_id = 1;
+}
+
+message GetRunResponse {
+  run_proto.Run run = 1;
+  repeated attempt_proto.ActionAttemptLog latest_attempts = 2;
+}
+
+
+message ListRunsRequest {
+  common.TriggerId trigger_id = 1;
+  common.PaginationIn pagination = 3;
+}
+
+message ListRunsResponse {
+  repeated run_proto.Run runs = 1;
+  common.PaginationOut pagination = 2;
 }

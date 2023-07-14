@@ -32,9 +32,14 @@ pub async fn start_dispatcher_server(
     let run_store: Arc<dyn RunStore + Send + Sync> =
         Arc::new(SqlRunStore::new(db));
 
-    let dispatch_manager = DispatchManager::new(run_store, attempt_store);
-    let handler =
-        handler::DispatcherAPIHandler::new(context.clone(), dispatch_manager);
+    let dispatch_manager =
+        DispatchManager::new(run_store.clone(), attempt_store.clone());
+    let handler = handler::DispatcherAPIHandler::new(
+        context.clone(),
+        dispatch_manager,
+        run_store,
+        attempt_store,
+    );
     let svc = DispatcherServer::new(handler);
 
     // grpc server

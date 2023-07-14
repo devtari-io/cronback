@@ -3,6 +3,7 @@ use axum::response::IntoResponse;
 use axum::Json;
 use chrono::{DateTime, Utc};
 use dto::{FromProto, IntoProto};
+use lib::types::TriggerId;
 use proto::scheduler_proto;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none};
@@ -65,6 +66,10 @@ impl UpsertTriggerRequest {
 #[serde(deny_unknown_fields)]
 #[proto(target = "proto::trigger_proto::Trigger")]
 pub(crate) struct Trigger {
+    // Ids are meant to be internal only, so they are neither accepted as input
+    // or outputed in the API. This is here just for IntoProto to work
+    #[serde(skip)]
+    pub id: Option<TriggerId>,
     #[validate(length(
         min = 2,
         max = 64,

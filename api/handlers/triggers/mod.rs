@@ -20,6 +20,7 @@ pub(crate) fn routes(shared_state: Arc<AppState>) -> Router {
         .route("/:name", axum::routing::get(get::get))
         .route("/:name", axum::routing::put(put::put))
         .route("/:name/runs", axum::routing::get(runs::list))
+        .route("/:name/runs/:run_id", axum::routing::get(runs::get))
         .route("/:name/run", axum::routing::post(run::run))
         .route("/:name/pause", axum::routing::post(pause::pause))
         .route("/:name/cancel", axum::routing::post(cancel::cancel))

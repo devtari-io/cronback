@@ -16,11 +16,9 @@ use axum::middleware::{self, Next};
 use axum::response::IntoResponse;
 use axum::routing::get;
 use axum::Router;
+use lib::clients::dispatcher_client::ScopedDispatcherClient;
 use lib::clients::scheduler_client::ScopedSchedulerClient;
 use lib::config::Config;
-use lib::database::attempt_log_store::{AttemptLogStore, SqlAttemptLogStore};
-use lib::database::run_store::{RunStore, SqlRunStore};
-use lib::database::trigger_store::{SqlTriggerStore, TriggerStore};
 use lib::database::Database;
 use lib::grpc_client_provider::{GrpcClientFactory, GrpcClientProvider};
 use lib::model::ValidShardedId;
@@ -47,9 +45,6 @@ pub enum AppStateError {
 }
 
 pub struct Db {
-    pub trigger_store: Box<dyn TriggerStore + Send + Sync>,
-    pub run_store: Box<dyn RunStore + Send + Sync>,
-    pub attempt_store: Box<dyn AttemptLogStore + Send + Sync>,
     pub auth_store: Box<dyn AuthStore + Send + Sync>,
 }
 
@@ -59,6 +54,8 @@ pub struct AppState {
     pub db: Db,
     pub scheduler_clients:
         Box<dyn GrpcClientFactory<ClientType = ScopedSchedulerClient>>,
+    pub dispatcher_clients:
+        Box<dyn GrpcClientFactory<ClientType = ScopedDispatcherClient>>,
 }
 
 async fn fallback() -> (StatusCode, &'static str) {
@@ -80,9 +77,6 @@ pub async fn start_api_server(
     let auth_store = SqlAuthStore::new(db.clone());
 
     let stores = Db {
-        trigger_store: Box::new(SqlTriggerStore::new(db.clone())),
-        run_store: Box::new(SqlRunStore::new(db.clone())),
-        attempt_store: Box::new(SqlAttemptLogStore::new(db.clone())),
         auth_store: Box::new(auth_store),
     };
 
@@ -91,6 +85,7 @@ pub async fn start_api_server(
         config: config.clone(),
         db: stores,
         scheduler_clients: Box::new(GrpcClientProvider::new(context.clone())),
+        dispatcher_clients: Box::new(GrpcClientProvider::new(context.clone())),
     });
 
     let service_name = context.service_name().to_string();

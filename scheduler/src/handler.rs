@@ -7,6 +7,8 @@ use proto::scheduler_proto::scheduler_server::Scheduler;
 use proto::scheduler_proto::{
     CancelTriggerRequest,
     CancelTriggerResponse,
+    GetTriggerIdRequest,
+    GetTriggerIdResponse,
     GetTriggerRequest,
     GetTriggerResponse,
     ListTriggersFilter,
@@ -145,6 +147,22 @@ impl Scheduler for SchedulerAPIHandler {
                 .map(Into::into)
                 .collect(),
             pagination: Some(paginated_result.pagination),
+        }))
+    }
+
+    async fn get_trigger_id(
+        &self,
+        request: Request<GetTriggerIdRequest>,
+    ) -> Result<Response<GetTriggerIdResponse>, Status> {
+        let ctx = request.context()?;
+        let request = request.into_inner();
+
+        let trigger_id = self
+            .scheduler
+            .get_trigger_id(&ctx.project_id, &request.name)
+            .await?;
+        Ok(Response::new(GetTriggerIdResponse {
+            id: Some(trigger_id.into()),
         }))
     }
 }

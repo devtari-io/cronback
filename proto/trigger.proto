@@ -57,20 +57,22 @@ message Schedule {
 }
 
 message Trigger {
+  // output only
+  common.TriggerId id = 1;
   /// User supplied identifier, unique per project
-  string name = 1;
-  optional string description = 2;
-  Action action = 3;
-  Schedule schedule = 4;
+  string name = 2;
+  optional string description = 3;
+  Action action = 4;
+  Schedule schedule = 5;
   // output only
-  optional TriggerStatus status = 5;
+  optional TriggerStatus status = 6;
   // output only
-  common.DateTime created_at = 6;
+  common.DateTime created_at = 7;
   // output only
-  optional common.DateTime last_ran_at = 7;
+  optional common.DateTime last_ran_at = 8;
   // output only
-  optional common.DateTime updated_at = 8;
-  optional Payload payload = 9;
+  optional common.DateTime updated_at = 9;
+  optional Payload payload = 10;
   // optional string etag = 9;
   // TODO
  //optional Run last_run_details = 3;

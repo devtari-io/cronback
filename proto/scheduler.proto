@@ -21,6 +21,8 @@ service Scheduler {
   rpc ResumeTrigger (ResumeTriggerRequest) returns (ResumeTriggerResponse);
   /// Cancel trigger
   rpc CancelTrigger (CancelTriggerRequest) returns (CancelTriggerResponse);
+  /// Find trigger id by name
+  rpc GetTriggerId (GetTriggerIdRequest) returns (GetTriggerIdResponse);
 }
 
 enum RunMode {
@@ -102,4 +104,12 @@ message ListTriggersRequest {
 message ListTriggersResponse {
   common.PaginationOut pagination = 1;
   repeated trigger_proto.Trigger triggers = 2;
+}
+
+message GetTriggerIdRequest {
+  string name = 1;
+}
+
+message GetTriggerIdResponse {
+  common.TriggerId id = 1;
 }

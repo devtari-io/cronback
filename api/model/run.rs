@@ -5,7 +5,7 @@ use proto::scheduler_proto;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none};
 
-use super::{Action, Payload};
+use super::{Action, ActionAttemptLog, Payload};
 
 #[derive(IntoProto, Debug, Deserialize, Serialize, Clone, Default)]
 #[proto(target = "scheduler_proto::RunMode")]
@@ -47,4 +47,13 @@ pub struct Run {
     #[proto(required)]
     pub action: Action,
     pub status: RunStatus,
+}
+
+#[derive(Debug, Serialize, FromProto, Clone)]
+#[proto(target = "proto::dispatcher_proto::GetRunResponse")]
+pub struct GetRunResponse {
+    #[serde(flatten)]
+    #[proto(required)]
+    pub run: Run,
+    pub latest_attempts: Vec<ActionAttemptLog>,
 }

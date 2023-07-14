@@ -3,6 +3,7 @@
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
+use dto::IntoProto;
 use sea_orm::entity::prelude::*;
 use sea_orm::{DeriveActiveEnum, EnumIter, FromJsonQueryResult};
 use serde::{Deserialize, Serialize};
@@ -22,15 +23,29 @@ impl EntityName for Entity {
 
 // TODO: Remove serde and implement an API model instead.
 #[derive(
-    Clone, Debug, Serialize, PartialEq, DeriveModel, DeriveActiveModel, Eq,
+    Clone,
+    Debug,
+    Serialize,
+    IntoProto,
+    PartialEq,
+    DeriveModel,
+    DeriveActiveModel,
+    Eq,
 )]
+#[proto(target = "proto::attempt_proto::ActionAttemptLog")]
 pub struct Model {
+    #[proto(required)]
     pub id: AttemptLogId,
+    #[proto(required)]
     pub run_id: RunId,
+    #[proto(required)]
     pub trigger_id: TriggerId,
+    #[proto(required)]
     pub project_id: ValidShardedId<ProjectId>,
     pub status: AttemptStatus,
+    #[proto(required)]
     pub details: AttemptDetails,
+    #[proto(required)]
     pub created_at: DateTime<Utc>,
 }
 
@@ -92,9 +107,11 @@ impl RelationTrait for Relation {
 
 impl ActiveModelBehavior for ActiveModel {}
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, IntoProto, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[proto(target = "proto::attempt_proto::WebhookAttemptDetails")]
 pub struct WebhookAttemptDetails {
     pub response_code: Option<i32>,
+    #[proto(map_into_proto = "Duration::as_secs", map_into_by_ref)]
     pub response_latency_s: Duration,
     pub error_message: Option<String>,
 }
@@ -114,16 +131,33 @@ impl WebhookAttemptDetails {
 }
 
 #[derive(
-    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, FromJsonQueryResult,
+    Debug,
+    Clone,
+    IntoProto,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    FromJsonQueryResult,
 )]
+#[proto(target = "proto::attempt_proto::AttemptDetails", oneof = "details")]
 pub enum AttemptDetails {
+    #[proto(name = "Webhook")]
     WebhookAttemptDetails(WebhookAttemptDetails),
 }
 
 #[derive(
-    Debug, Serialize, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum,
+    Debug,
+    IntoProto,
+    Serialize,
+    Clone,
+    PartialEq,
+    Eq,
+    EnumIter,
+    DeriveActiveEnum,
 )]
 #[sea_orm(rs_type = "String", db_type = "String(None)")]
+#[proto(target = "proto::attempt_proto::AttemptStatus")]
 pub enum AttemptStatus {
     #[sea_orm(string_value = "Succeeded")]
     Succeeded,
