@@ -13,7 +13,7 @@ use validator::Validate;
 #[cfg_attr(
     feature = "dto",
     derive(IntoProto, FromProto),
-    proto(target = "proto::trigger_proto::Payload")
+    proto(target = "proto::common::Payload")
 )]
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[cfg_attr(

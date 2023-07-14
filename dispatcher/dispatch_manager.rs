@@ -39,7 +39,6 @@ impl DispatchManager {
 
     pub async fn start(&self) -> Result<(), DispatcherManagerError> {
         // TODO: Fetch only runs for this cell
-
         let pending_runs = self
             .run_store
             .get_runs_by_status(RunStatus::Attempting)
@@ -124,7 +123,6 @@ impl RunJob {
                 };
                 e.run().await
             }
-            | Action::Event(_) => unimplemented!(),
         };
         decrement_gauge!("dispatcher.inflight_runs_total", 1.0);
         run

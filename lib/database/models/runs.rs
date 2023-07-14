@@ -5,10 +5,9 @@ use dto::{FromProto, IntoProto};
 use sea_orm::entity::prelude::*;
 
 use super::attempts;
-use super::triggers::{Action, Payload};
 use crate::database::pagination::PaginatedEntity;
 use crate::prelude::ValidShardedId;
-use crate::types::{AttemptId, ProjectId, RunId, TriggerId};
+use crate::types::{Action, AttemptId, Payload, ProjectId, RunId, TriggerId};
 
 #[derive(
     Clone, Debug, IntoProto, FromProto, PartialEq, DeriveEntityModel, Eq,

@@ -1,4 +1,8 @@
 use async_trait::async_trait;
+use lib::database::pagination::{PaginatedResponse, PaginatedSelect};
+use lib::database::{Database, DatabaseError};
+use lib::model::{ModelId, ValidShardedId};
+use lib::types::{ProjectId, TriggerId};
 use proto::common::PaginationIn;
 use sea_orm::{
     ActiveModelTrait,
@@ -8,13 +12,8 @@ use sea_orm::{
     QuerySelect,
 };
 
-use super::errors::DatabaseError;
-use super::models::triggers::{self, Status};
-use super::pagination::{PaginatedResponse, PaginatedSelect};
-use crate::database::models::prelude::Triggers;
-use crate::database::Database;
-use crate::model::{ModelId, ValidShardedId};
-use crate::types::{ProjectId, Trigger, TriggerId};
+use crate::db_model::triggers::{self, Status};
+use crate::db_model::{Trigger, Triggers};
 
 pub type TriggerStoreError = DatabaseError;
 
@@ -197,20 +196,14 @@ mod tests {
     use std::time::Duration;
 
     use chrono::{Timelike, Utc};
+    use lib::database::{Database, DatabaseError};
+    use lib::model::ValidShardedId;
+    use lib::types::{Action, ProjectId, TriggerId, Webhook};
     use proto::common::PaginationIn;
 
     use super::{SqlTriggerStore, TriggerStore};
-    use crate::database::errors::DatabaseError;
-    use crate::database::Database;
-    use crate::model::ValidShardedId;
-    use crate::types::{
-        Action,
-        ProjectId,
-        Status,
-        Trigger,
-        TriggerId,
-        Webhook,
-    };
+    use crate::db_model::triggers::Status;
+    use crate::db_model::Trigger;
 
     fn build_trigger(
         name: &str,
@@ -233,7 +226,7 @@ mod tests {
             schedule: None,
             action: Action::Webhook(Webhook {
                 url: "http://test".to_string(),
-                http_method: crate::types::HttpMethod::Get,
+                http_method: lib::types::HttpMethod::Get,
                 timeout_s: Duration::from_secs(5),
                 retry: None,
             }),

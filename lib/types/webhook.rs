@@ -7,7 +7,7 @@ use validator::Validate;
 #[derive(
     Debug, FromProto, IntoProto, Clone, Serialize, Deserialize, PartialEq, Eq,
 )]
-#[proto(target = "proto::webhook_proto::HttpMethod")]
+#[proto(target = "proto::common::HttpMethod")]
 #[serde(rename_all = "UPPERCASE")]
 pub enum HttpMethod {
     Delete,
@@ -29,7 +29,7 @@ pub enum HttpMethod {
     Validate,
     Eq,
 )]
-#[proto(target = "proto::webhook_proto::Webhook")]
+#[proto(target = "proto::common::Webhook")]
 pub struct Webhook {
     pub url: String,
     pub http_method: HttpMethod,
@@ -43,7 +43,7 @@ pub struct Webhook {
 #[derive(
     Debug, IntoProto, FromProto, Clone, Serialize, Deserialize, PartialEq, Eq,
 )]
-#[proto(target = "proto::webhook_proto::RetryConfig", oneof = "policy")]
+#[proto(target = "proto::common::RetryConfig", oneof = "policy")]
 pub enum RetryConfig {
     #[proto(name = "Simple")]
     SimpleRetry(SimpleRetry),
@@ -54,7 +54,7 @@ pub enum RetryConfig {
 #[derive(
     Debug, IntoProto, FromProto, Clone, Serialize, Deserialize, PartialEq, Eq,
 )]
-#[proto(target = "proto::webhook_proto::SimpleRetry")]
+#[proto(target = "proto::common::SimpleRetry")]
 pub struct SimpleRetry {
     pub max_num_attempts: u32,
     #[into_proto(map = "std::time::Duration::as_secs_f64", map_by_ref)]
@@ -65,7 +65,7 @@ pub struct SimpleRetry {
 #[derive(
     Debug, FromProto, IntoProto, Clone, Serialize, Deserialize, PartialEq, Eq,
 )]
-#[proto(target = "proto::webhook_proto::ExponentialBackoffRetry")]
+#[proto(target = "proto::common::ExponentialBackoffRetry")]
 pub struct ExponentialBackoffRetry {
     pub max_num_attempts: u32,
     #[into_proto(map = "std::time::Duration::as_secs_f64", map_by_ref)]

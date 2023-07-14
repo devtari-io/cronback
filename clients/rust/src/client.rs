@@ -149,7 +149,7 @@ impl ClientBuilder {
         if let Some(prj) = &self.config.on_behalf_of {
             headers.insert(
                 "X-On-Behalf-Of",
-                header::HeaderValue::from_str(&prj).expect("X-On-Behalf-Of"),
+                header::HeaderValue::from_str(prj).expect("X-On-Behalf-Of"),
             );
         }
 

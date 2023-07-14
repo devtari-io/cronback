@@ -3,7 +3,6 @@ mod errors;
 pub mod models;
 pub mod pagination;
 pub mod run_store;
-pub mod trigger_store;
 
 pub use errors::DatabaseError;
 use migration::{Migrator, MigratorTrait};

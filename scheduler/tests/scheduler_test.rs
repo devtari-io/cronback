@@ -5,11 +5,23 @@ use lib::config::{ConfigLoader, Role};
 use lib::grpc_client_provider::GrpcClientFactory;
 use lib::service::ServiceContext;
 use lib::shutdown::Shutdown;
-use lib::types::*;
-use proto::common::UpsertEffect;
+use lib::types::{ProjectId, RequestId};
+use proto::common::{
+    action,
+    Action,
+    HttpMethod,
+    Payload,
+    UpsertEffect,
+    Webhook,
+};
 use proto::scheduler_proto::{GetTriggerRequest, UpsertTriggerRequest};
-use proto::trigger_proto::{self, Schedule, TriggerStatus};
-use proto::webhook_proto;
+use proto::trigger_proto::{
+    schedule,
+    Recurring,
+    Schedule,
+    Trigger,
+    TriggerStatus,
+};
 use scheduler::test_helpers;
 use tonic::Request;
 use tracing::info;
@@ -33,32 +45,28 @@ async fn install_trigger_valid_test() {
     let install_trigger = UpsertTriggerRequest {
         precondition: None,
         trigger_name: None,
-        trigger: Some(trigger_proto::Trigger {
-            payload: Some(proto::trigger_proto::Payload {
+        trigger: Some(Trigger {
+            payload: Some(Payload {
                 body: "Hello World".into(),
                 ..Default::default()
             }),
             name: "sample-trigger".to_owned(),
-            action: Some(trigger_proto::Action {
-                action: Some(trigger_proto::action::Action::Webhook(
-                    webhook_proto::Webhook {
-                        url: "http://google.com".to_owned(),
-                        http_method: webhook_proto::HttpMethod::Get.into(),
-                        timeout_s: 30.0,
-                        retry: None,
-                    },
-                )),
+            action: Some(Action {
+                action: Some(action::Action::Webhook(Webhook {
+                    url: "http://google.com".to_owned(),
+                    http_method: HttpMethod::Get.into(),
+                    timeout_s: 30.0,
+                    retry: None,
+                })),
             }),
             status: Default::default(),
             schedule: Some(Schedule {
-                schedule: Some(trigger_proto::schedule::Schedule::Recurring(
-                    trigger_proto::Recurring {
-                        cron: "0 * * * * *".to_owned(),
-                        timezone: "Europe/London".into(),
-                        limit: Some(4),
-                        ..Default::default()
-                    },
-                )),
+                schedule: Some(schedule::Schedule::Recurring(Recurring {
+                    cron: "0 * * * * *".to_owned(),
+                    timezone: "Europe/London".into(),
+                    limit: Some(4),
+                    ..Default::default()
+                })),
             }),
             ..Default::default()
         }),
@@ -112,32 +120,28 @@ async fn install_trigger_uniqueness_test() {
         // No precondition
         precondition: None,
         trigger_name: None,
-        trigger: Some(trigger_proto::Trigger {
-            payload: Some(proto::trigger_proto::Payload {
+        trigger: Some(Trigger {
+            payload: Some(Payload {
                 body: "Hello World".into(),
                 ..Default::default()
             }),
             name: "sample-trigger-2".to_owned(),
-            action: Some(trigger_proto::Action {
-                action: Some(trigger_proto::action::Action::Webhook(
-                    webhook_proto::Webhook {
-                        url: "http://google.com".to_owned(),
-                        http_method: webhook_proto::HttpMethod::Get.into(),
-                        timeout_s: 30.0,
-                        retry: None,
-                    },
-                )),
+            action: Some(Action {
+                action: Some(action::Action::Webhook(Webhook {
+                    url: "http://google.com".to_owned(),
+                    http_method: HttpMethod::Get.into(),
+                    timeout_s: 30.0,
+                    retry: None,
+                })),
             }),
             status: Default::default(),
             schedule: Some(Schedule {
-                schedule: Some(trigger_proto::schedule::Schedule::Recurring(
-                    trigger_proto::Recurring {
-                        cron: "0 * * * * *".to_owned(),
-                        timezone: "Europe/London".into(),
-                        limit: Some(4),
-                        ..Default::default()
-                    },
-                )),
+                schedule: Some(schedule::Schedule::Recurring(Recurring {
+                    cron: "0 * * * * *".to_owned(),
+                    timezone: "Europe/London".into(),
+                    limit: Some(4),
+                    ..Default::default()
+                })),
             }),
 
             ..Default::default()
@@ -166,33 +170,29 @@ async fn install_trigger_uniqueness_test() {
         // We rely on the name to match the trigger.
         precondition: None,
         trigger_name: Some("sample-trigger-2".to_string()),
-        trigger: Some(trigger_proto::Trigger {
-            payload: Some(proto::trigger_proto::Payload {
+        trigger: Some(Trigger {
+            payload: Some(Payload {
                 body: "Hello World".into(),
                 ..Default::default()
             }),
             name: "sample-trigger-2".to_owned(),
             description: Some("new description is here".to_owned()),
-            action: Some(trigger_proto::Action {
-                action: Some(trigger_proto::action::Action::Webhook(
-                    webhook_proto::Webhook {
-                        url: "http://google.com".to_owned(),
-                        http_method: webhook_proto::HttpMethod::Get.into(),
-                        timeout_s: 30.0,
-                        retry: None,
-                    },
-                )),
+            action: Some(Action {
+                action: Some(action::Action::Webhook(Webhook {
+                    url: "http://google.com".to_owned(),
+                    http_method: HttpMethod::Get.into(),
+                    timeout_s: 30.0,
+                    retry: None,
+                })),
             }),
             status: Default::default(),
             schedule: Some(Schedule {
-                schedule: Some(trigger_proto::schedule::Schedule::Recurring(
-                    trigger_proto::Recurring {
-                        cron: "0 * * * * *".to_owned(),
-                        timezone: "Europe/London".into(),
-                        limit: Some(4),
-                        ..Default::default()
-                    },
-                )),
+                schedule: Some(schedule::Schedule::Recurring(Recurring {
+                    cron: "0 * * * * *".to_owned(),
+                    timezone: "Europe/London".into(),
+                    limit: Some(4),
+                    ..Default::default()
+                })),
             }),
 
             ..Default::default()
@@ -222,23 +222,21 @@ async fn install_trigger_uniqueness_test() {
         // We rely on the name to match the trigger.
         precondition: None,
         trigger_name: Some("sample-trigger-2".to_string()),
-        trigger: Some(trigger_proto::Trigger {
-            payload: Some(proto::trigger_proto::Payload {
+        trigger: Some(Trigger {
+            payload: Some(Payload {
                 body: "Hello World".into(),
                 ..Default::default()
             }),
             name: "sample-trigger-2".to_owned(),
             // Resetting the description to None
             description: None,
-            action: Some(trigger_proto::Action {
-                action: Some(trigger_proto::action::Action::Webhook(
-                    webhook_proto::Webhook {
-                        url: "http://google.com".to_owned(),
-                        http_method: webhook_proto::HttpMethod::Get.into(),
-                        timeout_s: 30.0,
-                        retry: None,
-                    },
-                )),
+            action: Some(Action {
+                action: Some(action::Action::Webhook(Webhook {
+                    url: "http://google.com".to_owned(),
+                    http_method: HttpMethod::Get.into(),
+                    timeout_s: 30.0,
+                    retry: None,
+                })),
             }),
             status: Default::default(),
             schedule: None,

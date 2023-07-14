@@ -1,6 +1,5 @@
 syntax = "proto3";
 
-import "webhook.proto";
 import "common.proto";
 
 package trigger_proto;
@@ -29,18 +28,6 @@ message Recurring {
   optional uint64 remaining = 4;
 }
 
-message Payload {
-  string content_type = 1;
-  map<string, string> headers = 2;
-  bytes body = 3;
-}
-
-message Action {
-  oneof action {
-    webhook_proto.Webhook webhook = 1;
-    //Tunnel tunnel = 2;
-  }
-}
 
 message RunAt {
   repeated common.DateTime timepoints = 1;
@@ -62,7 +49,7 @@ message Trigger {
   /// User supplied identifier, unique per project
   string name = 2;
   optional string description = 3;
-  Action action = 4;
+  common.Action action = 4;
   Schedule schedule = 5;
   // output only
   optional TriggerStatus status = 6;
@@ -72,9 +59,9 @@ message Trigger {
   optional common.DateTime last_ran_at = 8;
   // output only
   optional common.DateTime updated_at = 9;
-  optional Payload payload = 10;
+  optional common.Payload payload = 10;
+  repeated common.DateTime estimated_future_runs = 11;
   // optional string etag = 9;
   // TODO
  //optional Run last_run_details = 3;
-  // TODO: Created/Updated details (updated by
 }

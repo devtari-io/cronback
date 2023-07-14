@@ -6,14 +6,14 @@ use async_recursion::async_recursion;
 use chrono::Utc;
 use lib::clients::dispatcher_client::ScopedDispatcherClient;
 use lib::database::pagination::PaginatedResponse;
-use lib::database::trigger_store::{TriggerStore, TriggerStoreError};
 use lib::grpc_client_provider::GrpcClientProvider;
 use lib::model::ValidShardedId;
 use lib::prelude::*;
 use lib::service::ServiceContext;
-use lib::types::{ProjectId, Run, Status, Trigger, TriggerId};
+use lib::types::{ProjectId, TriggerId};
 use proto::common::request_precondition::PreconditionType;
 use proto::common::{PaginationIn, UpsertEffect};
+use proto::run_proto::Run;
 use proto::scheduler_proto::{UpsertTriggerRequest, UpsertTriggerResponse};
 use tracing::{debug, error, info, trace, warn};
 
@@ -21,7 +21,10 @@ use super::dispatch::dispatch;
 use super::event_dispatcher::DispatchMode;
 use super::spinner::{Spinner, SpinnerHandle};
 use super::triggers::{ActiveTriggerMap, TriggerError};
+use crate::db_model::triggers::Status;
+use crate::db_model::Trigger;
 use crate::sched::triggers::ActiveTrigger;
+use crate::trigger_store::{TriggerStore, TriggerStoreError};
 
 /**
  *

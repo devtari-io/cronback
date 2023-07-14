@@ -2,7 +2,6 @@ syntax = "proto3";
 
 import "common.proto";
 import "run.proto";
-import "trigger.proto";
 import "attempt.proto";
 
 package dispatcher_proto;
@@ -21,8 +20,8 @@ enum DispatchMode {
 
 message DispatchRequest {
   common.TriggerId trigger_id = 1;
-  trigger_proto.Action action = 2;
-  trigger_proto.Payload payload = 3;
+  common.Action action = 2;
+  common.Payload payload = 3;
   DispatchMode mode = 4;
 }
 

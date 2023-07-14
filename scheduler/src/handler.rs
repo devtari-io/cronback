@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use lib::database::models::triggers;
 use lib::prelude::*;
 use lib::service::ServiceContext;
 use proto::scheduler_proto::scheduler_server::Scheduler;
@@ -27,6 +26,7 @@ use proto::scheduler_proto::{
 };
 use tonic::{Request, Response, Status};
 
+use crate::db_model::triggers;
 use crate::sched::event_scheduler::EventScheduler;
 
 pub(crate) struct SchedulerAPIHandler {
@@ -71,9 +71,7 @@ impl Scheduler for SchedulerAPIHandler {
         let request = request.into_inner();
         let mode = request.mode.into();
         let run = self.scheduler.run_trigger(ctx, request.name, mode).await?;
-        Ok(Response::new(RunTriggerResponse {
-            run: Some(run.into()),
-        }))
+        Ok(Response::new(RunTriggerResponse { run: Some(run) }))
     }
 
     async fn get_trigger(

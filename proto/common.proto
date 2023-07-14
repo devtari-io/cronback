@@ -2,6 +2,54 @@ syntax = "proto3";
 
 package common;
 
+message Payload {
+  string content_type = 1;
+  map<string, string> headers = 2;
+  bytes body = 3;
+}
+
+message Action {
+  oneof action {
+    Webhook webhook = 1;
+    //Tunnel tunnel = 2;
+  }
+}
+
+enum HttpMethod {
+  HttpMethod_UNKNOWN = 0;
+  GET = 1;
+  POST = 2;
+  PUT = 3;
+  DELETE = 4;
+  HEAD = 5;
+  PATCH = 6;
+}
+
+message SimpleRetry {
+  uint32 max_num_attempts = 1;
+  double delay_s = 2;
+}
+
+message ExponentialBackoffRetry {
+  uint32 max_num_attempts = 1;
+  double delay_s = 2;
+  double max_delay_s = 3;
+}
+
+message RetryConfig {
+  oneof policy {
+    SimpleRetry simple = 1;
+    ExponentialBackoffRetry exponential_backoff = 2;
+  }
+}
+
+message Webhook {
+  HttpMethod http_method = 1;
+  string url = 2;
+  double timeout_s = 3;
+  RetryConfig retry = 4;
+}
+
 message PaginationIn {
   int32 limit = 1;
   optional string cursor = 2;

@@ -53,11 +53,7 @@ pub struct WebhookActionJob {
 
 impl WebhookActionJob {
     pub async fn run(mut self) -> Run {
-        let Action::Webhook(ref webhook) = self.run.action else {
-                // We should only get here if this is a webhook action!
-                panic!("Expected webhook action, got {:?}", self.run.action);
-            };
-
+        let Action::Webhook(ref webhook) = self.run.action;
         let retry = if let Some(config) = webhook.retry.clone() {
             Retry::with_config(config)
         } else {

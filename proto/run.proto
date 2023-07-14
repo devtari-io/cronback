@@ -2,7 +2,6 @@ syntax = "proto3";
 
 import "common.proto";
 import "attempt.proto";
-import "trigger.proto";
 
 package run_proto;
 
@@ -11,8 +10,8 @@ message Run {
   common.TriggerId trigger_id = 2;
   common.ProjectId project_id = 3;
   common.DateTime created_at = 4;
-  trigger_proto.Payload payload = 5;
-  trigger_proto.Action action = 6;
+  common.Payload payload = 5;
+  common.Action action = 6;
   RunStatus status = 7;
   optional attempt_proto.Attempt latest_attempt = 8;
 }

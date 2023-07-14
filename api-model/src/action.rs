@@ -12,7 +12,7 @@ use super::Webhook;
 #[cfg_attr(
     feature = "dto",
     derive(IntoProto, FromProto),
-    proto(target = "proto::trigger_proto::Action", non_exhaustive)
+    proto(target = "proto::common::Action", non_exhaustive)
 )]
 #[serde(rename_all = "snake_case")]
 #[serde(untagged)]

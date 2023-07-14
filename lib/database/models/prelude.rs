@@ -3,4 +3,3 @@
 pub use super::api_keys::Entity as ApiKeys;
 pub use super::attempts::Entity as Attempts;
 pub use super::runs::Entity as Runs;
-pub use super::triggers::Entity as Triggers;

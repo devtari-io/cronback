@@ -20,6 +20,9 @@ chrono-tz = { workspace = true }
 cron = { workspace = true }
 metrics = { workspace = true }
 prost = { workspace = true }
+sea-orm = { workspace = true }
+sea-query = { workspace = true }
+sea-query-binder = { workspace = true }
 sqlx = { workspace = true }
 tempfile = { workspace = true }
 thiserror = { workspace = true }
@@ -28,6 +31,8 @@ tokio-stream = { workspace = true }
 tonic = { workspace = true }
 tower = { workspace = true }
 tracing = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 tracing-test = { workspace = true }
 
 # Dependencies specific to this crate

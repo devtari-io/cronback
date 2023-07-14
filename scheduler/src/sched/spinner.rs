@@ -10,13 +10,14 @@ use lib::clients::dispatcher_client::ScopedDispatcherClient;
 use lib::grpc_client_provider::GrpcClientProvider;
 use lib::prelude::RequestContext;
 use lib::service::ServiceContext;
-use lib::types::{RequestId, Status, TriggerId};
+use lib::types::{RequestId, TriggerId};
 use metrics::{counter, gauge, histogram};
 use tokio::runtime::Handle;
 use tracing::{debug, info, trace, warn, Instrument};
 
 use super::event_dispatcher::DispatchError;
 use super::triggers::{ActiveTriggerMap, TriggerTemporalState};
+use crate::db_model::triggers::Status;
 use crate::sched::dispatch;
 
 pub(crate) struct Spinner {

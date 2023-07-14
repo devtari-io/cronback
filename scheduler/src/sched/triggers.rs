@@ -6,12 +6,14 @@ use std::str::FromStr;
 use chrono::{DateTime, FixedOffset, Utc};
 use chrono_tz::{Tz, UTC};
 use cron::{OwnedScheduleIterator, Schedule as CronSchedule};
-use lib::database::trigger_store::TriggerStoreError;
-use lib::types::{Schedule, Status, Trigger, TriggerId};
+use lib::types::TriggerId;
 use thiserror::Error;
 use tracing::{info, trace};
 
 use super::event_dispatcher::DispatchError;
+use crate::db_model::triggers::{Schedule, Status};
+use crate::db_model::Trigger;
+use crate::trigger_store::TriggerStoreError;
 
 #[allow(unused)]
 #[derive(Error, Debug)]
@@ -536,18 +538,11 @@ impl ActiveTrigger {
 mod tests {
     use std::time::Duration;
 
-    use lib::types::{
-        Action,
-        HttpMethod,
-        ProjectId,
-        Recurring,
-        RunAt,
-        Trigger,
-        TriggerId,
-        Webhook,
-    };
+    use lib::types::{Action, HttpMethod, ProjectId, TriggerId, Webhook};
 
     use super::*;
+    use crate::db_model::triggers::{Recurring, RunAt};
+    use crate::db_model::Trigger;
 
     fn create_cron_schedule(
         pattern: &str,

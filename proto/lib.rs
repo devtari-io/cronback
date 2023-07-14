@@ -45,10 +45,6 @@ pub mod common {
     }
 }
 
-pub mod webhook_proto {
-    tonic::include_proto!("webhook_proto");
-}
-
 pub mod scheduler_proto {
     tonic::include_proto!("scheduler_proto");
 }

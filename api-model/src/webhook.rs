@@ -22,7 +22,7 @@ use crate::validation_util::validation_error;
 #[cfg_attr(
     feature = "dto",
     derive(IntoProto, FromProto),
-    proto(target = "proto::webhook_proto::HttpMethod")
+    proto(target = "proto::common::HttpMethod")
 )]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[cfg_attr(feature = "clap", clap(rename_all = "UPPER"))]
@@ -49,7 +49,7 @@ impl std::fmt::Display for HttpMethod {
 #[cfg_attr(
     feature = "dto",
     derive(IntoProto, FromProto),
-    proto(target = "proto::webhook_proto::Webhook")
+    proto(target = "proto::common::Webhook")
 )]
 #[cfg_attr(feature = "server", serde(deny_unknown_fields), serde(default))]
 pub struct Webhook {
@@ -95,7 +95,7 @@ impl Default for Webhook {
 #[cfg_attr(
     feature = "dto",
     derive(IntoProto, FromProto),
-    proto(target = "proto::webhook_proto::RetryConfig", oneof = "policy")
+    proto(target = "proto::common::RetryConfig", oneof = "policy")
 )]
 #[cfg_attr(feature = "server", serde(deny_unknown_fields))]
 #[serde(rename_all = "snake_case")]
@@ -114,7 +114,7 @@ pub enum RetryConfig {
 #[cfg_attr(
     feature = "dto",
     derive(IntoProto, FromProto),
-    proto(target = "proto::webhook_proto::SimpleRetry")
+    proto(target = "proto::common::SimpleRetry")
 )]
 #[cfg_attr(feature = "server", serde(default), serde(deny_unknown_fields))]
 pub struct SimpleRetry {
@@ -153,7 +153,7 @@ impl Default for SimpleRetry {
 #[cfg_attr(
     feature = "dto",
     derive(IntoProto, FromProto),
-    proto(target = "proto::webhook_proto::ExponentialBackoffRetry")
+    proto(target = "proto::common::ExponentialBackoffRetry")
 )]
 #[serde(deny_unknown_fields)]
 pub struct ExponentialBackoffRetry {

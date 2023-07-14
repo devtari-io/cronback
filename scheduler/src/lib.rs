@@ -1,17 +1,20 @@
+pub(crate) mod db_model;
 pub(crate) mod error;
 pub(crate) mod handler;
 pub(crate) mod sched;
+pub(crate) mod trigger_store;
 
 use std::sync::Arc;
 use std::time::Duration;
 
 use handler::SchedulerAPIHandler;
-use lib::database::trigger_store::SqlTriggerStore;
 use lib::database::Database;
 use lib::grpc_client_provider::GrpcClientProvider;
 use lib::{netutils, service};
 use proto::scheduler_proto::scheduler_server::SchedulerServer;
 use sched::event_scheduler::EventScheduler;
+
+use crate::trigger_store::SqlTriggerStore;
 
 #[tracing::instrument(skip_all, fields(service = context.service_name()))]
 pub async fn start_scheduler_server(
@@ -67,7 +70,6 @@ pub mod test_helpers {
     use std::sync::Arc;
 
     use lib::clients::scheduler_client::ScopedSchedulerClient;
-    use lib::database::trigger_store::SqlTriggerStore;
     use lib::database::Database;
     use lib::grpc_client_provider::test_helpers::TestGrpcClientProvider;
     use lib::grpc_client_provider::GrpcClientProvider;
@@ -78,6 +80,7 @@ pub mod test_helpers {
 
     use crate::handler::SchedulerAPIHandler;
     use crate::sched::event_scheduler::EventScheduler;
+    use crate::trigger_store::SqlTriggerStore;
 
     pub async fn test_server_and_client(
         mut context: ServiceContext,

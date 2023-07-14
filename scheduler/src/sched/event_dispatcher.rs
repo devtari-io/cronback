@@ -8,9 +8,11 @@ use lib::grpc_client_provider::{
     GrpcClientProvider,
 };
 use lib::prelude::*;
-use lib::types::{Run, Trigger};
 use proto::dispatcher_proto::{self, DispatchRequest};
+use proto::run_proto::Run;
 use thiserror::Error;
+
+use crate::db_model::Trigger;
 
 #[derive(Error, Debug)]
 pub(crate) enum DispatchError {
@@ -66,6 +68,6 @@ impl DispatchJob {
 
         let resp = client.dispatch(self.dispatch_request.clone()).await?;
         let run = resp.into_inner().run.unwrap();
-        Ok(run.into())
+        Ok(run)
     }
 }

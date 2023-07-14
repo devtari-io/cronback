@@ -1,8 +1,12 @@
+pub mod action;
 pub mod ids;
+pub mod payload;
 mod request;
 pub mod webhook;
 
+pub use action::*;
 pub use ids::*;
+pub use payload::*;
 pub use request::*;
 pub use webhook::*;
 
@@ -16,12 +20,3 @@ pub use crate::database::models::attempts::{
     WebhookAttemptDetails,
 };
 pub use crate::database::models::runs::{Model as Run, RunStatus};
-pub use crate::database::models::triggers::{
-    Action,
-    Model as Trigger,
-    Payload,
-    Recurring,
-    RunAt,
-    Schedule,
-    Status,
-};

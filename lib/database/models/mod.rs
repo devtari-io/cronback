@@ -5,4 +5,3 @@ pub mod prelude;
 pub mod api_keys;
 pub mod attempts;
 pub mod runs;
-pub mod triggers;

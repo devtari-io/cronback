@@ -3,10 +3,11 @@ use std::sync::Arc;
 use lib::clients::dispatcher_client::ScopedDispatcherClient;
 use lib::grpc_client_provider::GrpcClientProvider;
 use lib::prelude::RequestContext;
-use lib::types::{Run, Trigger};
+use proto::run_proto::Run;
 use tracing::info;
 
 use super::event_dispatcher::{DispatchError, DispatchMode};
+use crate::db_model::Trigger;
 use crate::sched::event_dispatcher::DispatchJob;
 
 #[tracing::instrument(skip_all, fields(trigger_id = %trigger.id))]
