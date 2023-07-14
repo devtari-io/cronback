@@ -152,7 +152,7 @@ impl TriggerStore for SqlTriggerStore {
         paginated_query(
             &self.db,
             TriggersIden::Triggers,
-            Expr::col(TriggersIden::Status).is_in(["active", "paused"]),
+            Expr::col(TriggersIden::Status).is_in(["scheduled", "paused"]),
             &Option::<TriggerId>::None,
             &Option::<TriggerId>::None,
             None,
@@ -272,9 +272,9 @@ mod tests {
 
         let owner2 = ProjectId::generate();
 
-        let t1 = build_trigger("t1", owner1.clone(), Status::Active);
+        let t1 = build_trigger("t1", owner1.clone(), Status::Scheduled);
         let t2 = build_trigger("t2", owner1.clone(), Status::Paused);
-        let t3 = build_trigger("t3", owner2.clone(), Status::Active);
+        let t3 = build_trigger("t3", owner2.clone(), Status::Scheduled);
         let t4 = build_trigger("t4", owner2.clone(), Status::Expired);
 
         // Test installs
@@ -315,7 +315,7 @@ mod tests {
 
         // Test Get Status
         assert_eq!(
-            Some(Status::Active),
+            Some(Status::Scheduled),
             store.get_status(&owner1, &t1.id).await?
         );
         assert_eq!(
@@ -324,7 +324,7 @@ mod tests {
         );
 
         // Test reference uniqueness
-        let mut t5 = build_trigger("t5", owner1.clone(), Status::Active);
+        let mut t5 = build_trigger("t5", owner1.clone(), Status::Scheduled);
         t5.reference = Some("Ref".to_string());
         let t6 = t5.clone();
         store.install_trigger(&t5).await?;

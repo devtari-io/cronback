@@ -123,7 +123,7 @@ impl From<Emit> for trigger_proto::Emit {
 impl From<Status> for i32 {
     fn from(value: Status) -> Self {
         let enum_value = match value {
-            | Status::Active => trigger_proto::TriggerStatus::Active,
+            | Status::Scheduled => trigger_proto::TriggerStatus::Scheduled,
             | Status::Expired => trigger_proto::TriggerStatus::Expired,
             | Status::OnDemand => trigger_proto::TriggerStatus::OnDemand,
             | Status::Cancelled => trigger_proto::TriggerStatus::Cancelled,

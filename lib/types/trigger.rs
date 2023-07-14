@@ -91,7 +91,7 @@ pub struct TriggerManifest {
 #[serde(deny_unknown_fields)]
 pub enum Status {
     #[default]
-    Active,
+    Scheduled,
     OnDemand,
     Expired,
     Cancelled,
@@ -103,16 +103,16 @@ impl Status {
     // trigger is considered alive, but it won't be invoked. We will advance
     // its clock as if it was invoked though.
     pub fn alive(&self) -> bool {
-        [Self::Active, Self::Paused].contains(self)
+        [Self::Scheduled, Self::Paused].contains(self)
     }
 
     pub fn cancelleable(&self) -> bool {
-        [Self::Active, Self::Paused, Self::OnDemand].contains(self)
+        [Self::Scheduled, Self::Paused, Self::OnDemand].contains(self)
     }
 
     pub fn as_operation(&self) -> String {
         match self {
-            | Status::Active => "resume",
+            | Status::Scheduled => "resume",
             | Status::Expired => "expire",
             | Status::Cancelled => "cancel",
             | Status::Paused => "pause",

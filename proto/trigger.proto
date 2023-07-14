@@ -7,7 +7,7 @@ package trigger_proto;
 enum TriggerStatus {
   TriggerStatus_UNKNOWN = 0;
   // A scheduled trigger thas has future runs
-  ACTIVE = 1;
+  SCHEDULED = 1;
   // A scheduled triggers that skips future runs
   PAUSED = 3;
   // Trigger can only be invoked manually 

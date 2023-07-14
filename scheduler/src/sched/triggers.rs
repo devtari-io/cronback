@@ -221,7 +221,7 @@ impl ActiveTriggerMap {
     ) -> Result<(), TriggerError> {
         self.update_status(
             trigger_id,
-            Status::Active,
+            Status::Scheduled,
             &[Status::Cancelled, Status::Expired],
         )
     }
@@ -568,7 +568,7 @@ mod tests {
             created_at: Utc::now(),
             emit: Vec::default(),
             payload: None,
-            status: Status::Active,
+            status: Status::Scheduled,
             schedule: Some(sched),
             last_invoked_at: None,
         }

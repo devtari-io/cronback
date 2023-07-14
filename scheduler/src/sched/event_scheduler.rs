@@ -195,7 +195,7 @@ impl EventScheduler {
             payload: install_trigger.payload.map(|p| p.into()),
             schedule: install_trigger.schedule.map(|s| s.into()),
             status: if is_scheduled {
-                Status::Active
+                Status::Scheduled
             } else {
                 Status::OnDemand
             },
@@ -354,7 +354,7 @@ impl EventScheduler {
         // if value, check that it's alive.
         if !status.alive() {
             return Err(TriggerError::InvalidStatus(
-                Status::Active.as_operation(),
+                Status::Scheduled.as_operation(),
                 status,
             ));
         }

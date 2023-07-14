@@ -93,7 +93,7 @@
                           "remaining": 0
                         }
                       },
-                      "status": "active"
+                      "status": "scheduled"
                     }
                   }
                 }
@@ -482,7 +482,7 @@
         "tags": [
           "Triggers"
         ],
-        "description": "Cancels a live trigger. The trigger must be in either `active` or `paused`"
+        "description": "Cancels a live trigger. The trigger must be in either `scheduled` or `paused`"
       }
     },
     "/triggers/{trigger_id}/resume": {
@@ -606,7 +606,7 @@
                 "timezone": "Etc/UTC"
               }
             },
-            "status": "active"
+            "status": "scheduled"
           }
         },
         "description": "Defines a scheduled or on-demand trigger.",
@@ -677,14 +677,14 @@
           "status": {
             "type": "string",
             "enum": [
-              "active",
+              "scheduled",
               "on_demand",
               "paused",
               "expired",
               "cancelled"
             ],
-            "description": "Status of the trigger. \n- `active` triggers can be invoked either manually of according to their `trigger.schedule`\n- `on_demand` triggers can only be invoked manually, those do not have a schedule associated.\n- `paused` triggers will be invoked but will not emit anything.\n- `expired` triggers are scheduled triggers that exhausted their invocations or have no future timepoints.\n- `cancelled` triggers cannot be invoked. Those have been cancelled manually via the `/triggers/{trigger_id}/cancel` API.",
-            "example": "active",
+            "description": "Status of the trigger. \n- `scheduled` trigger will be invoked according to their `trigger.schedule`\n- `on_demand` trigger can only be invoked manually, those do not have a schedule associated.\n- `paused` triggers will be invoked but will not emit anything.\n- `expired` triggers are scheduled triggers that exhausted their invocations or have no future timepoints.\n- `cancelled` triggers cannot be invoked. Those have been cancelled manually via the `/triggers/{trigger_id}/cancel` API.",
+            "example": "scheduled",
             "readOnly": true
           }
         },
@@ -1012,7 +1012,7 @@
                 "timezone": "Etc/UTC"
               }
             },
-            "status": "active"
+            "status": "scheduled"
           }
         },
         "description": "Defines a scheduled or on-demand trigger.",
@@ -1065,13 +1065,13 @@
           "status": {
             "type": "string",
             "enum": [
-              "active",
+              "scheduled",
               "paused",
               "expired",
               "cancelled"
             ],
-            "description": "Status of the trigger. \n- `active` triggers can be invoked either manually of according to their `trigger.schedule`\n- `paused` triggers will be invoked but will not emit anything.\n- `expired` triggers are scheduled triggers that exhausted their invocations or have no future timepoints.\n- `cancelled` triggers cannot be invoked. Those have been cancelled manually via the `/triggers/{trigger_id}/cancel` API.",
-            "example": "active",
+            "description": "Status of the trigger. \n- `scheduled` trigger will be invoked according to their `trigger.schedule`\n- `paused` triggers will be invoked but will not emit anything.\n- `expired` triggers are scheduled triggers that exhausted their invocations or have no future timepoints.\n- `cancelled` triggers cannot be invoked. Those have been cancelled manually via the `/triggers/{trigger_id}/cancel` API.",
+            "example": "scheduled",
             "readOnly": true
           },
           "last_invoked_at": {

@@ -150,7 +150,7 @@ impl From<i32> for Status {
             | trigger_proto::TriggerStatus::Unknown => {
                 panic!("We should never see TriggerStatus::Unknown")
             }
-            | trigger_proto::TriggerStatus::Active => Self::Active,
+            | trigger_proto::TriggerStatus::Scheduled => Self::Scheduled,
             | trigger_proto::TriggerStatus::Paused => Self::Paused,
             | trigger_proto::TriggerStatus::Cancelled => Self::Cancelled,
             | trigger_proto::TriggerStatus::OnDemand => Self::OnDemand,
