@@ -1,5 +1,5 @@
-use derive_more::{Deref, Display, From, Into};
-use serde::{Deserialize, Serialize};
+// use derive_more::{Deref, Display, From, Into};
+// use serde::{Deserialize, Serialize};
 
 use crate::model::define_model_id;
 
@@ -27,20 +27,6 @@ define_model_id! {
     @proto = proto::common::AttemptLogId,
     pub struct AttemptLogId;
 }
-
-#[derive(
-    Debug,
-    From,
-    Into,
-    Display,
-    Clone,
-    Serialize,
-    Deserialize,
-    PartialEq,
-    Hash,
-    Deref,
-)]
-pub struct TriggerName(String);
 
 #[cfg(test)]
 mod tests {

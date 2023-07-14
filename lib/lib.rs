@@ -10,7 +10,6 @@ pub mod rpc_middleware;
 pub mod service;
 pub mod shutdown;
 pub mod types;
-pub mod validation;
 
 mod ext;
 

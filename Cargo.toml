@@ -2,6 +2,7 @@
 members = [
   ".",
   "api",
+  "api-model",
   "lib",
   "proto",
   "scheduler",

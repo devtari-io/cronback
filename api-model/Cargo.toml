@@ -1,0 +1,55 @@
+[package]
+name = "cronback-api-model"
+description = """\
+  A set of API models for [cronback](https://cronback.me) API protocol. \
+  Cronback provides developers a reliable and flexible solution to schedule \
+  one-time, recurring cron, and on-demand webhooks.
+  """
+version = "0.1.0"
+edition.workspace = true
+authors.workspace = true
+categories = ["network-programming", "api-bindings"]
+keywords = ["cron", "webhooks", "scheduler", "job", "periodic"]
+repository = "https://github.com/devtari-io/cronback"
+homepage = "https://cronback.me"
+publish = true
+
+[features]
+default = []
+client = []
+dto = ["dep:proto", "dep:dto", "dep:lib"]
+validation = [
+  "dep:validator",
+  "dep:lib",
+  "dep:cron",
+  "dep:ipext",
+  "dep:thiserror",
+  "dep:chrono-tz",
+  "dep:url",
+]
+server = ["dto", "validation"]
+
+[dependencies]
+lib = { path = "../lib", optional = true }
+proto = { path = "../proto", optional = true }
+dto = { path = "../dto", optional = true }
+validator = { version = "0.16.0", features = ["derive"], optional = true }
+cron = { workspace = true, optional = true }
+# A crate that re-exposes the unstable IP features that got introduced in
+# https://github.com/rust-lang/rust/issues/27709.
+# Given that this is an untrusted repo, we're pinning it to a particular
+# revision after reviewing the code at this revision.
+ipext = { git = "https://github.com/jedisct1/rust-ipext", rev = "0ebeb115bd67", optional = true }
+thiserror = { workspace = true, optional = true }
+url = { version = "2.3.1", features = ["serde"], optional = true }
+chrono-tz = { workspace = true, optional = true }
+
+monostate = { version = "0.1" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_with = { workspace = true }
+chrono = { workspace = true }
+derive_more = { workspace = true }
+
+[dev-dependencies]
+anyhow = { workspace = true }
