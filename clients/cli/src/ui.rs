@@ -1,5 +1,5 @@
 use colored::Colorize;
-use cronback_api_model::TriggerStatus;
+use cronback_api_model::{AttemptStatus, RunStatus, TriggerStatus};
 use once_cell::sync::Lazy;
 
 static SHOULD_COLORIZE: Lazy<bool> = Lazy::new(|| {
@@ -23,6 +23,17 @@ where
     }
 }
 
+/// Respects NO_COLOR environment variable to avoid showing emojis if tty can't
+/// display them.
+pub fn emoji(s: &str) -> String {
+    if *SHOULD_COLORIZE {
+        format!("{} ", s)
+    } else {
+        String::new()
+    }
+}
+
+// --- Fancy for specific types
 impl FancyToString for TriggerStatus {
     fn fancy(&self) -> String {
         match self {
@@ -42,12 +53,33 @@ impl FancyToString for TriggerStatus {
     }
 }
 
-/// Respects NO_COLOR environment variable to avoid showing emojis if tty can't
-/// display them.
-pub fn emoji(s: &str) -> String {
-    if *SHOULD_COLORIZE {
-        format!("{} ", s)
-    } else {
-        String::new()
+impl FancyToString for RunStatus {
+    fn fancy(&self) -> String {
+        match self {
+            | RunStatus::Attempting => {
+                format!("{}{}", emoji("🚤"), self.to_string().yellow())
+            }
+            | RunStatus::Failed => {
+                format!("{}{}", emoji("❌"), self.to_string().red())
+            }
+            | RunStatus::Succeeded => {
+                format!("{}{}", emoji("✅"), self.to_string().green())
+            }
+            | s => s.to_string(),
+        }
+    }
+}
+
+impl FancyToString for AttemptStatus {
+    fn fancy(&self) -> String {
+        match self {
+            | AttemptStatus::Failed => {
+                format!("{}{}", emoji("❌"), self.to_string().red())
+            }
+            | AttemptStatus::Succeeded => {
+                format!("{}{}", emoji("✅"), self.to_string().green())
+            }
+            | s => s.to_string(),
+        }
     }
 }

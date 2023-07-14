@@ -221,6 +221,30 @@ impl Client {
         self.execute_request_body(Method::POST, path, body).await
     }
 
+    /// Retrieve list of runs for a given trigger.
+    pub async fn list_runs<T>(
+        &self,
+        pagination: Option<Pagination>,
+        name: T,
+    ) -> Result<Response<Paginated<Run>>>
+    where
+        T: AsRef<str>,
+    {
+        let path = format!("/v1/triggers/{}/runs", name.as_ref());
+        let mut path = self.config.base_url.join(&path)?;
+        if let Some(pagination) = pagination {
+            if let Some(cursor) = pagination.cursor {
+                path.query_pairs_mut().append_pair("cursor", &cursor);
+            }
+            if let Some(limit) = pagination.limit {
+                path.query_pairs_mut()
+                    .append_pair("limit", &limit.to_string());
+            }
+        }
+
+        self.execute_request(Method::GET, path).await
+    }
+
     async fn execute_request<T>(
         &self,
         method: http::Method,

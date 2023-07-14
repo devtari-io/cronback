@@ -9,8 +9,6 @@ use crate::{emitln, RunCommand};
 pub struct View {
     /// Trigger name
     name: String,
-    #[arg(long)]
-    extended: bool,
 }
 
 #[async_trait]

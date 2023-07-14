@@ -67,6 +67,8 @@ pub enum CliCommand {
 pub enum TriggerCommand {
     /// List triggers
     List(triggers::List),
+    /// List runs of a trigger
+    ListRuns(triggers::ListRuns),
     /// Create a new trigger
     Create(triggers::Create),
     /// View details about a given trigger
@@ -213,6 +215,9 @@ impl TriggerCommand {
     ) -> Result<()> {
         match self {
             | TriggerCommand::List(c) => c.run(out, err, common_options).await,
+            | TriggerCommand::ListRuns(c) => {
+                c.run(out, err, common_options).await
+            }
             | TriggerCommand::Create(c) => {
                 c.run(out, err, common_options).await
             }
