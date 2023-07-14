@@ -16,6 +16,8 @@ servers:
     description: Production
   - description: Staging
     url: 'https://api.jungle.cronback.me/v1'
+  - description: Local
+    url: 'http://localhost:8888/v1'
 paths:
   '/triggers/{trigger_id}':
     parameters:

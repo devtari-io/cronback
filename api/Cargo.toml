@@ -27,7 +27,7 @@ prost = { workspace = true }
 rand = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-serde_with = { workspace = true}
+serde_with = { workspace = true }
 sqlx = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true }
@@ -38,3 +38,4 @@ tracing = { workspace = true }
 sha2 = "0.10.6"
 uuid = { version = "1.2.2", features = ["v4"] }
 validator = { version = "0.16.0", features = ["derive"] }
+tower-http = { version = "0.4.0", features = ["trace", "cors"] }

@@ -30,6 +30,8 @@ use proto::scheduler_proto::scheduler_client::SchedulerClient as GenSchedulerCli
 use rand::seq::SliceRandom;
 use thiserror::Error;
 use tokio::select;
+use tower_http::cors::{AllowOrigin, CorsLayer};
+use tower_http::trace::TraceLayer;
 use tracing::{error, info, warn};
 
 use crate::auth_store::SqlAuthStore;
@@ -150,6 +152,15 @@ pub async fn start_api_server(
         .route("/", get(root))
         .nest("/v1", handlers::routes(shared_state.clone()))
         .route_layer(middleware::from_fn(track_metrics))
+        .layer(
+            CorsLayer::new()
+                .allow_origin(AllowOrigin::any())
+                .allow_headers([
+                    axum::http::header::CONTENT_TYPE,
+                    axum::http::header::AUTHORIZATION,
+                ]),
+        )
+        .layer(TraceLayer::new_for_http())
         .fallback(fallback);
 
     // Handle 404
