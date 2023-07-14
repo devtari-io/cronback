@@ -162,10 +162,9 @@ where
 
 /// Define a new model id NewType 
 #[rustfmt::skip]
-macro_rules! define_model_id {
+macro_rules! define_model_id_base {
     (
         #[prefix = $prefix:literal]
-        #[no_owner]
         $(#[$m:meta])*
         $type_vis:vis struct $name:ident;
     ) => {
@@ -188,17 +187,7 @@ macro_rules! define_model_id {
         #[serde(transparent)]
         $type_vis struct $name(String);
 
-        impl crate::model::RootId for $name {}
-        
-        impl $name {
-            pub fn generate() -> crate::model::ValidShardedId<Self> {
-                crate::model::ValidShardedId::from_string_unsafe(
-                    crate::model::generate_raw_id($prefix)
-                )
-            }
-        }
-
-        impl crate::model::ModelId for $name {
+        impl $crate::model::ModelId for $name {
             fn has_valid_prefix(&self) -> bool {
                 self.0.starts_with(concat!($prefix, "_"))
             }
@@ -207,85 +196,74 @@ macro_rules! define_model_id {
             }
         }
 
-        impl TryFrom<$name> for crate::model::ValidShardedId<$name> {
-            type Error = crate::model::ModelIdError;
+        impl TryFrom<$name> for $crate::model::ValidShardedId<$name> {
+            type Error = $crate::model::ModelIdError;
             fn try_from(id: $name) -> Result<Self, Self::Error> {
                 crate::model::ModelId::validated(id)
             }
         }
 
         // Unfortunately we can't implement this generically!
-        impl From<crate::model::ValidShardedId<$name>> for $name {
-            fn from(value: crate::model::ValidShardedId<$name>) -> Self {
+        impl From<$crate::model::ValidShardedId<$name>> for $name {
+            fn from(value: $crate::model::ValidShardedId<$name>) -> Self {
                 value.into_inner()
             }
         }
 
     };
+}
+
+#[rustfmt::skip]
+macro_rules! define_model_id {
+    (
+        #[prefix = $prefix:literal]
+        #[no_owner]
+        $(#[$m:meta])*
+        $type_vis:vis struct $name:ident;
+    ) => {
+
+        $crate::model::define_model_id_base!{
+            #[prefix = $prefix]
+            $(#[$m])*
+            $type_vis struct $name;
+        }
+
+        impl $crate::model::RootId for $name {}
+        
+        impl $name {
+            pub fn generate() -> $crate::model::ValidShardedId<Self> {
+                $crate::model::ValidShardedId::from_string_unsafe(
+                    $crate::model::generate_raw_id($prefix)
+                )
+            }
+        }
+    };
     (
         #[prefix = $prefix:literal]
         $(#[$m:meta])*
-        pub struct $name:ident;
+        $type_vis:vis struct $name:ident;
     ) => {
-        $(#[$m])*
-        #[derive(
-            Debug,
-            Hash,
-            Clone,
-            Default,
-            ::serde::Serialize,
-            ::serde::Deserialize,
-            Eq,
-            PartialEq,
-            PartialOrd,
-            Ord,
-            ::derive_more::Display,
-            ::derive_more::From,
-            ::derive_more::Into,
-        )]
-        #[serde(transparent)]
-        pub struct $name(String);
+        $crate::model::define_model_id_base!{
+            #[prefix = $prefix]
+            $(#[$m])*
+            $type_vis struct $name;
+        }
 
         impl $name {
-            pub fn generate(owner: &crate::model::ValidShardedId<impl crate::model::RootId>) -> crate::model::ValidShardedId<Self> {
-                crate::model::ValidShardedId::from_string_unsafe(
-                    crate::model::generate_model_id($prefix, owner)
+            pub fn generate(owner: &$crate::model::ValidShardedId<impl $crate::model::RootId>) -> $crate::model::ValidShardedId<Self> {
+                $crate::model::ValidShardedId::from_string_unsafe(
+                    $crate::model::generate_model_id($prefix, owner)
                 )
             }
 
             pub fn from(value: String) -> Self {
                 Self(value)
             }
-
-        }
-
-        impl crate::model::ModelId for $name {
-            fn has_valid_prefix(&self) -> bool {
-                self.0.starts_with(concat!($prefix, "_"))
-            }
-
-            fn value(&self) -> &str {
-                &self.0
-            }
-        }
-
-        impl TryFrom<$name> for crate::model::ValidShardedId<$name> {
-            type Error = crate::model::ModelIdError;
-            fn try_from(id: $name) -> Result<Self, Self::Error> {
-                crate::model::ModelId::validated(id)
-            }
-        }
-
-        // Unfortunately we can't implement this generically!
-        impl From<crate::model::ValidShardedId<$name>> for $name {
-            fn from(value: crate::model::ValidShardedId<$name>) -> Self {
-                value.into_inner()
-            }
         }
     };
 }
 
-pub(crate) use define_model_id;
+pub(crate) use {define_model_id, define_model_id_base};
 
 #[cfg(test)]
 mod tests {
