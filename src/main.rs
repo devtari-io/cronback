@@ -25,7 +25,7 @@ fn setup_logging_subscriber(
     let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| {
             "cronbackd=debug,scheduler=debug,api=debug,dispatcher=debug,\
-             tower_http=debug"
+             tower_http=debug,lib=debug"
                 .into()
         });
 

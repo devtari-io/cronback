@@ -55,17 +55,17 @@ impl Dispatcher for DispatcherAPIHandler {
             status: request
                 .emits
                 .into_iter()
-                .map(|e|
+                .map(|e| {
                     match Emit::from(e) {
                         | Emit::Webhook(webhook) => {
                             InvocationStatus::WebhookStatus(WebhookStatus {
                                 webhook,
                                 delivery_status: lib::types::WebhookDeliveryStatus::Attempting,
                             })
-                        },
-                            Emit::Event(_) => unimplemented!(),
+                        }
+                        | Emit::Event(_) => unimplemented!(),
                     }
-                )
+                })
                 .collect(),
         };
 

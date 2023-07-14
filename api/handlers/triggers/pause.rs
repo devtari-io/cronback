@@ -1,11 +1,10 @@
 use std::sync::Arc;
 
 use axum::extract::{Path, State};
-use axum::http::header::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
-use lib::types::{ProjectId, TriggerId, TriggerManifest, ValidId};
+use lib::types::{ProjectId, RequestId, TriggerId, TriggerManifest, ValidId};
 use proto::scheduler_proto::PauseTriggerRequest;
 
 use crate::errors::ApiError;
@@ -17,21 +16,13 @@ pub(crate) async fn pause(
     state: State<Arc<AppState>>,
     Path(id): Path<TriggerId>,
     Extension(project): Extension<ProjectId>,
+    Extension(request_id): Extension<RequestId>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let mut response_headers = HeaderMap::new();
-    response_headers
-        .insert("cronback-trace-id", "SOMETHING SOMETHING".parse().unwrap());
     if !id.is_valid() {
-        return Ok((
-            StatusCode::BAD_REQUEST,
-            response_headers,
-            // TODO: We need a proper API design for API errors
-            Json("Invalid trigger id"),
-        )
-            .into_response());
+        return Err(ApiError::NotFound(id.to_string()));
     }
 
-    let mut scheduler = state.get_scheduler(&project).await?;
+    let mut scheduler = state.get_scheduler(&request_id, &project).await?;
     let trigger = scheduler
         .pause_trigger(PauseTriggerRequest {
             project_id: project.0.clone(),
@@ -44,5 +35,5 @@ pub(crate) async fn pause(
 
     let trigger: TriggerManifest = trigger.into();
 
-    Ok((StatusCode::OK, response_headers, Json(trigger)).into_response())
+    Ok((StatusCode::OK, Json(trigger)).into_response())
 }

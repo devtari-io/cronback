@@ -21,7 +21,6 @@ use proto::scheduler_proto::{
     ResumeTriggerResponse,
 };
 use tonic::{Request, Response, Status};
-use tracing::info;
 
 use crate::sched::event_scheduler::EventScheduler;
 
@@ -45,10 +44,7 @@ impl Scheduler for SchedulerAPIHandler {
         &self,
         request: Request<InstallTriggerRequest>,
     ) -> Result<Response<InstallTriggerResponse>, Status> {
-        info!("Got a request: {request:?}");
-
         let (_metadata, _ext, request) = request.into_parts();
-        info!("Installing trigger {:?}", request);
         // TODO: Instantiate a trigger, we will lookup the database to check for
         // reference id
 
@@ -70,7 +66,6 @@ impl Scheduler for SchedulerAPIHandler {
         // scheduler
         //
         let (_metadata, _ext, request) = request.into_parts();
-        info!(request.id, "Invoking trigger");
         let invocation = self
             .scheduler
             .invoke_trigger(request.project_id.into(), request.id.into())
@@ -104,7 +99,6 @@ impl Scheduler for SchedulerAPIHandler {
         request: Request<PauseTriggerRequest>,
     ) -> Result<Response<PauseTriggerResponse>, Status> {
         let (_metadata, _ext, request) = request.into_parts();
-        info!(request.id, "Pausing trigger");
         let trigger = self
             .scheduler
             .pause_trigger(request.project_id.into(), request.id.into())
@@ -119,7 +113,6 @@ impl Scheduler for SchedulerAPIHandler {
         request: Request<ResumeTriggerRequest>,
     ) -> Result<Response<ResumeTriggerResponse>, Status> {
         let (_metadata, _ext, request) = request.into_parts();
-        info!(request.id, "Resuming trigger");
         let trigger = self
             .scheduler
             .resume_trigger(request.project_id.into(), request.id.into())
@@ -134,7 +127,6 @@ impl Scheduler for SchedulerAPIHandler {
         request: Request<CancelTriggerRequest>,
     ) -> Result<Response<CancelTriggerResponse>, Status> {
         let (_metadata, _ext, request) = request.into_parts();
-        info!(request.id, "Canceling trigger");
         let trigger = self
             .scheduler
             .cancel_trigger(request.project_id.into(), request.id.into())

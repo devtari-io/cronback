@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use axum::extract::{Path, Query, State};
-use axum::http::header::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
@@ -20,9 +19,6 @@ pub(crate) async fn list(
     Extension(project): Extension<ProjectId>,
     Path(trigger_id): Path<TriggerId>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let mut response_headers = HeaderMap::new();
-    response_headers
-        .insert("cronback-trace-id", "SOMETHING SOMETHING".parse().unwrap());
     let Query(pagination) = pagination.unwrap_or_default();
     pagination.validate()?;
 
@@ -32,13 +28,11 @@ pub(crate) async fn list(
         .get_trigger(&trigger_id)
         .await
         .map_err(|e| AppStateError::DatabaseError(e.to_string()))? else {
-            return Ok(
-                StatusCode::NOT_FOUND.into_response()
-            );
+            return Err(ApiError::NotFound(trigger_id.to_string()));
         };
 
     if trigger.project != project {
-        return Ok(StatusCode::FORBIDDEN.into_response());
+        return Err(ApiError::NotFound(trigger_id.to_string()));
     }
 
     // Trick. We want to know if there is a next page, so we ask for one more
@@ -56,10 +50,6 @@ pub(crate) async fn list(
         .await
         .map_err(|e| AppStateError::DatabaseError(e.to_string()))?;
 
-    Ok((
-        StatusCode::OK,
-        response_headers,
-        Json(paginate(invocations, pagination)),
-    )
+    Ok((StatusCode::OK, Json(paginate(invocations, pagination)))
         .into_response())
 }

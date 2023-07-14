@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use axum::extract::{Path, Query, State};
-use axum::http::header::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
@@ -20,18 +19,8 @@ pub(crate) async fn list(
     Extension(project): Extension<ProjectId>,
     Path(id): Path<InvocationId>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let mut response_headers = HeaderMap::new();
-    response_headers
-        .insert("cronback-trace-id", "SOMETHING SOMETHING".parse().unwrap());
-
     if !id.is_valid() {
-        return Ok((
-            StatusCode::BAD_REQUEST,
-            response_headers,
-            // TODO: We need a proper API design for API errors
-            Json("Invalid invocation id"),
-        )
-            .into_response());
+        return Err(ApiError::NotFound(id.to_string()));
     }
 
     let Query(pagination) = pagination.unwrap_or_default();
@@ -48,8 +37,9 @@ pub(crate) async fn list(
             );
         };
 
+    // TODO: Remove after changing all operations to query by project id.
     if invocation.project != project {
-        return Ok(StatusCode::FORBIDDEN.into_response());
+        return Err(ApiError::NotFound(id.to_string()));
     }
 
     // Trick. We want to know if there is a next page, so we ask for one more
@@ -67,10 +57,5 @@ pub(crate) async fn list(
         .await
         .map_err(|e| AppStateError::DatabaseError(e.to_string()))?;
 
-    Ok((
-        StatusCode::OK,
-        response_headers,
-        Json(paginate(attempts, pagination)),
-    )
-        .into_response())
+    Ok((StatusCode::OK, Json(paginate(attempts, pagination))).into_response())
 }

@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use axum::extract::{Path, Query, State};
-use axum::http::header::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
@@ -19,18 +18,8 @@ pub(crate) async fn get(
     Extension(project): Extension<ProjectId>,
     Path(id): Path<InvocationId>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let mut response_headers = HeaderMap::new();
-    response_headers
-        .insert("cronback-trace-id", "SOMETHING SOMETHING".parse().unwrap());
-
     if !id.is_valid() {
-        return Ok((
-            StatusCode::BAD_REQUEST,
-            response_headers,
-            // TODO: We need a proper API design for API errors
-            Json("Invalid invocation id"),
-        )
-            .into_response());
+        return Err(ApiError::NotFound(id.to_string()));
     }
 
     let invocation = state
@@ -43,7 +32,6 @@ pub(crate) async fn get(
     let Some(invocation) = invocation else {
             return Ok((
                 StatusCode::NOT_FOUND,
-                response_headers,
                 // TODO: We need a proper API design for API errors
                 Json("Invocation not found"),
             )
@@ -51,10 +39,10 @@ pub(crate) async fn get(
     };
 
     if invocation.project != project {
-        return Ok(StatusCode::FORBIDDEN.into_response());
+        return Err(ApiError::NotFound(id.to_string()));
     }
 
-    Ok((StatusCode::OK, response_headers, Json(invocation)).into_response())
+    Ok((StatusCode::OK, Json(invocation)).into_response())
 }
 
 #[tracing::instrument(skip(state))]
@@ -64,10 +52,6 @@ pub(crate) async fn list(
     state: State<Arc<AppState>>,
     Extension(project): Extension<ProjectId>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let mut response_headers = HeaderMap::new();
-    response_headers
-        .insert("cronback-trace-id", "SOMETHING SOMETHING".parse().unwrap());
-
     let Query(pagination) = pagination.unwrap_or_default();
     pagination.validate()?;
 
@@ -86,9 +70,5 @@ pub(crate) async fn list(
         .await
         .map_err(|e| AppStateError::DatabaseError(e.to_string()))?;
 
-    Ok((
-        StatusCode::OK,
-        response_headers,
-        Json(paginate(invocations, pagination)),
-    ))
+    Ok((StatusCode::OK, Json(paginate(invocations, pagination))))
 }

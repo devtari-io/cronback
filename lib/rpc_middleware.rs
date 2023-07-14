@@ -6,6 +6,8 @@ use metrics::{histogram, increment_counter};
 use tonic::body::BoxBody;
 use tower::{Layer, Service};
 
+use crate::types::RequestId;
+
 #[derive(Debug, Clone, Default)]
 pub struct TelemetryMiddleware {
     /// Sets the label "service" in emitted metrics
@@ -65,12 +67,23 @@ where
         self.inner.poll_ready(cx)
     }
 
-    fn call(&mut self, req: hyper::Request<Body>) -> Self::Future {
+    fn call(&mut self, mut req: hyper::Request<Body>) -> Self::Future {
         // This is necessary because tonic internally uses
         // `tower::buffer::Buffer`. See https://github.com/tower-rs/tower/issues/547#issuecomment-767629149
         // for details on why this is necessary
         let clone = self.inner.clone();
         let mut inner = std::mem::replace(&mut self.inner, clone);
+
+        // Do we have a cronback-request-id header?
+        if let Some(cronback_request_id) =
+            req.headers().get("cronback-request-id")
+        {
+            // If so, set the request id to the value of the header
+            let cronback_request_id = cronback_request_id.to_str().unwrap();
+            let cronback_request_id =
+                RequestId::from(cronback_request_id.to_owned());
+            req.extensions_mut().insert(cronback_request_id);
+        }
 
         // Removes the leading '/' in the path.
         let endpoint = req.uri().path()[1..].to_owned();

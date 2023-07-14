@@ -9,7 +9,8 @@ use tonic::body::BoxBody;
 use tonic::transport::{NamedService, Server};
 use tonic_reflection::server::Builder;
 use tower::Service;
-use tracing::{error, info};
+use tower_http::trace::{MakeSpan, TraceLayer};
+use tracing::{error, error_span, info, Id, Span};
 
 use crate::config::{Config, ConfigLoader};
 use crate::rpc_middleware::TelemetryMiddleware;
@@ -62,6 +63,58 @@ impl ServiceContext {
     }
 }
 
+#[derive(Clone, Debug)]
+struct GrpcMakeSpan {
+    service_name: String,
+}
+impl GrpcMakeSpan {
+    fn new(service_name: String) -> Self {
+        Self { service_name }
+    }
+}
+
+impl<B> MakeSpan<B> for GrpcMakeSpan {
+    fn make_span(&mut self, request: &Request<B>) -> Span {
+        // We get the request_id from extensions
+        let request_id = request
+            .headers()
+            .get("cronback-request-id")
+            .map(|v| v.to_str().unwrap().to_owned());
+
+        let parent_span = request
+            .headers()
+            .get("cronback-parent-span-id")
+            .map(|v| v.to_str().unwrap().to_owned());
+
+        let span = if let Some(request_id) = request_id {
+            error_span!(
+                "grpc_request",
+                 // Then we put request_id into the span
+                 service = self.service_name,
+                 %request_id,
+                 method = %request.method(),
+                 uri = %request.uri(),
+                 version = ?request.version(),
+            )
+        } else {
+            error_span!(
+                "grpc_request",
+                 // Then we put request_id into the span
+                 service = self.service_name,
+                 method = %request.method(),
+                 uri = %request.uri(),
+                 version = ?request.version(),
+            )
+        };
+
+        if let Some(parent_span) = parent_span {
+            let id = Id::from_u64(parent_span.parse().unwrap());
+            span.follows_from(id);
+        }
+        span
+    }
+}
+
 #[tracing::instrument(skip_all, fields(service = context.service_name()))]
 pub async fn grpc_serve<S>(
     context: &mut ServiceContext,
@@ -76,9 +129,14 @@ pub async fn grpc_serve<S>(
         + 'static,
     S::Future: Send + 'static,
 {
+    let svc_name = context.service_name().to_owned();
     // The stack of middleware that our service will be wrapped in
     let telemetry_middleware = tower::ServiceBuilder::new()
         // Apply our own middleware
+        .layer(
+            TraceLayer::new_for_grpc()
+                .make_span_with(GrpcMakeSpan::new(svc_name)),
+        )
         .layer(TelemetryMiddleware::new(context.service_name()))
         .into_inner();
 

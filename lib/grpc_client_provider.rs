@@ -1,8 +1,33 @@
 use std::sync::RwLock;
 
 use proto::dispatcher_proto::dispatcher_client::DispatcherClient as GenDispatcherClient;
+use tonic::service::Interceptor;
+
+use crate::types::RequestId;
 
 pub type DispatcherClient = GenDispatcherClient<tonic::transport::Channel>;
+
+// Injects tracing headers (parent-span-id, and cronback-request-id) into gRPC
+// requests
+pub struct GrpcRequestTracingInterceptor(pub RequestId);
+impl Interceptor for GrpcRequestTracingInterceptor {
+    fn call(
+        &mut self,
+        mut req: tonic::Request<()>,
+    ) -> Result<tonic::Request<()>, tonic::Status> {
+        if let Some(span_id) = tracing::Span::current().id() {
+            let span_id = format!("{}", span_id.into_u64());
+            req.metadata_mut()
+                .insert("cronback-parent-span-id", span_id.parse().unwrap());
+        }
+
+        // TODO: Consider adding project-id to request metadata whenever
+        // possible.
+        req.metadata_mut()
+            .insert("cronback-request-id", self.0.to_string().parse().unwrap());
+        Ok(req)
+    }
+}
 
 pub struct DispatcherClientProvider {
     inner: RwLock<Option<DispatcherClient>>,

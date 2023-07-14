@@ -14,7 +14,7 @@
     {
     "type": "webhook",
       "url": "http://localhost:3000/emit",
-      "timeout_s": 25.5
+      "timeout_s": 30
     }
   ]
 }

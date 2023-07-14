@@ -14,7 +14,7 @@ use lib::types::{
     TriggerManifest,
 };
 use proto::scheduler_proto::InstallTriggerRequest;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info, trace, warn};
 
 use super::dispatch::dispatch;
 use super::spinner::{Spinner, SpinnerHandle};
@@ -95,7 +95,7 @@ impl EventScheduler {
 
     // Do things like compaction and checkpointing.
     pub async fn perform_checkpoint(&self) {
-        debug!("Attempting to checkpoint triggers");
+        trace!("Attempting to checkpoint triggers");
         // Persist active triggers to database
         let triggers = self.triggers.clone();
         // Triggers that have been cancelled or expired.

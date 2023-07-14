@@ -5,6 +5,7 @@ pub mod errors;
 pub(crate) mod extractors;
 mod handlers;
 
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -23,15 +24,18 @@ use lib::database::attempt_log_store::{AttemptLogStore, SqlAttemptLogStore};
 use lib::database::invocation_store::{InvocationStore, SqlInvocationStore};
 use lib::database::trigger_store::{SqlTriggerStore, TriggerStore};
 use lib::database::Database;
-use lib::types::{ProjectId, Shard, ShardedId};
+use lib::grpc_client_provider::GrpcRequestTracingInterceptor;
+use lib::types::{ProjectId, RequestId, Shard, ShardedId};
 use lib::{netutils, service};
 use metrics::{histogram, increment_counter};
 use proto::scheduler_proto::scheduler_client::SchedulerClient as GenSchedulerClient;
 use thiserror::Error;
 use tokio::select;
+use tonic::codegen::InterceptedService;
+use tonic::transport::Endpoint;
 use tower_http::cors::{AllowOrigin, CorsLayer};
-use tower_http::trace::TraceLayer;
-use tracing::{error, info, warn};
+use tower_http::trace::{MakeSpan, TraceLayer};
+use tracing::{error, error_span, info, warn};
 
 use crate::auth_store::SqlAuthStore;
 
@@ -57,19 +61,27 @@ pub struct AppState {
     pub config: Config,
     pub db: Db,
 }
-pub type SchedulerClient = GenSchedulerClient<tonic::transport::Channel>;
+
+pub type SchedulerClient = GenSchedulerClient<
+    InterceptedService<
+        tonic::transport::Channel,
+        GrpcRequestTracingInterceptor,
+    >,
+>;
 
 impl AppState {
     pub async fn get_scheduler(
         &self,
+        request_id: &RequestId,
         project: &ProjectId,
     ) -> Result<SchedulerClient, AppStateError> {
         // For now, we'll assume all triggers are on Cell 0
-        self.scheduler(project.shard()).await
+        self.scheduler(request_id, project.shard()).await
     }
 
     pub async fn scheduler(
         &self,
+        request_id: &RequestId,
         shard: Shard,
     ) -> Result<SchedulerClient, AppStateError> {
         let address = self
@@ -84,7 +96,12 @@ impl AppState {
                     "No scheduler found for shard {shard}"
                 ))
             })?;
-        Ok(SchedulerClient::connect(address.clone()).await?)
+        // TODO: Cache the scheduler channels
+        let channel = Endpoint::from_str(address).unwrap().connect().await?;
+        Ok(GenSchedulerClient::with_interceptor(
+            channel,
+            GrpcRequestTracingInterceptor(request_id.clone()),
+        ))
     }
 }
 
@@ -120,12 +137,12 @@ pub async fn start_api_server(
         db: stores,
     });
 
+    let service_name = context.service_name().to_string();
     // build our application with a route
     let app = Router::new()
         // `GET /` goes to `root`
         .route("/", get(root))
         .nest("/v1", handlers::routes(shared_state.clone()))
-        .route_layer(middleware::from_fn(track_metrics))
         .layer(
             CorsLayer::new()
                 .allow_origin(AllowOrigin::any())
@@ -134,7 +151,11 @@ pub async fn start_api_server(
                     axum::http::header::AUTHORIZATION,
                 ]),
         )
-        .layer(TraceLayer::new_for_http())
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(ApiMakeSpan::new(service_name)),
+        )
+        .route_layer(middleware::from_fn(track_metrics))
         .fallback(fallback);
 
     // Handle 404
@@ -171,7 +192,42 @@ async fn root() -> &'static str {
     "Hey, better visit https://cronback.me"
 }
 
-async fn track_metrics<B>(req: Request<B>, next: Next<B>) -> impl IntoResponse {
+#[derive(Clone, Debug)]
+struct ApiMakeSpan {
+    service_name: String,
+}
+
+impl ApiMakeSpan {
+    fn new(service_name: String) -> Self {
+        Self { service_name }
+    }
+}
+
+impl<B> MakeSpan<B> for ApiMakeSpan {
+    fn make_span(&mut self, request: &Request<B>) -> tracing::Span {
+        // We get the request_id from extensions
+        let request_id = request
+            .extensions()
+            .get::<RequestId>()
+            .map(ToString::to_string)
+            .unwrap_or_else(|| "unknown".into());
+        error_span!(
+            "http_request",
+             // Then we put request_id into the span
+             service = self.service_name,
+             request_id = %request_id,
+             method = %request.method(),
+             uri = %request.uri(),
+             version = ?request.version(),
+        )
+    }
+}
+
+async fn track_metrics<B>(
+    mut req: Request<B>,
+    next: Next<B>,
+) -> impl IntoResponse {
+    let request_id = RequestId::new();
     let start = Instant::now();
     let path = if let Some(matched_path) = req.extensions().get::<MatchedPath>()
     {
@@ -181,7 +237,11 @@ async fn track_metrics<B>(req: Request<B>, next: Next<B>) -> impl IntoResponse {
     };
     let method = req.method().clone();
 
-    let response = next.run(req).await;
+    // Inject RequestId into extensions. Can be useful if someone wants to
+    // log the request_id
+    req.extensions_mut().insert(request_id.clone());
+
+    let mut response = next.run(req).await;
 
     let latency = start.elapsed().as_secs_f64();
     let status = response.status().as_u16().to_string();
@@ -198,11 +258,16 @@ async fn track_metrics<B>(req: Request<B>, next: Next<B>) -> impl IntoResponse {
         latency,
         &labels
     );
+    // Inject request_id into response headers
+    response.headers_mut().insert(
+        "cronback-request-id",
+        request_id.to_string().parse().unwrap(),
+    );
 
     response
 }
 
 // handle 404
 async fn handler_404() -> impl IntoResponse {
-    (StatusCode::NOT_FOUND, "You lost mate?")
+    (StatusCode::NOT_FOUND, "Are you lost, mate?")
 }

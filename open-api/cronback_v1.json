@@ -12,7 +12,7 @@
       "email": "support@cronback.me"
     },
     "termsOfService": "https://cronback.me/terms",
-    "description": "API needs a description",
+    "description": "> pre-alpha release\n\n[Cronback](https://cronback.me) is a powerful, feature-rich API service designed for developers who need a reliable and flexible solution to schedule one-time, recurring cron, and on-demand webhooks. The service aims to streamline the process of integrating and automating webhook events into your applications or services, enabling seamless communication between various systems.\n\nKey Features:\n\n- One-Time Webhooks: Schedule a single webhook to be triggered at a specific time in the future, perfect for one-off events or reminders.\n\n- Recurring Cron Webhooks: Set up cron expressions to define custom recurring schedules for webhooks, allowing you to automate tasks such as daily reports, weekly updates, or monthly data synchronization.\n\n- On-Demand Webhooks: Trigger webhooks manually or programmatically at any time with the Cronback API, giving you full control over when your webhook events are executed.\n\n- Secure & Scalable Infrastructure: Built on a secure, high-performance infrastructure, Cronback is designed to handle large-scale webhook scheduling and execution, ensuring your webhooks are delivered promptly and consistently.\n\n- Robust Timezone Support: Schedule webhooks in any timezone to accommodate global operations, ensuring accurate timing of events for distributed teams and systems.\n\n\nWith [https://Cronback.me](https://cronback.me), you can say goodbye to the hassles of manual scheduling and tedious cron job management. Simply integrate Cronback into your applications and services, and let our API handle the rest.",
     "summary": "Scheduled, recurring, or on-demand triggers at scale"
   },
   "servers": [
@@ -104,7 +104,13 @@
               }
             }
           },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
           "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
             "$ref": "#/components/responses/Error"
           }
         },
@@ -173,6 +179,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized"
           }
         },
         "security": [
@@ -197,6 +206,12 @@
             }
           },
           "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
             "$ref": "#/components/responses/Error"
           }
         },
@@ -441,6 +456,12 @@
                 }
               }
             }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
           }
         },
         "tags": [
@@ -665,7 +686,16 @@
               "id": "qsuqhdb5olzux"
             }
           }
-        }
+        },
+        "examples": [
+          {
+            "body": "{\"key\": \"value\"}",
+            "content_type": "application/json; charset=utf-8",
+            "headers": {
+              "X-Custom-Header": "Custom-Value"
+            }
+          }
+        ]
       },
       "Cron": {
         "title": "Recurring",
@@ -959,9 +989,9 @@
             "description": "A unique identifier for the trigger",
             "readOnly": true
           },
-          "owner": {
+          "project": {
             "type": "string",
-            "example": "acc_0FGWCXWB869BXWSQ2XZGE0JBA3",
+            "example": "prj_0FGWCXWB869BXWSQ2XZGE0JBA3",
             "description": "The account owning this trigger",
             "readOnly": true
           },
@@ -979,7 +1009,8 @@
           },
           "reference": {
             "type": "string",
-            "description": "Unique user-supplied identified for this trigger. This can be used as an idempotency key when creating triggers. Must be unique if set."
+            "description": "Unique user-supplied identified for this trigger. This can be used as an idempotency key when creating triggers. Must be unique if set.",
+            "example": "my-own-trigger"
           },
           "description": {
             "type": "string",
@@ -1010,7 +1041,8 @@
           },
           "last_invoked_at": {
             "type": "string",
-            "description": "ISO8601 datetime when this trigger was last invoked"
+            "description": "ISO8601 datetime when this trigger was last invoked",
+            "example": "2023-03-25T17:43:23.654278298Z"
           }
         }
       },
@@ -1020,50 +1052,27 @@
           "id": "mcl1jeypmouci"
         },
         "type": "object",
-        "examples": [
-          {
-            "id": "string",
-            "trigger": "string",
-            "owner": "string",
-            "created_at": "string",
-            "payload": "string",
-            "status": [
-              {
-                "delivery_status": "succeeded",
-                "type": "webhook",
-                "url": "http://myendpoint.com/endpoint",
-                "http_method": "POST",
-                "timeout_s": 5.5,
-                "retry": {
-                  "max_num_attempts": 0,
-                  "delay_s": 1,
-                  "type": "simple"
-                }
-              }
-            ]
-          }
-        ],
+        "examples": [],
         "properties": {
           "id": {
             "type": "string",
+            "example": "inv_054001GXGVN9PHG2ZHNF28A7F81NYG",
             "readOnly": true
           },
           "trigger": {
             "type": "string",
+            "example": "trig_054001GXGVMVJDS09N9TQK37TB95B5",
             "readOnly": true
           },
-          "owner": {
+          "project": {
             "type": "string",
+            "example": "prj_0FGWCXWB869BXWSQ2XZGE0JBA3",
             "readOnly": true
           },
           "created_at": {
             "type": "string",
             "example": "2023-03-25T17:43:23.654278298Z",
             "format": "date-time",
-            "readOnly": true
-          },
-          "payload": {
-            "type": "string",
             "readOnly": true
           },
           "status": {
@@ -1122,11 +1131,11 @@
                 "format": "double",
                 "example": 0.4
               },
-              "response_payload": {
-                "$ref": "#/components/schemas/Payload"
-              },
               "error_message": {
-                "type": "string"
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             }
           },
@@ -1214,16 +1223,53 @@
             "schema": {
               "type": "object",
               "properties": {
-                "error_message": {
+                "message": {
                   "type": "string",
-                  "description": "A human readable description of the error"
+                  "description": "A human readable description of the error",
+                  "readOnly": true
                 },
-                "error_type": {
-                  "type": "string",
-                  "description": "An enum value of the category of error"
+                "params": {
+                  "type": "object",
+                  "description": "This describes the segments of the JSON inputs that has validation errors. The key is the full path `emit[0].timeout_s` and the value is an array of the different validation failures.\n",
+                  "properties": {
+                    "key": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              "required": [
+                "message"
+              ]
+            },
+            "examples": {
+              "Validation Error (422)": {
+                "value": {
+                  "message": "Request body has failed validation",
+                  "params": {
+                    "emit[0].timeout_s": [
+                      "Timeout must be between 1.0 and 30.0 seconds"
+                    ]
+                  }
+                }
+              },
+              "Trigger Not Found": {
+                "value": {
+                  "message": "Resource requested was not found: trig_054001GXBF2A0BMDXEVB6GF4FF4BQN"
                 }
               }
             }
+          }
+        },
+        "headers": {
+          "cronback-request-id": {
+            "schema": {
+              "type": "string"
+            },
+            "description": "A request Id that can be used to debug errors through support channels."
           }
         }
       }

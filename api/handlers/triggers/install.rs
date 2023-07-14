@@ -1,11 +1,10 @@
 use std::sync::Arc;
 
 use axum::extract::State;
-use axum::http::header::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
-use lib::types::{ProjectId, Schedule, Trigger};
+use lib::types::{ProjectId, RequestId, Schedule, Trigger};
 use proto::scheduler_proto::InstallTriggerRequest;
 
 use crate::api_model::InstallTrigger;
@@ -18,15 +17,12 @@ use crate::AppState;
 pub(crate) async fn install(
     state: State<Arc<AppState>>,
     Extension(project): Extension<ProjectId>,
+    Extension(request_id): Extension<RequestId>,
     ValidatedJson(mut request): ValidatedJson<InstallTrigger>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let mut response_headers = HeaderMap::new();
-    response_headers
-        .insert("cronback-trace-id", "SOMETHING SOMETHING".parse().unwrap());
-
     // Decide the scheduler cell
     // Pick cell.
-    let mut scheduler = state.get_scheduler(&project).await?;
+    let mut scheduler = state.get_scheduler(&request_id, &project).await?;
     // patch install trigger until we have a better way to do this.
     if let Some(Schedule::Recurring(cron)) = request.schedule.as_mut() {
         if cron.limit > 0 {
@@ -48,5 +44,5 @@ pub(crate) async fn install(
         .unwrap();
     let trigger: Trigger = trigger.into();
 
-    Ok((StatusCode::CREATED, response_headers, Json(trigger)))
+    Ok((StatusCode::CREATED, Json(trigger)))
 }

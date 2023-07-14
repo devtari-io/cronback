@@ -139,7 +139,7 @@ pub struct RunAt {
         length(
             min = 1,
             max = 5000,
-            message = "Reached maximum number of run_at events in the same \
+            message = "Reached maximum number of timepoint events in the same \
                        trigger"
         ),
         custom = "validate_run_at"
@@ -190,7 +190,7 @@ pub enum Emit {
 #[serde(deny_unknown_fields)]
 pub struct Event {
     #[serde(rename = "type")]
-    kind: MustBe!("event"),
+    pub _kind: MustBe!("event"),
     event: String,
 }
 

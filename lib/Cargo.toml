@@ -15,20 +15,23 @@ path = "lib.rs"
 proto = { path = "../proto" }
 
 # Dependencies from workspace
-iso8601-duration = { workspace = true }
 anyhow = { workspace = true }
 async-trait = { workspace = true }
 chrono = { workspace = true }
 chrono-tz = { workspace = true }
 cron = { workspace = true }
-tonic = { workspace = true }
+derive_more = { workspace = true }
+iso8601-duration = { workspace = true }
 sea-query = { workspace = true }
 sea-query-binder = { workspace = true }
 sqlx = { workspace = true }
+tonic = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+ulid = { workspace = true }
 
 # Unique Dependencies
 config = { version = "0.13", features = ["toml"] }
-derive_more = "0.99.17"
 futures = "0.3.26"
 hyper = "0.14.24"
 metrics = "0.20"
@@ -39,9 +42,7 @@ serde_with = { version = "2.2.0", features = ["chrono_0_4", "json"] }
 thiserror = "1.0.39"
 tokio = { version = "1", features = ["full"] }
 tonic-reflection = "0.9.0"
-tower = { version = "0.4.13", features = ["full"] }
 tracing = { version = "0.1", features = ["log"] }
-ulid = { version = "1.0" }
 url = { version = "2.3.1", features = ["serde"] }
 validator = { version = "0.16.0", features = ["derive"] }
 valuable = { version = "0.1.0", features = ["derive"] }
