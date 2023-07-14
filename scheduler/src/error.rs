@@ -17,6 +17,9 @@ impl From<TriggerError> for Status {
             | e @ TriggerError::AlreadyExists(_) => {
                 Status::already_exists(e.to_string())
             }
+            | TriggerError::PreconditionFailed(e) => {
+                Status::failed_precondition(e.to_string())
+            }
             | e => Status::invalid_argument(e.to_string()),
         }
     }

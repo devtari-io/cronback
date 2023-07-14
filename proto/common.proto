@@ -12,6 +12,37 @@ message PaginationOut {
   bool has_more = 2;
 }
 
+message Etag {
+  string value = 1;
+}
+
+message RequestPrecondition {
+  enum PreconditionType {
+    PreconditionType_UNKNOWN = 0;
+    // Only perform operation if the resource exists. Only makes sense in PUT
+    // operations.
+    MUST_EXIST = 2;
+    // Only perform operation if the resource does **not** exist. Only makes sense
+    // in PUT operations.
+    MUST_NOT_EXIST = 3;
+    // Only perform operation if existing resource matches the provided etag.
+    MUST_MATCH = 4;
+    // Only perform operation if existing resource does **not** match the
+    // provided etag.
+    MUST_NOT_MATCH = 5;
+  }
+  PreconditionType precondition_type = 1;
+  // Only set on IF_MATCH and IF_NOT_MATCH.
+  Etag etag = 2;
+}
+
+enum UpsertEffect {
+  UpsertEffect_UNKNOWN = 0;
+  CREATED = 1;
+  MODIFIED = 2; // aka. OK
+  NOT_MODIFIED = 3; // No change
+}
+
 message DateTime {
   string rfc3339 = 1;
 }

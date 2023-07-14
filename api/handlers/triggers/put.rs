@@ -18,24 +18,20 @@ pub(crate) async fn put(
     Path(name): Path<String>,
     Extension(project): Extension<ValidShardedId<ProjectId>>,
     Extension(request_id): Extension<RequestId>,
-    ValidatedJson(mut request): ValidatedJson<UpsertTriggerRequest>,
+    ValidatedJson(request): ValidatedJson<UpsertTriggerRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
-    // Intention here is to update an existing, or create a new one.
-    let fail_if_exists = false;
-    request.trigger.name = Some(name.clone());
+    // An important detail to note. The name in the URL is the _original_ name,
+    // if the name in the request body is different, we will update the stored
+    // name to the new one unless it already exists.
     // Validate that the internal name is the same as in url
-    if request.trigger.name.is_some()
-        && &name != request.trigger.name.as_ref().unwrap()
-    {
-        return Err(ApiError::unprocessable_content_naked(
-            "Trigger name in body doesn't match the one in url",
-        ));
-    }
     crate::handlers::triggers::install::install_or_update(
         state,
         request_id,
-        fail_if_exists,
+        // Intention here is to update an existing, or create a new one.
+        /* request_precondition = */
+        None,
         project,
+        Some(name),
         request,
     )
     .await

@@ -6,6 +6,7 @@ use lib::grpc_client_provider::GrpcClientFactory;
 use lib::service::ServiceContext;
 use lib::shutdown::Shutdown;
 use lib::types::*;
+use proto::common::UpsertEffect;
 use proto::scheduler_proto::{GetTriggerRequest, UpsertTriggerRequest};
 use proto::trigger_proto::{self, Schedule, TriggerStatus};
 use proto::webhook_proto;
@@ -28,8 +29,10 @@ async fn install_trigger_valid_test() {
     info!("Initialising test...");
     let (_serve_future, client_provider) =
         test_helpers::test_server_and_client(context).await;
+
     let install_trigger = UpsertTriggerRequest {
-        fail_if_exists: false,
+        precondition: None,
+        trigger_name: None,
         trigger: Some(trigger_proto::Trigger {
             payload: Some(proto::trigger_proto::Payload {
                 body: "Hello World".into(),
@@ -69,7 +72,7 @@ async fn install_trigger_valid_test() {
         .unwrap()
         .into_inner();
     assert!(installed_trigger.trigger.is_some());
-    assert!(!installed_trigger.already_existed);
+    assert_eq!(UpsertEffect::Created, installed_trigger.effect());
     assert_eq!(
         "sample-trigger",
         installed_trigger.trigger.get_or_default().name
@@ -106,7 +109,9 @@ async fn install_trigger_uniqueness_test() {
     let (_serve_future, client_provider) =
         test_helpers::test_server_and_client(context).await;
     let install_trigger = UpsertTriggerRequest {
-        fail_if_exists: false,
+        // No precondition
+        precondition: None,
+        trigger_name: None,
         trigger: Some(trigger_proto::Trigger {
             payload: Some(proto::trigger_proto::Payload {
                 body: "Hello World".into(),
@@ -148,7 +153,7 @@ async fn install_trigger_uniqueness_test() {
         .into_inner();
     assert!(installed_trigger.trigger.is_some());
     // new trigger.
-    assert!(!installed_trigger.already_existed);
+    assert_eq!(UpsertEffect::Created, installed_trigger.effect());
     // updated at is NOT set.
     assert!(installed_trigger
         .trigger
@@ -159,7 +164,8 @@ async fn install_trigger_uniqueness_test() {
 
     let install_trigger = UpsertTriggerRequest {
         // We rely on the name to match the trigger.
-        fail_if_exists: false,
+        precondition: None,
+        trigger_name: Some("sample-trigger-2".to_string()),
         trigger: Some(trigger_proto::Trigger {
             payload: Some(proto::trigger_proto::Payload {
                 body: "Hello World".into(),
@@ -203,7 +209,7 @@ async fn install_trigger_uniqueness_test() {
         .into_inner();
     assert!(installed_trigger.trigger.is_some());
     // updated trigger.
-    assert!(installed_trigger.already_existed);
+    assert_eq!(UpsertEffect::Modified, installed_trigger.effect());
     let updated_trigger = installed_trigger.trigger.get_or_default();
     assert_eq!(
         Some("new description is here".to_owned()),
@@ -214,7 +220,8 @@ async fn install_trigger_uniqueness_test() {
     // let's switch this to on-demand
     let install_trigger = UpsertTriggerRequest {
         // We rely on the name to match the trigger.
-        fail_if_exists: false,
+        precondition: None,
+        trigger_name: Some("sample-trigger-2".to_string()),
         trigger: Some(trigger_proto::Trigger {
             payload: Some(proto::trigger_proto::Payload {
                 body: "Hello World".into(),
@@ -249,7 +256,7 @@ async fn install_trigger_uniqueness_test() {
         .into_inner();
     assert!(installed_trigger.trigger.is_some());
     // updated trigger.
-    assert!(installed_trigger.already_existed);
+    assert_eq!(UpsertEffect::Modified, installed_trigger.effect());
     let updated_trigger = installed_trigger.trigger.get_or_default();
     assert_eq!(None, updated_trigger.description);
     assert_eq!("sample-trigger-2", updated_trigger.name);

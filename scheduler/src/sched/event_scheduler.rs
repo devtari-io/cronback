@@ -12,7 +12,8 @@ use lib::model::ValidShardedId;
 use lib::prelude::*;
 use lib::service::ServiceContext;
 use lib::types::{ProjectId, Run, Status, Trigger, TriggerId};
-use proto::common::PaginationIn;
+use proto::common::request_precondition::PreconditionType;
+use proto::common::{PaginationIn, UpsertEffect};
 use proto::scheduler_proto::{UpsertTriggerRequest, UpsertTriggerResponse};
 use tracing::{debug, error, info, trace, warn};
 
@@ -312,12 +313,6 @@ impl EventScheduler {
         // We assume that trigger will always be set.
         let project_id = &context.project_id;
         let mut trigger = upsert_request.trigger.clone().unwrap();
-        // If we have an Id already, we must allow updates.
-        // if install_trigger.fail_if_exists {
-        //     return Err(TriggerError::UpdateNotAllowed(
-        //         install_trigger.id.unwrap().into(),
-        //     ));
-        // }
 
         // Reset remaining if it was set.
         // TODO: When updating, allow the user to express their intent to
@@ -342,6 +337,7 @@ impl EventScheduler {
             };
         }
 
+        let request_precondition = upsert_request.precondition.get_or_default();
         // ** Are we installing new or updating an existing trigger? **
         //
         // find the existing trigger by name
@@ -353,7 +349,10 @@ impl EventScheduler {
             .await?;
         // We already have an existing trigger with the same name and the
         // user asked us to fail if exists.
-        if upsert_request.fail_if_exists && existing_trigger.is_some() {
+        if request_precondition.precondition_type()
+            == PreconditionType::MustNotExist
+            && existing_trigger.is_some()
+        {
             return Err(TriggerError::AlreadyExists(trigger_name.to_string()));
         } else if let Some(existing_trigger) = existing_trigger {
             // Update
@@ -398,7 +397,9 @@ impl EventScheduler {
                 // we always attempt to insert and fallback to
                 // update, we won't produce duplicate
                 // errors unless the user asks to fail if exists explicitly.
-                if !upsert_request.fail_if_exists {
+                if request_precondition.precondition_type()
+                    != PreconditionType::MustNotExist
+                {
                     // try again after 250ms.
                     info!(
                         "Hit a race while trying to install the trigger \
@@ -430,7 +431,7 @@ impl EventScheduler {
 
         let reply = UpsertTriggerResponse {
             trigger: Some(trigger.into()),
-            already_existed: false,
+            effect: UpsertEffect::Created.into(),
         };
         Ok(reply)
     }

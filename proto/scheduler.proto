@@ -32,15 +32,17 @@ enum RunMode {
 }
 
 message UpsertTriggerRequest {
-  // Id is only set if we are updating an existing trigger and we know the id up front
-  bool fail_if_exists = 1;
+  common.RequestPrecondition precondition = 1;
   trigger_proto.Trigger trigger = 2;
+  // This is the trigger_name passed through the URL path. This indicates that 
+  // the user is using the PUT flow.
+  optional string trigger_name = 3;
 }
 
 // == INSTALL OR UPDATE EXISTING TRIGGER ==
 message UpsertTriggerResponse {
   trigger_proto.Trigger trigger = 1;
-  bool already_existed = 2;
+  common.UpsertEffect effect = 2;
 }
 
 // PAUSE TRIGGER

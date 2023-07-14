@@ -4,9 +4,11 @@ use axum::Json;
 use chrono::{DateTime, Utc};
 use dto::{FromProto, IntoProto};
 use lib::types::TriggerId;
+use proto::common::{RequestPrecondition, UpsertEffect};
 use proto::scheduler_proto;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none};
+use tracing::error;
 use validator::Validate;
 
 use super::{Action, Payload, Schedule};
@@ -43,10 +45,12 @@ pub(crate) struct UpsertTriggerRequest {
 impl UpsertTriggerRequest {
     pub fn into_proto(
         self,
-        fail_if_exists: bool,
+        trigger_name: Option<String>,
+        precondition: Option<RequestPrecondition>,
     ) -> scheduler_proto::UpsertTriggerRequest {
         scheduler_proto::UpsertTriggerRequest {
-            fail_if_exists,
+            precondition,
+            trigger_name,
             trigger: Some(self.trigger.into()),
         }
     }
@@ -91,21 +95,29 @@ pub(crate) struct Trigger {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Validate)]
+#[derive(Debug, Clone, Serialize, PartialEq, Validate)]
 #[serde_as]
 pub(crate) struct UpsertTriggerResponse {
     #[serde(flatten)]
     pub trigger: Trigger,
-    #[serde(skip_serializing)]
-    pub already_existed: bool,
+    #[serde(skip)]
+    pub effect: UpsertEffect,
 }
 
 impl IntoResponse for UpsertTriggerResponse {
     fn into_response(self) -> axum::response::Response {
-        let status = if self.already_existed {
-            StatusCode::OK
-        } else {
-            StatusCode::CREATED
+        let status = match self.effect {
+            | UpsertEffect::Created => StatusCode::CREATED,
+            | UpsertEffect::Modified => StatusCode::OK,
+            | UpsertEffect::NotModified => StatusCode::NOT_MODIFIED,
+            | _ => {
+                error!(
+                    "We don't know how to handle upsert effect {:?}, \
+                     returning 500",
+                    self.effect
+                );
+                StatusCode::INTERNAL_SERVER_ERROR
+            }
         };
 
         (status, Json(self)).into_response()

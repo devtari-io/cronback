@@ -37,6 +37,8 @@ pub(crate) enum TriggerError {
     Run(#[from] DispatchError),
     #[error("Trigger '{0}' already exists")]
     AlreadyExists(/* name */ String),
+    #[error("{0}")]
+    PreconditionFailed(String),
 }
 
 ///
