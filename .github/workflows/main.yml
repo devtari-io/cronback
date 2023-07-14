@@ -61,5 +61,9 @@ jobs:
         run: docker build -f docker/Dockerfile.docs doc --tag cronback-docs:latest
       - name: Build the openapi image
         run: docker build -f docker/Dockerfile.openapi open-api --tag cronback-openapi:latest
+      - name: Fetch secrets
+        env:
+          BACKEND_ENV_FILE: ${{ secrets.BACKEND_ENV_FILE }}
+        run: echo "$BACKEND_ENV_FILE" > .env
       - name: Start all the containers
         run: docker compose -p cronback -f docker/docker-compose.prod.yml up -d
