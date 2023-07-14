@@ -200,28 +200,40 @@ impl EventScheduler {
     #[tracing::instrument(skip_all, fields(trigger_id = %id))]
     pub async fn get_trigger(
         &self,
+        owner_id: OwnerId,
         id: TriggerId,
     ) -> Result<Trigger, TriggerError> {
         let triggers = self.triggers.clone();
-        tokio::task::spawn_blocking(move || {
+        let inner_id = id.clone();
+        let trigger_res = tokio::task::spawn_blocking(move || {
             let r = triggers.read().unwrap();
-            r.get(&id)
-                .ok_or_else(|| TriggerError::NotFound(id))
+            r.get(&inner_id)
+                .ok_or_else(|| TriggerError::NotFound(inner_id))
                 .cloned()
         })
-        .await?
-        // TODO: Get from the database if this is not an active trigger.
+        .await?;
+        // Get from the database if this is not an active trigger.
+        match trigger_res {
+            | Ok(trigger) if trigger.owner_id == owner_id => Ok(trigger),
+            // The trigger was found but owned by a different user!
+            | Ok(_) => Err(TriggerError::NotFound(id.clone())),
+            | Err(TriggerError::NotFound(_)) => {
+                self.store
+                    .get_trigger(&id)
+                    .await?
+                    .ok_or_else(|| TriggerError::NotFound(id))
+            }
+            | Err(e) => Err(e),
+        }
     }
 
     #[tracing::instrument(skip_all, fields(trigger_id = %id))]
     pub async fn invoke_trigger(
         &self,
+        owner_id: OwnerId,
         id: TriggerId,
     ) -> Result<Invocation, TriggerError> {
-        let trigger = self.store.get_trigger(&id).await?;
-        let Some(trigger) = trigger else {
-            return Err(TriggerError::NotFound(id));
-        };
+        let trigger = self.get_trigger(owner_id, id).await?;
         let invocation = dispatch(
             trigger,
             self.dispatcher_client_provider.clone(),
@@ -234,9 +246,18 @@ impl EventScheduler {
     #[tracing::instrument(skip_all, fields(trigger_id = %id))]
     pub async fn pause_trigger(
         &self,
+        owner_id: OwnerId,
         id: TriggerId,
     ) -> Result<Trigger, TriggerError> {
         let triggers = self.triggers.clone();
+        let status = self.get_trigger_status(&owner_id, &id).await?;
+        // if value, check that it's alive.
+        if !status.alive() {
+            return Err(TriggerError::InvalidStatus(
+                Status::Paused.as_operation(),
+                status,
+            ));
+        }
         tokio::task::spawn_blocking(move || {
             let mut w = triggers.write().unwrap();
             w.pause(&id).map(|_| w.get(&id).unwrap().clone())
@@ -247,9 +268,18 @@ impl EventScheduler {
     #[tracing::instrument(skip_all, fields(trigger_id = %id))]
     pub async fn resume_trigger(
         &self,
+        owner_id: OwnerId,
         id: TriggerId,
     ) -> Result<Trigger, TriggerError> {
         let triggers = self.triggers.clone();
+        let status = self.get_trigger_status(&owner_id, &id).await?;
+        // if value, check that it's alive.
+        if !status.alive() {
+            return Err(TriggerError::InvalidStatus(
+                Status::Active.as_operation(),
+                status,
+            ));
+        }
         tokio::task::spawn_blocking(move || {
             let mut w = triggers.write().unwrap();
             w.resume(&id).map(|_| w.get(&id).unwrap().clone())
@@ -260,12 +290,27 @@ impl EventScheduler {
     #[tracing::instrument(skip_all, fields(trigger_id = %id))]
     pub async fn cancel_trigger(
         &self,
+        owner_id: OwnerId,
         id: TriggerId,
     ) -> Result<Trigger, TriggerError> {
         let triggers = self.triggers.clone();
+        let status = self.get_trigger_status(&owner_id, &id).await?;
+        // if value, check that it's alive.
+        if !status.alive() {
+            return Err(TriggerError::InvalidStatus(
+                Status::Cancelled.as_operation(),
+                status,
+            ));
+        }
+
+        let inner_id = id.clone();
         tokio::task::spawn_blocking(move || {
             let mut w = triggers.write().unwrap();
-            w.cancel(&id).map(|_| w.get(&id).unwrap().clone())
+            // We blindly cancel here since we have checked earlier that this
+            // trigger is owned by the right owner. Otherwise, we won't reach
+            // this line.
+            w.cancel(&inner_id)
+                .map(|_| w.get(&inner_id).unwrap().clone())
         })
         .await?
     }
@@ -305,5 +350,15 @@ impl EventScheduler {
             )?;
         }
         Ok(())
+    }
+
+    async fn get_trigger_status(
+        &self,
+        owner_id: &OwnerId,
+        trigger_id: &TriggerId,
+    ) -> Result<Status, TriggerError> {
+        let status = self.store.get_status(owner_id, trigger_id).await?;
+        // if None -> Trigger doesn't exist
+        status.ok_or_else(|| TriggerError::NotFound(trigger_id.clone()))
     }
 }

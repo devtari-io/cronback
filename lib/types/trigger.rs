@@ -49,8 +49,24 @@ pub enum Status {
     #[default]
     Active,
     Expired,
-    Canceled,
+    Cancelled,
     Paused,
+}
+
+impl Status {
+    pub fn alive(&self) -> bool {
+        [Self::Active, Self::Paused].contains(self)
+    }
+
+    pub fn as_operation(&self) -> String {
+        match self {
+            | Status::Active => "resume",
+            | Status::Expired => "expire",
+            | Status::Cancelled => "cancel",
+            | Status::Paused => "pause",
+        }
+        .to_owned()
+    }
 }
 
 impl Display for Status {

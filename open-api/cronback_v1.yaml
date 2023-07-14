@@ -285,13 +285,13 @@ components:
             - active
             - paused
             - expired
-            - canceled
+            - cancelled
           description: |-
             Status of the trigger. 
             - `active` triggers can be invoked either manually of according to their `trigger.schedule`
             - `paused` triggers will be invoked but will not emit anything.
             - `expired` triggers are scheduled triggers that exhausted their invocations or have no future timepoints.
-            - `canceled` triggers cannot be invoked. Those have been cancelled manually via the `/triggers/{trigger_id}/cancel` API.
+            - `cancelled` triggers cannot be invoked. Those have been cancelled manually via the `/triggers/{trigger_id}/cancel` API.
           example: active
           readOnly: true
       required:

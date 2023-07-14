@@ -26,8 +26,8 @@ pub(crate) enum TriggerError {
     MalformedTrigger(TriggerId),
     #[error("Trigger with Id '{0}' is unknown to this scheduler!")]
     NotFound(TriggerId),
-    #[error("Cannot perform operation on a trigger with status '{0}'")]
-    InvalidStatus(Status),
+    #[error("Cannot {0} on a trigger with status {1}")]
+    InvalidStatus(String, Status),
     //join error
     #[error("Internal async processing failure!")]
     JoinError(#[from] tokio::task::JoinError),
@@ -90,7 +90,7 @@ impl ActiveTriggerMap {
         self.state
             .get(trigger_id)
             .map(|t| {
-                [Status::Canceled, Status::Expired].contains(&t.get().status)
+                [Status::Cancelled, Status::Expired].contains(&t.get().status)
             })
             .unwrap_or(false)
     }
@@ -197,7 +197,7 @@ impl ActiveTriggerMap {
         self.update_status(
             trigger_id,
             Status::Paused,
-            &[Status::Canceled, Status::Expired],
+            &[Status::Cancelled, Status::Expired],
         )
     }
 
@@ -208,7 +208,7 @@ impl ActiveTriggerMap {
         self.update_status(
             trigger_id,
             Status::Active,
-            &[Status::Canceled, Status::Expired],
+            &[Status::Cancelled, Status::Expired],
         )
     }
 
@@ -216,7 +216,7 @@ impl ActiveTriggerMap {
         &mut self,
         trigger_id: &TriggerId,
     ) -> Result<(), TriggerError> {
-        self.update_status(trigger_id, Status::Canceled, &[])
+        self.update_status(trigger_id, Status::Cancelled, &[])
     }
 
     fn update_status(
@@ -231,6 +231,7 @@ impl ActiveTriggerMap {
 
         if reject_statuses.contains(&trigger.get().status) {
             return Err(TriggerError::InvalidStatus(
+                new_status.as_operation(),
                 trigger.get().status.clone(),
             ));
         }

@@ -9,7 +9,7 @@ enum TriggerStatus {
   TriggerStatus_ACTIVE = 1;
   TriggerStatus_EXPIRED = 2;
   TriggerStatus_PAUSED = 3;
-  TriggerStatus_CANCELED = 4;
+  TriggerStatus_CANCELLED = 4;
 }
 
 message Cron {

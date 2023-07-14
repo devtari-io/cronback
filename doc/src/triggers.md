@@ -49,7 +49,7 @@ Endpoint: GET `/v1/triggers/:id`
       "1997-07-16T19:20:30.45Z",
     ],
   },
-  "status": "active" | "expired" | "paused" | "canceled",
+  "status": "active" | "expired" | "paused" | "cancelled",
 }
 
 ```

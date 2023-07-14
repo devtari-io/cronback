@@ -5,18 +5,19 @@ use axum::http::header::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
-use lib::types::{Invocation, OwnerId, TriggerId, ValidId};
-use proto::scheduler_proto::InvokeTriggerRequest;
+use lib::types::{OwnerId, Trigger, TriggerId, ValidId};
+use proto::scheduler_proto::ResumeTriggerRequest;
+use tracing::info;
 
 use crate::errors::ApiError;
 use crate::AppState;
 
 #[tracing::instrument(skip(state))]
 #[debug_handler]
-pub(crate) async fn invoke(
+pub(crate) async fn resume(
     state: State<Arc<AppState>>,
-    Extension(owner_id): Extension<OwnerId>,
     Path(id): Path<TriggerId>,
+    Extension(owner_id): Extension<OwnerId>,
 ) -> Result<impl IntoResponse, ApiError> {
     let mut response_headers = HeaderMap::new();
     response_headers
@@ -30,21 +31,20 @@ pub(crate) async fn invoke(
         )
             .into_response());
     }
+    info!("Resuming trigger {} for owner {}", id, owner_id);
 
     let mut scheduler = state.scheduler_for_trigger(&id).await?;
-    // Send the request to the scheduler
-    let invoke_request = InvokeTriggerRequest {
-        owner_id: owner_id.0.clone(),
-        id: id.into(),
-    };
-    let invocation = scheduler
-        .invoke_trigger(invoke_request)
+    let trigger = scheduler
+        .resume_trigger(ResumeTriggerRequest {
+            owner_id: owner_id.0.clone(),
+            id: id.0,
+        })
         .await?
         .into_inner()
-        .invocation
+        .trigger
         .unwrap();
-    let invocation: Invocation = invocation.into();
 
-    Ok((StatusCode::CREATED, response_headers, Json(invocation))
-        .into_response())
+    let trigger: Trigger = trigger.into();
+
+    Ok((StatusCode::OK, response_headers, Json(trigger)).into_response())
 }

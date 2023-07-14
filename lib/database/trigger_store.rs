@@ -5,7 +5,7 @@ use tracing::debug;
 
 use super::helpers::paginated_query_builder;
 use crate::database::SqliteDatabase;
-use crate::types::{OwnerId, Trigger, TriggerId, ValidId};
+use crate::types::{OwnerId, Status, Trigger, TriggerId, ValidId};
 
 #[derive(Error, Debug)]
 pub enum TriggerStoreError {
@@ -31,6 +31,12 @@ pub trait TriggerStore {
         &self,
         id: &TriggerId,
     ) -> Result<Option<Trigger>, TriggerStoreError>;
+
+    async fn get_status(
+        &self,
+        owner_id: &OwnerId,
+        id: &TriggerId,
+    ) -> Result<Option<Status>, TriggerStoreError>;
 
     async fn get_triggers_by_owner(
         &self,
@@ -143,6 +149,30 @@ impl TriggerStore for SqlTriggerStore {
             | Ok(r) => {
                 let j = r.get::<String, _>("value");
                 Ok(Some(serde_json::from_str::<Trigger>(&j)?))
+            }
+            | Err(sqlx::Error::RowNotFound) => Ok(None),
+            | Err(e) => Err(e.into()),
+        }
+    }
+
+    async fn get_status(
+        &self,
+        owner_id: &OwnerId,
+        id: &TriggerId,
+    ) -> Result<Option<Status>, TriggerStoreError> {
+        let result = sqlx::query(
+            "SELECT id, value->'$.status' AS status FROM triggers WHERE id = \
+             ? AND JSON_EXTRACT(value, '$.owner_id') = ?",
+        )
+        .bind(id.to_string())
+        .bind(owner_id.to_string())
+        .fetch_one(&self.db.pool)
+        .await;
+
+        match result {
+            | Ok(r) => {
+                let j = r.get::<String, _>("status");
+                Ok(Some(serde_json::from_str::<Status>(&j)?))
             }
             | Err(sqlx::Error::RowNotFound) => Ok(None),
             | Err(e) => Err(e.into()),

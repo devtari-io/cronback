@@ -69,8 +69,10 @@ impl Scheduler for SchedulerAPIHandler {
         //
         let (_metadata, _ext, request) = request.into_parts();
         info!(request.id, "Invoking trigger");
-        let invocation =
-            self.scheduler.invoke_trigger(request.id.into()).await?;
+        let invocation = self
+            .scheduler
+            .invoke_trigger(request.owner_id.into(), request.id.into())
+            .await?;
         Ok(Response::new(InvokeTriggerResponse {
             invocation: Some(invocation.into()),
         }))
@@ -85,7 +87,10 @@ impl Scheduler for SchedulerAPIHandler {
         if request.id.is_empty() {
             return Err(Status::invalid_argument("Id must be set"));
         }
-        let trigger = self.scheduler.get_trigger(request.id.into()).await?;
+        let trigger = self
+            .scheduler
+            .get_trigger(request.owner_id.into(), request.id.into())
+            .await?;
         let reply = GetTriggerResponse {
             trigger: Some(trigger.into()),
         };
@@ -98,7 +103,10 @@ impl Scheduler for SchedulerAPIHandler {
     ) -> Result<Response<PauseTriggerResponse>, Status> {
         let (_metadata, _ext, request) = request.into_parts();
         info!(request.id, "Pausing trigger");
-        let trigger = self.scheduler.pause_trigger(request.id.into()).await?;
+        let trigger = self
+            .scheduler
+            .pause_trigger(request.owner_id.into(), request.id.into())
+            .await?;
         Ok(Response::new(PauseTriggerResponse {
             trigger: Some(trigger.into()),
         }))
@@ -110,7 +118,10 @@ impl Scheduler for SchedulerAPIHandler {
     ) -> Result<Response<ResumeTriggerResponse>, Status> {
         let (_metadata, _ext, request) = request.into_parts();
         info!(request.id, "Resuming trigger");
-        let trigger = self.scheduler.resume_trigger(request.id.into()).await?;
+        let trigger = self
+            .scheduler
+            .resume_trigger(request.owner_id.into(), request.id.into())
+            .await?;
         Ok(Response::new(ResumeTriggerResponse {
             trigger: Some(trigger.into()),
         }))
@@ -122,7 +133,10 @@ impl Scheduler for SchedulerAPIHandler {
     ) -> Result<Response<CancelTriggerResponse>, Status> {
         let (_metadata, _ext, request) = request.into_parts();
         info!(request.id, "Canceling trigger");
-        let trigger = self.scheduler.cancel_trigger(request.id.into()).await?;
+        let trigger = self
+            .scheduler
+            .cancel_trigger(request.owner_id.into(), request.id.into())
+            .await?;
         Ok(Response::new(CancelTriggerResponse {
             trigger: Some(trigger.into()),
         }))

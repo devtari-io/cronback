@@ -37,7 +37,10 @@ pub(crate) async fn get(
 
     let mut scheduler = state.scheduler_for_trigger(&id).await?;
     let trigger = scheduler
-        .get_trigger(GetTriggerRequest { id: id.0 })
+        .get_trigger(GetTriggerRequest {
+            owner_id: owner_id.0.clone(),
+            id: id.0,
+        })
         .await?
         .into_inner()
         .trigger

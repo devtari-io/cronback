@@ -124,7 +124,7 @@ impl From<i32> for Status {
             }
             | trigger_proto::TriggerStatus::Active => Self::Active,
             | trigger_proto::TriggerStatus::Paused => Self::Paused,
-            | trigger_proto::TriggerStatus::Canceled => Self::Canceled,
+            | trigger_proto::TriggerStatus::Cancelled => Self::Cancelled,
             | trigger_proto::TriggerStatus::Expired => Self::Expired,
         }
     }

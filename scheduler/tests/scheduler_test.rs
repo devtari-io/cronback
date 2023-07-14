@@ -61,6 +61,7 @@ async fn install_trigger_valid_test() {
         // No errors. Let's try and get it from server.
         let response = client
             .get_trigger(Request::new(GetTriggerRequest {
+                owner_id: "asoli".to_owned(),
                 id: created_trigger.id.clone().into(),
             }))
             .await
