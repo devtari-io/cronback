@@ -49,6 +49,7 @@ impl From<TriggerManifest> for trigger_proto::TriggerManifest {
             name: value.name,
             description: value.description,
             created_at: value.created_at.to_rfc3339(),
+            emit: value.emit.into_iter().map(|e| e.into()).collect(),
             reference: value.reference,
             schedule: value.schedule.map(|s| s.into()),
             status: value.status.into(),

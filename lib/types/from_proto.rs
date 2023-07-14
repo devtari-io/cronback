@@ -58,6 +58,7 @@ impl From<trigger_proto::TriggerManifest> for TriggerManifest {
             created_at: DateTime::parse_from_rfc3339(&value.created_at)
                 .unwrap()
                 .with_timezone(&Utc),
+            emit: value.emit.into_iter().map(|e| e.into()).collect(),
             reference: value.reference,
             schedule: value.schedule.map(|s| s.into()),
             status: value.status.into(),
