@@ -4,11 +4,14 @@ services:
     restart: unless-stopped
     volumes:
       - cronback_data:/data
+      - /var/log/cronback:/tmp/cronback-logs
     env_file:
       - ../.env
     command:
       - '--log-format'
       - 'json'
+      - '--api-tracing-dir'
+      - '/tmp/cronback-logs'
   openapi:
     image: "cronback-openapi:latest"
     restart: unless-stopped
