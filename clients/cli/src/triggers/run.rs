@@ -11,9 +11,6 @@ use crate::{confirm_or_abort, emitln, RunCommand};
 pub struct RunArgs {
     /// Trigger name
     name: String,
-    /// Ignore the confirmation prompt and always answer "yes"
-    #[arg(long, short)]
-    yes: bool,
 
     /// (or --wait) Awaits the run to complete
     #[arg(long, short, alias = "wait")]
@@ -32,7 +29,7 @@ impl RunCommand for RunArgs {
         common_options: &CommonOptions,
     ) -> Result<()> {
         confirm_or_abort!(
-            self,
+            common_options,
             "Are you sure you want to run the trigger '{}' immediately?",
             self.name
         );

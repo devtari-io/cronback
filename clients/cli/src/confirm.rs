@@ -26,9 +26,9 @@ macro_rules! confirm {
 
 #[rustfmt::skip]
 macro_rules! confirm_or_abort {
-    ($self:ident, $($arg:tt)*) => {{
+    ($opts:ident, $($arg:tt)*) => {{
         let res = ::std::format!($($arg)*);
-        if !$crate::confirm::confirm_fn($self.yes, res) {
+        if !$crate::confirm::confirm_fn($opts.yes, res) {
             return Err(::anyhow::anyhow!("Aborted!"));
         }
     }}

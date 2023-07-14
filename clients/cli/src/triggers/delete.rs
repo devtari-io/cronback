@@ -9,9 +9,6 @@ use crate::{confirm_or_abort, emitln, RunCommand};
 pub struct Delete {
     /// Trigger name
     name: String,
-    /// Ignore the confirmation prompt and always answer "yes"
-    #[arg(long, short)]
-    yes: bool,
 }
 
 #[async_trait]
@@ -26,7 +23,7 @@ impl RunCommand for Delete {
         common_options: &CommonOptions,
     ) -> Result<()> {
         confirm_or_abort!(
-            self,
+            common_options,
             "Are you sure you want to permanently delete the trigger '{}'?",
             self.name
         );

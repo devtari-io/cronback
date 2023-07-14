@@ -47,7 +47,7 @@ pub struct CommonOptions {
         hide_env_values = true
     )]
     /// The API secret token. We attempt to read from `.env` if environment
-    /// variable is not set, then fallback to `$HOME/.cronback/config`
+    /// variable is not set
     secret_token: Option<String>,
 
     #[arg(
@@ -67,6 +67,9 @@ pub struct CommonOptions {
     #[arg(long, global = true)]
     /// Displays a table with meta information about the response
     show_meta: bool,
+    /// Ignore the confirmation prompt and always answer "yes"
+    #[arg(long, short, global = true)]
+    pub yes: bool,
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -120,7 +123,7 @@ pub enum TriggerCommand {
 
 #[derive(Parser, Debug, Clone)]
 pub enum RunsCommand {
-    /// View details about a given trigger
+    /// View details about a given trigger run
     View(runs::View),
 }
 
@@ -151,7 +154,6 @@ impl CommonOptions {
             return Ok(token);
         }
 
-        // Fallback to $HOME/.cronback/config
         bail!("No secret token was specified!")
     }
 

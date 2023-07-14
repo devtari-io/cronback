@@ -9,10 +9,6 @@ use crate::{confirm_or_abort, emitln, RunCommand};
 
 #[derive(Clone, Debug, Parser)]
 pub struct Create {
-    /// Ignore the confirmation prompt and always answer "yes"
-    #[arg(long, short)]
-    yes: bool,
-
     /// JSON file name with the trigger definition, or use - for stdin
     file: FileOrStdin<String>,
 }
@@ -49,7 +45,7 @@ impl RunCommand for Create {
         out.flush().await?;
 
         confirm_or_abort!(
-            self,
+            common_options,
             "Are you sure you want to create this trigger?",
         );
 

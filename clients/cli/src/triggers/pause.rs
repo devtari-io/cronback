@@ -10,9 +10,6 @@ use crate::{confirm_or_abort, emitln, RunCommand};
 pub struct Pause {
     /// Trigger name
     name: String,
-    /// Ignore the confirmation prompt and always answer "yes"
-    #[arg(long, short)]
-    yes: bool,
 }
 
 #[async_trait]
@@ -27,7 +24,7 @@ impl RunCommand for Pause {
         common_options: &CommonOptions,
     ) -> Result<()> {
         confirm_or_abort!(
-            self,
+            common_options,
             "Are you sure you want to pause the trigger '{}'?",
             self.name
         );
