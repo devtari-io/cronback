@@ -16,6 +16,7 @@ brew install protobuf
 
 # Tests
 
+Install the cargo-nextest test runner [link](https://nexte.st/book/installation.html)
 ```
 cargo nextest run --workspace
 ```
