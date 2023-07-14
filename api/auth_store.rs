@@ -4,7 +4,7 @@ use lib::database::models::prelude::ApiKeys;
 use lib::database::Database;
 use lib::model::{ModelId, ValidShardedId};
 use lib::types::ProjectId;
-use sea_orm::EntityTrait;
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use thiserror::Error;
 
 use crate::auth::{ApiKey, HashVersion};
@@ -33,8 +33,17 @@ pub trait AuthStore {
         key: &ApiKey,
     ) -> Result<ValidShardedId<ProjectId>, AuthStoreError>;
 
-    /// Returns true if the key got revoked, false if the key didn't exist
-    async fn revoke_key(&self, key: &ApiKey) -> Result<bool, AuthStoreError>;
+    /// Returns true if the key got deleted, false if the key didn't exist
+    async fn delete_key(
+        &self,
+        key_id: String,
+        project: &ValidShardedId<ProjectId>,
+    ) -> Result<bool, AuthStoreError>;
+
+    async fn list_keys(
+        &self,
+        project: &ValidShardedId<ProjectId>,
+    ) -> Result<Vec<api_keys::Model>, AuthStoreError>;
 }
 
 pub struct SqlAuthStore {
@@ -64,7 +73,7 @@ impl AuthStore for SqlAuthStore {
                 hashed.hash_version.to_string(),
             ),
             project_id: sea_orm::ActiveValue::Set(project_id.clone()),
-            name: sea_orm::ActiveValue::Set(Some(key_name.to_string())),
+            name: sea_orm::ActiveValue::Set(key_name.to_string()),
         };
 
         api_keys::Entity::insert(model).exec(&self.db.orm).await?;
@@ -106,11 +115,28 @@ impl AuthStore for SqlAuthStore {
             .expect("Invalid ProjectId persisted in database"))
     }
 
-    async fn revoke_key(&self, key: &ApiKey) -> Result<bool, AuthStoreError> {
-        let res = ApiKeys::delete_by_id(key.key_id())
+    async fn delete_key(
+        &self,
+        key_id: String,
+        project: &ValidShardedId<ProjectId>,
+    ) -> Result<bool, AuthStoreError> {
+        let res = ApiKeys::delete_many()
+            .filter(api_keys::Column::KeyId.eq(key_id))
+            .filter(api_keys::Column::ProjectId.eq(project.clone()))
             .exec(&self.db.orm)
             .await?;
         Ok(res.rows_affected > 0)
+    }
+
+    async fn list_keys(
+        &self,
+        project: &ValidShardedId<ProjectId>,
+    ) -> Result<Vec<api_keys::Model>, AuthStoreError> {
+        let results = ApiKeys::find()
+            .filter(api_keys::Column::ProjectId.eq(project.clone()))
+            .all(&self.db.orm)
+            .await?;
+        Ok(results)
     }
 }
 
@@ -163,18 +189,42 @@ mod tests {
             Err(AuthStoreError::AuthFailed(_))
         ));
 
-        // Test revoke key
-        assert!(store.revoke_key(&key1).await?);
+        // Test delete key
+        assert!(store.delete_key(key1.key_id().clone(), &owner1).await?);
         assert!(matches!(
             store.validate_key(&key1).await,
             Err(AuthStoreError::AuthFailed(_))
         ));
 
-        // After revocation, other keys should continue to work
+        // After deletion, other keys should continue to work
         assert_eq!(owner2, store.validate_key(&key2).await?);
 
-        // Re-revoking an already revoked key should return false.
-        assert!(!store.revoke_key(&key1).await?);
+        // Deleting an already deleted key should return false.
+        assert!(!store.delete_key(key1.key_id().clone(), &owner1).await?);
+
+        // Deleting a key with the wrong project returns false
+        assert!(!store.delete_key(key4.key_id().clone(), &owner1).await?);
+        assert_eq!(owner2, store.validate_key(&key4).await?);
+
+        // Test List keys
+        assert_eq!(
+            store
+                .list_keys(&owner1)
+                .await?
+                .into_iter()
+                .map(|k| k.name)
+                .collect::<Vec<_>>(),
+            vec!["key3".to_string()]
+        );
+        assert_eq!(
+            store
+                .list_keys(&owner2)
+                .await?
+                .into_iter()
+                .map(|k| k.name)
+                .collect::<Vec<_>>(),
+            vec!["key2".to_string(), "key4".to_string()]
+        );
 
         Ok(())
     }

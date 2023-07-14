@@ -13,7 +13,7 @@ pub struct Model {
     pub hash: String,
     pub hash_version: String,
     pub project_id: ValidShardedId<ProjectId>,
-    pub name: Option<String>,
+    pub name: String,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

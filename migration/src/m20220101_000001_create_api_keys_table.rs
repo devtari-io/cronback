@@ -19,10 +19,23 @@ impl MigrationTrait for Migration {
                     .col(ColumnDef::new(ApiKeys::Hash).text().not_null())
                     .col(ColumnDef::new(ApiKeys::HashVersion).text().not_null())
                     .col(ColumnDef::new(ApiKeys::ProjectId).text().not_null())
-                    .col(ColumnDef::new(ApiKeys::Name).text())
+                    .col(ColumnDef::new(ApiKeys::Name).text().not_null())
                     .to_owned(),
             )
-            .await
+            .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .if_not_exists()
+                    .name("IX_api_keys_project")
+                    .table(ApiKeys::Table)
+                    .col(ApiKeys::ProjectId)
+                    .to_owned(),
+            )
+            .await?;
+
+        Ok(())
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
