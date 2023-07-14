@@ -64,4 +64,4 @@ jobs:
           BACKEND_ENV_FILE: ${{ secrets.BACKEND_ENV_FILE }}
         run: echo "$BACKEND_ENV_FILE" > .env
       - name: Start all the containers
-        run: docker compose -p cronback -f docker/docker-compose.prod.yml -f docker/docker-compose.docs.yml up -d
+        run: docker compose -p cronback -f docker/docker-compose.prod.yml up -d
