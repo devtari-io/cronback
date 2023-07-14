@@ -13,7 +13,7 @@ use super::models::triggers::{self, Status};
 use super::pagination::{PaginatedResponse, PaginatedSelect};
 use crate::database::models::prelude::Triggers;
 use crate::database::Database;
-use crate::model::ModelId;
+use crate::model::{ModelId, ValidShardedId};
 use crate::types::{ProjectId, Trigger, TriggerId};
 
 pub type TriggerStoreError = DatabaseError;
@@ -28,6 +28,12 @@ pub trait TriggerStore {
     async fn update_trigger(
         &self,
         trigger: Trigger,
+    ) -> Result<(), TriggerStoreError>;
+
+    async fn delete_trigger(
+        &self,
+        project: &ValidShardedId<ProjectId>,
+        name: &TriggerId,
     ) -> Result<(), TriggerStoreError>;
 
     async fn get_all_active_triggers(
@@ -91,6 +97,17 @@ impl TriggerStore for SqlTriggerStore {
         let active_model = active_model.reset_all();
         Triggers::update(active_model)
             .filter(triggers::Column::ProjectId.eq(project))
+            .exec(&self.db.orm)
+            .await?;
+        Ok(())
+    }
+
+    async fn delete_trigger(
+        &self,
+        project: &ValidShardedId<ProjectId>,
+        trigger_id: &TriggerId,
+    ) -> Result<(), TriggerStoreError> {
+        Triggers::delete_by_id((trigger_id.clone(), project.clone()))
             .exec(&self.db.orm)
             .await?;
         Ok(())
@@ -327,6 +344,17 @@ mod tests {
         assert_ne!(
             store.get_trigger_by_name(&project1, &t1.name).await?,
             Some(mismatch_project_t1)
+        );
+
+        // Test deleting a trigger
+        store.delete_trigger(&project1, &t1.id).await?;
+        assert_eq!(store.get_trigger_by_name(&project1, &t1.name).await?, None);
+        // Re-install the trigger should succeed.
+        store.install_trigger(t1.clone()).await?;
+        // It's back!
+        assert_eq!(
+            store.get_trigger_by_name(&project1, &t1.name).await?,
+            Some(t1.clone())
         );
 
         Ok(())

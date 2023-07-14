@@ -221,6 +221,17 @@ impl Client {
         self.execute_request_body(Method::POST, path, body).await
     }
 
+    /// Permanently delete a trigger.
+    pub async fn delete_trigger<T>(&self, name: T) -> Result<Response<()>>
+    where
+        T: AsRef<str>,
+    {
+        let path = format!("/v1/triggers/{}", name.as_ref());
+        let path = self.config.base_url.join(&path)?;
+
+        self.execute_request(Method::DELETE, path).await
+    }
+
     /// Retrieve list of runs for a given trigger.
     pub async fn list_runs<T>(
         &self,

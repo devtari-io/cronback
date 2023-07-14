@@ -21,6 +21,8 @@ service Scheduler {
   rpc ResumeTrigger (ResumeTriggerRequest) returns (ResumeTriggerResponse);
   /// Cancel trigger
   rpc CancelTrigger (CancelTriggerRequest) returns (CancelTriggerResponse);
+  /// Delete trigger
+  rpc DeleteTrigger (DeleteTriggerRequest) returns (DeleteTriggerResponse);
   /// Find trigger id by name
   rpc GetTriggerId (GetTriggerIdRequest) returns (GetTriggerIdResponse);
 }
@@ -70,6 +72,14 @@ message CancelTriggerRequest {
 
 message CancelTriggerResponse {
   trigger_proto.Trigger trigger = 1;
+}
+
+// DELETE TRIGGER
+message DeleteTriggerRequest {
+  string name = 1;
+}
+
+message DeleteTriggerResponse {
 }
 
 

@@ -47,6 +47,7 @@ pub struct Response<T> {
     project_id: Option<String>,
     status_code: StatusCode,
     headers: http::HeaderMap,
+    raw_body: String,
 }
 
 impl<T> Response<T> {
@@ -72,6 +73,10 @@ impl<T> Response<T> {
 
     pub fn status_code(&self) -> http::StatusCode {
         self.status_code
+    }
+
+    pub fn raw_body(&self) -> &str {
+        &self.raw_body
     }
 
     pub fn url(&self) -> &Url {
@@ -104,14 +109,20 @@ where
             .get(REQUEST_ID_HEADER)
             .map(|v| v.to_str().unwrap().to_owned());
 
-        let body = raw.text().await?;
+        let raw_body = raw.text().await?;
 
         let inner = if status_code.is_success() {
-            Ok(serde_json::from_str(&body)?)
+            if raw_body.is_empty() {
+                // Handles the case where the response is empty and the target
+                // type is ()
+                Ok(serde_json::from_value(serde_json::Value::Null)?)
+            } else {
+                Ok(serde_json::from_str(&raw_body)?)
+            }
         } else {
             // Attempt to parse the error as json
             let error_body: Result<ApiErrorBody, serde_json::Error> =
-                serde_json::from_str(&body);
+                serde_json::from_str(&raw_body);
             match error_body {
                 | Ok(error_body) => {
                     Err(ApiError {
@@ -123,11 +134,11 @@ where
                 | Err(e) => {
                     warn!(
                         "Response error body is not json. Error: {}. Body: {}",
-                        e, body
+                        e, raw_body
                     );
                     Err(ApiError {
                         status_code,
-                        message: body,
+                        message: raw_body.clone(),
                         params: None,
                     })
                 }
@@ -141,6 +152,7 @@ where
             request_id,
             status_code,
             headers,
+            raw_body,
         })
     }
 }

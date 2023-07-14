@@ -7,6 +7,8 @@ use proto::scheduler_proto::scheduler_server::Scheduler;
 use proto::scheduler_proto::{
     CancelTriggerRequest,
     CancelTriggerResponse,
+    DeleteTriggerRequest,
+    DeleteTriggerResponse,
     GetTriggerIdRequest,
     GetTriggerIdResponse,
     GetTriggerRequest,
@@ -122,6 +124,16 @@ impl Scheduler for SchedulerAPIHandler {
         Ok(Response::new(CancelTriggerResponse {
             trigger: Some(trigger.into()),
         }))
+    }
+
+    async fn delete_trigger(
+        &self,
+        request: Request<DeleteTriggerRequest>,
+    ) -> Result<Response<DeleteTriggerResponse>, Status> {
+        let ctx = request.context()?;
+        let request = request.into_inner();
+        self.scheduler.delete_trigger(ctx, request.name).await?;
+        Ok(Response::new(DeleteTriggerResponse {}))
     }
 
     async fn list_triggers(

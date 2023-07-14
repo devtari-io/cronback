@@ -207,6 +207,11 @@ impl EventScheduler {
         }
     }
 
+    fn remove_name_from_cache(&self, name: &str) {
+        let mut name_cache = self.trigger_name_cache.write().unwrap();
+        name_cache.remove(name);
+    }
+
     pub async fn get_trigger_id(
         &self,
         project_id: &ProjectId,
@@ -630,6 +635,33 @@ impl EventScheduler {
             })
             .await?
         }
+    }
+
+    #[tracing::instrument(skip_all, fields(trigger_name = %name, project_id = %context.project_id))]
+    pub async fn delete_trigger(
+        &self,
+        context: RequestContext,
+        name: String,
+    ) -> Result<(), TriggerError> {
+        let trigger_id =
+            self.get_trigger_id(&context.project_id, &name).await?;
+        let triggers = self.triggers.clone();
+
+        tokio::task::spawn_blocking({
+            let trigger_id = trigger_id.clone();
+            move || {
+                let mut w = triggers.write().unwrap();
+                w.remove(&trigger_id)
+            }
+        })
+        .await?;
+
+        self.store
+            .delete_trigger(&context.project_id, &trigger_id)
+            .await?;
+        self.remove_name_from_cache(&name);
+        info!("Trigger '{name}' ({trigger_id}) has been deleted!");
+        Ok(())
     }
 
     pub async fn shutdown(&self) {

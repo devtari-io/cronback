@@ -286,6 +286,16 @@ impl ActiveTriggerMap {
         }
     }
 
+    /// Removes a trigger from the active map. This also removes it from the
+    /// awaiting_db_flush map.
+    pub fn remove(&mut self, trigger_id: &TriggerId) {
+        let trigger = self.state.remove(trigger_id);
+        if trigger.is_some() {
+            self.awaiting_db_flush.remove(trigger_id);
+            self.mark_dirty();
+        }
+    }
+
     //// PRIVATE
     fn mark_dirty(&mut self) {
         self.dirty = true;

@@ -89,6 +89,8 @@ pub enum TriggerCommand {
     Pause(triggers::Pause),
     /// Resume a paused trigger
     Resume(triggers::Resume),
+    /// Delete a trigger
+    Delete(triggers::Delete),
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -234,6 +236,9 @@ impl TriggerCommand {
             }
             | TriggerCommand::View(c) => c.run(out, err, common_options).await,
             | TriggerCommand::Run(c) => c.run(out, err, common_options).await,
+            | TriggerCommand::Delete(c) => {
+                c.run(out, err, common_options).await
+            }
             | TriggerCommand::Resume(c) => {
                 c.run(out, err, common_options).await
             }

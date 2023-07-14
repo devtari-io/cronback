@@ -417,6 +417,22 @@
         "tags": [
           "Triggers"
         ]
+      },
+      "delete": {
+        "summary": "",
+        "operationId": "delete-trigger",
+        "responses": {
+          "204": {
+            "description": "No Content - The operation was successful."
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "description": "Permanently deletes a trigger from the system.",
+        "tags": [
+          "Triggers"
+        ]
       }
     },
     "/triggers/{trigger-name}/runs": {

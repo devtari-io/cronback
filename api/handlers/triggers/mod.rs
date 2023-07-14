@@ -1,4 +1,5 @@
 mod cancel;
+mod delete;
 mod get;
 mod install;
 mod pause;
@@ -19,6 +20,7 @@ pub(crate) fn routes(shared_state: Arc<AppState>) -> Router {
         .route("/", axum::routing::get(get::list))
         .route("/:name", axum::routing::get(get::get))
         .route("/:name", axum::routing::put(put::put))
+        .route("/:name", axum::routing::delete(delete::delete))
         .route("/:name/runs", axum::routing::get(runs::list))
         .route("/:name/runs/:run_id", axum::routing::get(runs::get))
         .route("/:name/run", axum::routing::post(run::run))
