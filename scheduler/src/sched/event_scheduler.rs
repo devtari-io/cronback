@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
 
 use chrono::Utc;
-use lib::database::trigger_store::TriggerStore;
+use lib::database::trigger_store::{TriggerStore, TriggerStoreError};
 use lib::grpc_client_provider::DispatcherClientProvider;
 use lib::service::ServiceContext;
 use lib::types::{
@@ -202,7 +202,17 @@ impl EventScheduler {
             last_invoked_at: None,
         };
 
-        self.store.install_trigger(&trigger).await?;
+        let store_result = self.store.install_trigger(&trigger).await;
+
+        match store_result {
+            | Ok(_) => {}
+            | Err(TriggerStoreError::DuplicateRecord) => {
+                return Err(TriggerError::AlreadyExists(
+                    trigger.reference.unwrap(),
+                ));
+            }
+            | Err(e) => return Err(e.into()),
+        };
 
         if is_scheduled {
             // We only install scheduled triggers in the ActiveMap

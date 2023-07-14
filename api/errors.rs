@@ -48,6 +48,9 @@ pub enum ApiError {
     )]
     Forbidden,
 
+    #[error("Resource conflict: {0}")]
+    Conflict(String),
+
     // 415 Unsupported Media Type
     #[error("Expected request with `Content-Type: application/json`")]
     UnsupportedContentType,
@@ -95,6 +98,7 @@ impl ApiError {
             | ApiError::Unauthorized => StatusCode::UNAUTHORIZED,
             | ApiError::Forbidden => StatusCode::FORBIDDEN,
             | ApiError::NotFound(..) => StatusCode::NOT_FOUND,
+            | ApiError::Conflict(..) => StatusCode::CONFLICT,
             | ApiError::UnsupportedContentType => {
                 StatusCode::UNSUPPORTED_MEDIA_TYPE
             }
@@ -153,6 +157,9 @@ impl From<tonic::Status> for ApiError {
             // An operation cannot be performed.
             tonic::Code::FailedPrecondition => {
                 ApiError::unprocessable_content_naked(value.message())
+            },
+            tonic::Code::AlreadyExists => {
+                ApiError::Conflict(value.message().to_string())
             },
             tonic::Code::Ok => {
                 // We should not expect to have Status::Ok as an error!

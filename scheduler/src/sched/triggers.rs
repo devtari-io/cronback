@@ -16,7 +16,7 @@ use super::event_dispatcher::DispatchError;
 #[derive(Error, Debug)]
 pub(crate) enum TriggerError {
     #[error("Cannot parse cron expression")]
-    CronParseError(#[from] cron::error::Error),
+    CronParse(#[from] cron::error::Error),
     #[error(
         "Unrecognized timezone '{0}' was supplied, are you sure this is an \
          IANA timezone?"
@@ -32,9 +32,11 @@ pub(crate) enum TriggerError {
     #[error("Internal async processing failure!")]
     JoinError(#[from] tokio::task::JoinError),
     #[error("Operation on underlying trigger store failed: {0}")]
-    TriggerStoreError(#[from] TriggerStoreError),
+    TriggerStore(#[from] TriggerStoreError),
     #[error("Cannot dispatch an invocation for this trigger")]
-    InvocationError(#[from] DispatchError),
+    Invocation(#[from] DispatchError),
+    #[error("Trigger with reference '{0}' already exists")]
+    AlreadyExists(/* reference */ String),
 }
 
 ///

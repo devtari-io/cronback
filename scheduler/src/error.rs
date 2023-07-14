@@ -14,6 +14,9 @@ impl From<TriggerError> for Status {
                 Status::internal(format!("Internal error: {e}"))
             }
             | TriggerError::NotFound(e) => Status::not_found(e),
+            | e @ TriggerError::AlreadyExists(_) => {
+                Status::already_exists(e.to_string())
+            }
             | e => Status::invalid_argument(e.to_string()),
         }
     }
