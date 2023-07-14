@@ -13,13 +13,12 @@ use crate::model::Trigger;
 use crate::AppState;
 
 #[tracing::instrument(skip(state))]
-#[debug_handler]
 pub(crate) async fn cancel(
     state: State<Arc<AppState>>,
     Path(name): Path<String>,
     Extension(project): Extension<ValidShardedId<ProjectId>>,
     Extension(request_id): Extension<RequestId>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> Result<Json<Trigger>, ApiError> {
     let mut scheduler = state
         .scheduler_clients
         .get_client(&request_id, &project)
@@ -33,5 +32,5 @@ pub(crate) async fn cancel(
 
     let trigger: Trigger = trigger.into();
 
-    Ok((StatusCode::OK, Json(trigger)).into_response())
+    Ok(Json(trigger))
 }

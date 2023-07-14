@@ -13,6 +13,7 @@ use cronback::{
 use prettytable::{row, Table};
 
 use crate::args::CommonOptions;
+use crate::ui::FancyToString;
 use crate::{emitln, RunCommand};
 
 #[derive(Clone, Debug, Parser)]
@@ -28,7 +29,7 @@ pub struct List {
     #[clap(long)]
     status: Option<Vec<TriggerStatus>>,
 
-    #[clap(long)]
+    #[clap(long, short)]
     /// List all triggers, including `expired` and `cancelled` triggers.
     all: bool,
 }
@@ -96,9 +97,7 @@ impl RunCommand for List {
 
                 table.add_row(row![
                     trigger.name.expect("name should be present"),
-                    fancy_status(
-                        trigger.status.expect("status should be present")
-                    ),
+                    trigger.status.fancy(),
                     trigger.schedule.map(fancy_schedule).unwrap_or_default(),
                     trigger
                         .last_ran_at
@@ -132,23 +131,6 @@ impl RunCommand for List {
         }
 
         Ok(())
-    }
-}
-
-fn fancy_status(status: TriggerStatus) -> String {
-    match status {
-        | TriggerStatus::Scheduled => {
-            format!("⏰ {}", status.to_string().green())
-        }
-        | TriggerStatus::OnDemand => format!("📍 {status}"),
-        | TriggerStatus::Expired => {
-            format!("〰 {}", status.to_string().italic())
-        }
-        | TriggerStatus::Cancelled => format!("✖️ {status}"),
-        | TriggerStatus::Paused => {
-            format!("🔸 {}", status.to_string().blink())
-        }
-        | s => s.to_string(),
     }
 }
 

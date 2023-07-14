@@ -3,18 +3,20 @@ use async_trait::async_trait;
 use clap::Parser;
 
 use crate::args::CommonOptions;
-use crate::{emitln, RunCommand};
+use crate::ui::FancyToString;
+use crate::{confirm_or_abort, emitln, RunCommand};
 
 #[derive(Clone, Debug, Parser)]
-pub struct View {
+pub struct Pause {
     /// Trigger name
     name: String,
-    #[arg(long)]
-    extended: bool,
+    /// Ignore the confirmation prompt and always answer "yes"
+    #[arg(long, short)]
+    yes: bool,
 }
 
 #[async_trait]
-impl RunCommand for View {
+impl RunCommand for Pause {
     async fn run<
         A: tokio::io::AsyncWrite + Send + Sync + Unpin,
         B: tokio::io::AsyncWrite + Send + Sync + Unpin,
@@ -24,22 +26,30 @@ impl RunCommand for View {
         err: &mut tokio::io::BufWriter<B>,
         common_options: &CommonOptions,
     ) -> Result<()> {
+        confirm_or_abort!(
+            self,
+            "Are you sure you want to pause the trigger '{}'?",
+            self.name
+        );
+
         let client = common_options.new_client()?;
-        let response = client.get_trigger(&self.name).await?;
+        let response = client.pause_trigger(&self.name).await?;
         common_options.show_meta(&response, out, err).await?;
 
         let response = response.into_inner();
         match response {
-            | Ok(good) => {
-                let json = serde_json::to_value(good)?;
-                let colored = colored_json::to_colored_json_auto(&json)?;
-                emitln!(out, "{}", colored);
+            | Ok(trigger) => {
+                emitln!(
+                    out,
+                    "Trigger '{}' is now {}!",
+                    self.name,
+                    trigger.status.fancy(),
+                );
             }
             | Err(bad) => {
                 return Err(bad.into());
             }
         };
-
         Ok(())
     }
 }

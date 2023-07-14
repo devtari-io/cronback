@@ -11,7 +11,7 @@ use super::{Action, ActionAttemptLog, Payload};
 use crate::RunId;
 
 #[cfg_attr(feature = "client", non_exhaustive)]
-#[derive(Debug, Deserialize, Serialize, Clone, Copy, Default)]
+#[derive(Debug, Deserialize, PartialEq, Serialize, Clone, Copy, Default)]
 #[cfg_attr(
     feature = "dto",
     derive(IntoProto),

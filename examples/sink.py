@@ -22,6 +22,8 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import logging
 import sys
+import time
+import random
 
 COLOR = "\033[1;32m"
 RESET_COLOR = "\033[00m"
@@ -38,7 +40,11 @@ class S(BaseHTTPRequestHandler):
         post_data = self.rfile.read(content_length)
         logging.info(COLOR + method + " request,\n" + RESET_COLOR + "Path: %s\nHeaders:\n%sBody:\n%s\n",
                 str(self.path), str(self.headers), post_data.decode('utf-8'))
+        sleep = random.random() * 10
+        logging.info("Sleeping for %f seconds", sleep)
+        time.sleep(sleep)
         self._set_response()
+        # sleeping
         self.wfile.write((method + " request for {}".format(self.path)).encode('utf-8'))
 
     def do_GET(self):

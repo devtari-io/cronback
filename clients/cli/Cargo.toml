@@ -41,3 +41,5 @@ once_cell = { version = "1.17.1" }
 dotenvy = "0.15"
 async-trait = { workspace = true }
 prettytable-rs = { version = "0.10.0" }
+rprompt = "2.0"
+spinners = "4.1"

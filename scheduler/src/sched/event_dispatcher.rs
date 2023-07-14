@@ -22,7 +22,7 @@ pub(crate) enum DispatchError {
     GrpcClient(#[from] GrpcClientError),
 }
 
-#[derive(FromProto, IntoProto)]
+#[derive(Debug, FromProto, IntoProto)]
 #[proto(target = "proto::dispatcher_proto::DispatchMode")]
 pub(crate) enum DispatchMode {
     Sync,

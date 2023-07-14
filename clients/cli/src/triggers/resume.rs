@@ -3,18 +3,17 @@ use async_trait::async_trait;
 use clap::Parser;
 
 use crate::args::CommonOptions;
+use crate::ui::FancyToString;
 use crate::{emitln, RunCommand};
 
 #[derive(Clone, Debug, Parser)]
-pub struct View {
+pub struct Resume {
     /// Trigger name
     name: String,
-    #[arg(long)]
-    extended: bool,
 }
 
 #[async_trait]
-impl RunCommand for View {
+impl RunCommand for Resume {
     async fn run<
         A: tokio::io::AsyncWrite + Send + Sync + Unpin,
         B: tokio::io::AsyncWrite + Send + Sync + Unpin,
@@ -25,21 +24,23 @@ impl RunCommand for View {
         common_options: &CommonOptions,
     ) -> Result<()> {
         let client = common_options.new_client()?;
-        let response = client.get_trigger(&self.name).await?;
+        let response = client.resume_trigger(&self.name).await?;
         common_options.show_meta(&response, out, err).await?;
 
         let response = response.into_inner();
         match response {
-            | Ok(good) => {
-                let json = serde_json::to_value(good)?;
-                let colored = colored_json::to_colored_json_auto(&json)?;
-                emitln!(out, "{}", colored);
+            | Ok(trigger) => {
+                emitln!(
+                    out,
+                    "Trigger '{}' is now {}!",
+                    self.name,
+                    trigger.status.fancy(),
+                );
             }
             | Err(bad) => {
                 return Err(bad.into());
             }
         };
-
         Ok(())
     }
 }

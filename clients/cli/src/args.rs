@@ -71,6 +71,14 @@ pub enum TriggerCommand {
     Create(triggers::Create),
     /// View details about a given trigger
     View(triggers::View),
+    /// Cancel a scheduled trigger.
+    Cancel(triggers::Cancel),
+    /// Invoke an adhoc run for a given trigger
+    Run(triggers::Run),
+    /// Pause a scheduled trigger.
+    Pause(triggers::Pause),
+    /// Resume a paused trigger
+    Resume(triggers::Resume),
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -209,6 +217,14 @@ impl TriggerCommand {
                 c.run(out, err, common_options).await
             }
             | TriggerCommand::View(c) => c.run(out, err, common_options).await,
+            | TriggerCommand::Run(c) => c.run(out, err, common_options).await,
+            | TriggerCommand::Resume(c) => {
+                c.run(out, err, common_options).await
+            }
+            | TriggerCommand::Cancel(c) => {
+                c.run(out, err, common_options).await
+            }
+            | TriggerCommand::Pause(c) => c.run(out, err, common_options).await,
         }
     }
 }

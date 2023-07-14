@@ -1,6 +1,8 @@
+use cronback_api_model::{Run, RunMode, RunTrigger};
 use http::Method;
 use reqwest::IntoUrl;
 use serde::de::DeserializeOwned;
+use serde::Serialize;
 use tracing::log::info;
 use url::Url;
 
@@ -169,6 +171,56 @@ impl Client {
         self.execute_request(Method::GET, path).await
     }
 
+    /// Cancel a `scheduled` trigger.
+    pub async fn cancel_trigger<T>(&self, name: T) -> Result<Response<Trigger>>
+    where
+        T: AsRef<str>,
+    {
+        let path = format!("/v1/triggers/{}/cancel", name.as_ref());
+        let path = self.config.base_url.join(&path)?;
+
+        self.execute_request(Method::POST, path).await
+    }
+
+    /// Pause a `scheduled` trigger.
+    pub async fn pause_trigger<T>(&self, name: T) -> Result<Response<Trigger>>
+    where
+        T: AsRef<str>,
+    {
+        let path = format!("/v1/triggers/{}/pause", name.as_ref());
+        let path = self.config.base_url.join(&path)?;
+
+        self.execute_request(Method::POST, path).await
+    }
+
+    /// Resume a `paused` trigger.
+    pub async fn resume_trigger<T>(&self, name: T) -> Result<Response<Trigger>>
+    where
+        T: AsRef<str>,
+    {
+        let path = format!("/v1/triggers/{}/resume", name.as_ref());
+        let path = self.config.base_url.join(&path)?;
+
+        self.execute_request(Method::POST, path).await
+    }
+
+    /// Run the trigger immediately
+    pub async fn run_trigger<T>(
+        &self,
+        name: T,
+        mode: RunMode,
+    ) -> Result<Response<Run>>
+    where
+        T: AsRef<str>,
+    {
+        let path = format!("/v1/triggers/{}/run", name.as_ref());
+        let path = self.config.base_url.join(&path)?;
+
+        let body = RunTrigger { mode };
+
+        self.execute_request_body(Method::POST, path, body).await
+    }
+
     async fn execute_request<T>(
         &self,
         method: http::Method,
@@ -181,6 +233,26 @@ impl Client {
         let request = self.http_client.request(method, url);
         let resp = request
             .bearer_auth(&self.config.secret_token)
+            .send()
+            .await?;
+        Response::from_raw_response(resp).await
+    }
+
+    async fn execute_request_body<T, B>(
+        &self,
+        method: http::Method,
+        url: Url,
+        body: B,
+    ) -> Result<Response<T>>
+    where
+        T: DeserializeOwned,
+        B: Serialize + std::fmt::Debug,
+    {
+        info!("Sending a request '{} {}': {:?}", method, url, body);
+        let request = self.http_client.request(method, url);
+        let resp = request
+            .bearer_auth(&self.config.secret_token)
+            .json(&body)
             .send()
             .await?;
         Response::from_raw_response(resp).await

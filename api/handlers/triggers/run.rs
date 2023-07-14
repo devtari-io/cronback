@@ -22,6 +22,7 @@ pub(crate) async fn run(
     // The body of the request is optional, so we use Option<Json<...>>.
     request: Option<Json<RunTrigger>>,
 ) -> Result<impl IntoResponse, ApiError> {
+    dbg!(&request);
     let Json(request) = request.unwrap_or_default();
     let mut scheduler = state
         .scheduler_clients
