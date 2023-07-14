@@ -9,9 +9,6 @@ services:
     command:
       - '--log-format'
       - 'json'
-  docs:
-    image: "cronback-docs:latest"
-    restart: unless-stopped
   openapi:
     image: "cronback-openapi:latest"
     restart: unless-stopped
