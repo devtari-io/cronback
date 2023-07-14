@@ -155,6 +155,14 @@
             "in": "query",
             "name": "after",
             "description": "A cursor for use in pagination. `after` is an object ID that defines your place in the list."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "reference",
+            "description": "Filter the returned triggers by `reference`"
           }
         ],
         "responses": {

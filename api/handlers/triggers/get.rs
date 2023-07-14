@@ -5,7 +5,12 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
 use lib::types::{ProjectId, RequestId, Trigger, TriggerId, TriggerManifest};
-use proto::scheduler_proto::{GetTriggerRequest, ListTriggersRequest};
+use proto::scheduler_proto::{
+    GetTriggerRequest,
+    ListTriggersFilter,
+    ListTriggersRequest,
+};
+use serde::Deserialize;
 use validator::Validate;
 
 use crate::api_model::{paginate, Pagination};
@@ -36,10 +41,24 @@ pub(crate) async fn get(
     Ok((StatusCode::OK, Json(trigger)).into_response())
 }
 
+#[derive(Debug, Deserialize, Default, Validate)]
+pub(crate) struct ListFilters {
+    reference: Option<String>,
+}
+
+impl From<ListFilters> for ListTriggersFilter {
+    fn from(value: ListFilters) -> Self {
+        ListTriggersFilter {
+            reference: value.reference,
+        }
+    }
+}
+
 #[tracing::instrument(skip(state))]
 #[debug_handler]
 pub(crate) async fn list(
     pagination: Option<Query<Pagination<TriggerId>>>,
+    filters: Option<Query<ListFilters>>,
     state: State<Arc<AppState>>,
     Extension(project): Extension<ProjectId>,
     Extension(request_id): Extension<RequestId>,
@@ -57,6 +76,7 @@ pub(crate) async fn list(
             limit: limit as u64,
             before: pagination.before.clone().map(Into::into),
             after: pagination.after.clone().map(Into::into),
+            filter: filters.map(|f| f.0.into()),
         })
         .await?
         .into_inner()

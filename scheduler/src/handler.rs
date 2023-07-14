@@ -149,6 +149,7 @@ impl Scheduler for SchedulerAPIHandler {
             .scheduler
             .list_triggers(
                 request.project_id.into(),
+                request.filter.and_then(|f| f.reference),
                 request.limit as usize,
                 request.before.map(Into::into),
                 request.after.map(Into::into),

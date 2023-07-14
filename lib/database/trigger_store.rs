@@ -55,6 +55,7 @@ pub trait TriggerStore {
     async fn get_triggers_by_project(
         &self,
         project: &ProjectId,
+        reference: Option<String>,
         before: Option<TriggerId>,
         after: Option<TriggerId>,
         limit: usize,
@@ -161,14 +162,20 @@ impl TriggerStore for SqlTriggerStore {
     async fn get_triggers_by_project(
         &self,
         project: &ProjectId,
+        reference: Option<String>,
         before: Option<TriggerId>,
         after: Option<TriggerId>,
         limit: usize,
     ) -> Result<Vec<Trigger>, TriggerStoreError> {
+        let mut condition = Expr::col(KVIden::Project).eq(project.value());
+        if let Some(reference) = reference {
+            condition =
+                condition.and(Expr::col(TriggersIden::Reference).eq(reference));
+        }
         paginated_query(
             &self.db,
             TriggersIden::Triggers,
-            Expr::col(KVIden::Project).eq(project.value()),
+            condition,
             &before,
             &after,
             Some(limit),
@@ -295,7 +302,7 @@ mod tests {
 
         // Test get by owner
         let mut results = store
-            .get_triggers_by_project(&owner1, None, None, 100)
+            .get_triggers_by_project(&owner1, None, None, None, 100)
             .await?;
         let mut expected = vec![t1.clone(), t2.clone()];
         expected.sort_by(|a, b| a.id.cmp(&b.id));
@@ -321,6 +328,19 @@ mod tests {
             store.install_trigger(&t6).await,
             Err(TriggerStoreError::DuplicateRecord)
         ));
+
+        // Test get by reference
+        let results = store
+            .get_triggers_by_project(
+                &owner1,
+                Some("Ref".to_string()),
+                None,
+                None,
+                100,
+            )
+            .await?;
+
+        assert_eq!(results, vec![t5.clone()]);
 
         Ok(())
     }

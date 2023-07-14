@@ -106,11 +106,18 @@ message FindTriggersResponse {
 }
 
 // == LIST TRIGGER ==
+
+// The returned triggers must match the "set" fields in this object
+message ListTriggersFilter {
+  optional string reference = 1;
+}
+
 message ListTriggersRequest {
   string project_id = 1;
   uint64 limit = 2;
   optional string before = 3;
   optional string after = 4;
+  optional ListTriggersFilter filter = 5;
 }
 
 message ListTriggersResponse {
