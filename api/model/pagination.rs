@@ -15,6 +15,20 @@ pub(crate) struct Pagination<T> {
     pub limit: Option<usize>,
 }
 
+impl<T> ::std::convert::From<Pagination<T>>
+    for proto::scheduler_proto::Pagination
+where
+    T: Into<String>,
+{
+    fn from(value: Pagination<T>) -> Self {
+        Self {
+            before: value.before.map(Into::into),
+            after: value.after.map(Into::into),
+            limit: value.limit.map(|x| x as u64),
+        }
+    }
+}
+
 impl<T> Pagination<T> {
     pub fn limit(&self) -> usize {
         self.limit.unwrap_or(20)

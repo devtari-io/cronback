@@ -1,4 +1,4 @@
-use dto_helpers::IntoProto;
+use dto::{FromProto, IntoProto};
 use monostate::MustBe;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
@@ -6,13 +6,15 @@ use validator::Validate;
 
 use super::Webhook;
 
-#[derive(IntoProto, Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(
+    IntoProto, FromProto, Debug, Clone, Serialize, Deserialize, PartialEq,
+)]
 /// non_exhaustive because proto doesn't have Event yet.
-#[into_proto(into = "proto::trigger_proto::Action", non_exhaustive)]
+#[proto(target = "proto::trigger_proto::Action", non_exhaustive)]
 #[serde(rename_all = "snake_case")]
 #[serde(untagged)]
 pub enum Action {
-    #[into_proto(skip)]
+    #[proto(skip)]
     Event(Event),
     Webhook(Webhook),
 }

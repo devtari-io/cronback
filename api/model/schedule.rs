@@ -4,17 +4,17 @@ use std::str::FromStr;
 use chrono::DateTime;
 use chrono_tz::Tz;
 use cron::Schedule as CronSchedule;
-use dto_helpers::IntoProto;
+use dto::{FromProto, IntoProto};
 use lib::timeutil::{self, iso8601_dateformat_vec_serde};
 use lib::validation::{validate_timezone, validation_error};
-use proto::trigger_proto;
 use serde::{Deserialize, Serialize};
 use validator::{Validate, ValidationError};
 
-#[derive(IntoProto, Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[into_proto(into = "trigger_proto::Schedule")]
+#[derive(
+    IntoProto, FromProto, Clone, Debug, PartialEq, Serialize, Deserialize,
+)]
+#[proto(target = "proto::trigger_proto::Schedule")]
 #[serde(rename_all = "snake_case")]
-//#[serde(deny_unknown_fields)]
 #[serde(untagged)]
 pub(crate) enum Schedule {
     Recurring(Recurring),
@@ -22,14 +22,21 @@ pub(crate) enum Schedule {
 }
 
 #[derive(
-    IntoProto, Deserialize, Serialize, Debug, Clone, PartialEq, Validate,
+    IntoProto,
+    FromProto,
+    Deserialize,
+    Serialize,
+    Debug,
+    Clone,
+    PartialEq,
+    Validate,
 )]
-#[into_proto(into = "trigger_proto::Recurring")]
+#[proto(target = "proto::trigger_proto::Recurring")]
 #[serde(deny_unknown_fields)]
 #[serde(rename_all = "snake_case")]
 pub struct Recurring {
     #[validate(custom = "validate_cron", required)]
-    #[into_proto(required)]
+    #[proto(required)]
     pub cron: Option<String>,
     #[validate(custom = "validate_timezone")]
     #[serde(default = "timeutil::default_timezone")]
@@ -41,9 +48,16 @@ pub struct Recurring {
 }
 
 #[derive(
-    IntoProto, Deserialize, Serialize, Debug, Clone, PartialEq, Validate,
+    IntoProto,
+    FromProto,
+    Deserialize,
+    Serialize,
+    Debug,
+    Clone,
+    PartialEq,
+    Validate,
 )]
-#[into_proto(into = "trigger_proto::RunAt")]
+#[proto(target = "proto::trigger_proto::RunAt")]
 #[serde(deny_unknown_fields)]
 #[serde(rename_all = "snake_case")]
 pub(crate) struct RunAt {
@@ -57,10 +71,15 @@ pub(crate) struct RunAt {
         custom = "validate_run_at"
     )]
     #[serde(with = "iso8601_dateformat_vec_serde")]
-    #[into_proto(map_fn = "timeutil::to_iso8601")]
+    #[proto(
+        map_from_proto = "timeutil::parse_iso8601_unsafe",
+        map_from_by_ref,
+        map_into_proto = "timeutil::to_iso8601",
+        map_into_by_ref
+    )]
     pub timepoints: Vec<DateTime<Tz>>,
     #[serde(skip_deserializing)]
-    pub remaining: u64,
+    pub remaining: Option<u64>,
 }
 
 impl Validate for Schedule {

@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "api", "lib", "proto", "scheduler", "dispatcher", "dto_helpers"]
+members = [".", "api", "lib", "proto", "scheduler", "dispatcher", "dto", "dto-core", "dto-derive"]
 
 [workspace.package]
 version = "0.1.0"

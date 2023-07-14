@@ -1,14 +1,16 @@
 use std::time::Duration;
 
-use dto_helpers::IntoProto;
+use dto::{FromProto, IntoProto};
 use lib::validation::{validate_webhook_url, validation_error};
 use monostate::MustBe;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationSecondsWithFrac};
 use validator::{Validate, ValidationError};
 
-#[derive(IntoProto, Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[into_proto(into = "proto::webhook_proto::HttpMethod")]
+#[derive(
+    IntoProto, FromProto, Debug, Clone, Serialize, Deserialize, PartialEq,
+)]
+#[proto(target = "proto::webhook_proto::HttpMethod")]
 #[serde(rename_all = "UPPERCASE")]
 #[serde(deny_unknown_fields)]
 pub enum HttpMethod {
@@ -22,9 +24,16 @@ pub enum HttpMethod {
 
 #[serde_as]
 #[derive(
-    IntoProto, Debug, Clone, Serialize, Deserialize, Validate, PartialEq,
+    IntoProto,
+    FromProto,
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    Validate,
+    PartialEq,
 )]
-#[into_proto(into = "proto::webhook_proto::Webhook")]
+#[proto(target = "proto::webhook_proto::Webhook")]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct Webhook {
@@ -32,14 +41,17 @@ pub struct Webhook {
     // variants of action to be differentiated.
     #[serde(rename = "type")]
     _kind: MustBe!("webhook"),
-    #[validate(required)]
-    #[into_proto(required)]
     #[validate(required, custom = "validate_webhook_url")]
+    #[proto(required)]
     pub url: Option<String>,
     pub http_method: HttpMethod,
     #[validate(custom = "validate_timeout")]
     #[serde_as(as = "DurationSecondsWithFrac")]
-    #[into_proto(map_method = "as_secs_f64")]
+    #[proto(
+        map_into_proto = "std::time::Duration::as_secs_f64",
+        map_into_by_ref
+    )]
+    #[proto(map_from_proto = "Duration::from_secs_f64")]
     pub timeout_s: std::time::Duration,
     // None means no retry
     pub retry: Option<RetryConfig>,
@@ -57,23 +69,32 @@ impl Default for Webhook {
     }
 }
 
-#[derive(IntoProto, Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[into_proto(into = "proto::webhook_proto::RetryConfig", oneof = "policy")]
+#[derive(
+    IntoProto, FromProto, Debug, Clone, Serialize, Deserialize, PartialEq,
+)]
+#[proto(target = "proto::webhook_proto::RetryConfig", oneof = "policy")]
 #[serde(rename_all = "snake_case")]
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]
 pub enum RetryConfig {
-    #[into_proto(into = "Simple")]
+    #[proto(name = "Simple")]
     SimpleRetry(SimpleRetry),
-    #[into_proto(into = "ExponentialBackoff")]
+    #[proto(name = "ExponentialBackoff")]
     ExponentialBackoffRetry(ExponentialBackoffRetry),
 }
 
 #[serde_as]
 #[derive(
-    IntoProto, Debug, Clone, Serialize, Deserialize, Validate, PartialEq,
+    IntoProto,
+    FromProto,
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    Validate,
+    PartialEq,
 )]
-#[into_proto(into = "proto::webhook_proto::SimpleRetry")]
+#[proto(target = "proto::webhook_proto::SimpleRetry")]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct SimpleRetry {
@@ -81,7 +102,11 @@ pub struct SimpleRetry {
     _kind: MustBe!("simple"),
     pub max_num_attempts: u32,
     #[serde_as(as = "DurationSecondsWithFrac")]
-    #[into_proto(map_method = "as_secs_f64")]
+    #[proto(
+        map_into_proto = "std::time::Duration::as_secs_f64",
+        map_into_by_ref
+    )]
+    #[proto(map_from_proto = "Duration::from_secs_f64")]
     pub delay_s: Duration,
 }
 
@@ -97,19 +122,34 @@ impl Default for SimpleRetry {
 
 #[serde_as]
 #[derive(
-    IntoProto, Debug, Clone, Serialize, Deserialize, Validate, PartialEq,
+    IntoProto,
+    FromProto,
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    Validate,
+    PartialEq,
 )]
-#[into_proto(into = "proto::webhook_proto::ExponentialBackoffRetry")]
+#[proto(target = "proto::webhook_proto::ExponentialBackoffRetry")]
 #[serde(deny_unknown_fields)]
 pub struct ExponentialBackoffRetry {
     #[serde(rename = "type")]
     _kind: MustBe!("exponential_backoff"),
     pub max_num_attempts: u32,
     #[serde_as(as = "DurationSecondsWithFrac")]
-    #[into_proto(map_method = "as_secs_f64")]
+    #[proto(
+        map_into_proto = "std::time::Duration::as_secs_f64",
+        map_into_by_ref
+    )]
+    #[proto(map_from_proto = "Duration::from_secs_f64")]
     pub delay_s: Duration,
     #[serde_as(as = "DurationSecondsWithFrac")]
-    #[into_proto(map_method = "as_secs_f64")]
+    #[proto(
+        map_into_proto = "std::time::Duration::as_secs_f64",
+        map_into_by_ref
+    )]
+    #[proto(map_from_proto = "Duration::from_secs_f64")]
     pub max_delay_s: Duration,
 }
 

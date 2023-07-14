@@ -51,4 +51,5 @@ monostate = { version = "0.1" }
 # https://github.com/rust-lang/rust/issues/27709.
 # Given that this is an untrusted repo, we're pinning it to a particular
 # revision after reviewing the code at this revision.
-ipext = {git = "https://github.com/jedisct1/rust-ipext", rev="0ebeb115bd67"}
+ipext = { git = "https://github.com/jedisct1/rust-ipext", rev = "0ebeb115bd67" }
+

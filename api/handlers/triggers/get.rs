@@ -5,26 +5,22 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
 use axum_extra::extract::Query;
+use dto::IntoProto;
 use lib::model::ValidShardedId;
-use lib::types::{
-    trigger,
-    ProjectId,
-    RequestId,
-    Trigger,
-    TriggerId,
-    TriggerManifest,
-};
-use proto::scheduler_proto::{
-    GetTriggerRequest,
-    ListTriggersFilter,
-    ListTriggersRequest,
-};
+use lib::types::{ProjectId, RequestId, TriggerId};
+use proto::scheduler_proto::{GetTriggerRequest, ListTriggersRequest};
 use serde::Deserialize;
 use validator::Validate;
 
 use crate::errors::ApiError;
 use crate::extractors::ValidatedId;
-use crate::model::{paginate, Pagination};
+use crate::model::{
+    paginate,
+    Pagination,
+    Trigger,
+    TriggerManifest,
+    TriggerStatus,
+};
 use crate::AppState;
 
 #[tracing::instrument(skip(state))]
@@ -50,20 +46,13 @@ pub(crate) async fn get(
     Ok((StatusCode::OK, Json(trigger)).into_response())
 }
 
-#[derive(Debug, Deserialize, Default, Validate)]
+#[derive(Debug, IntoProto, Deserialize, Default, Validate)]
+#[proto(target = "proto::scheduler_proto::ListTriggersFilter")]
 pub(crate) struct ListFilters {
-    reference: Option<String>,
+    pub reference: Option<String>,
     #[serde(default)]
-    status: Vec<trigger::Status>,
-}
-
-impl From<ListFilters> for ListTriggersFilter {
-    fn from(value: ListFilters) -> Self {
-        ListTriggersFilter {
-            reference: value.reference,
-            statuses: value.status.into_iter().map(Into::into).collect(),
-        }
-    }
+    #[proto(name = "statuses")]
+    pub status: Vec<TriggerStatus>,
 }
 
 #[tracing::instrument(skip(state))]

@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
-use dto_helpers::IntoProto;
-use proto::trigger_proto;
+use dto::{FromProto, IntoProto};
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none};
 use validator::Validate;
@@ -10,6 +9,7 @@ use validator::Validate;
 #[skip_serializing_none]
 #[derive(
     IntoProto,
+    FromProto,
     Debug,
     Clone,
     Default,
@@ -18,7 +18,7 @@ use validator::Validate;
     Validate,
     PartialEq,
 )]
-#[into_proto(into = "trigger_proto::Payload")]
+#[proto(target = "proto::trigger_proto::Payload")]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct Payload {
@@ -34,9 +34,14 @@ pub struct Payload {
         max = 1048576,
         message = "Payload must be under 1MiB"
     ))]
+    #[proto(map_from_proto = "string_from_bytes")]
     pub body: String,
 }
 
 fn default_content_type() -> String {
     "application/json; charset=utf-8".to_owned()
+}
+
+fn string_from_bytes(input: Vec<u8>) -> String {
+    String::from_utf8(input).unwrap()
 }

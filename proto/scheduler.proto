@@ -110,7 +110,11 @@ message FindTriggersResponse {
 }
 
 // == LIST TRIGGER ==
-
+message Pagination {
+  optional uint64 limit = 1;
+  optional string before = 2;
+  optional string after = 3;
+}
 // The returned triggers must match the "set" fields in this object
 message ListTriggersFilter {
   optional string reference = 1;

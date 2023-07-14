@@ -13,7 +13,7 @@ path = "lib.rs"
 # Internal Dependencies
 lib = { path = "../lib" }
 proto = { path = "../proto" }
-dto_helpers = { path = "../dto_helpers" }
+dto = { path = "../dto" }
 
 # Dependencies from workspace
 anyhow = { workspace = true }
@@ -42,7 +42,7 @@ tracing = { workspace = true }
 ulid = { workspace = true }
 
 # Unique Dependencies
-axum-extra = { version="0.7", features=["query"] }
+axum-extra = { version = "0.7", features = ["query"] }
 monostate = { version = "0.1" }
 names = { version = "0.14.0", default-features = false }
 serde_path_to_error = "0.1.11"

@@ -1,5 +1,5 @@
 #[allow(dead_code)]
-use dto_helpers::IntoProto;
+use dto::IntoProto;
 
 mod sub {
     #[repr(i32)]
@@ -11,7 +11,7 @@ mod sub {
 }
 
 #[derive(IntoProto)]
-#[into_proto(into = "sub::HttpMethod")]
+#[proto(target = "sub::HttpMethod")]
 pub enum HttpMethod {
     Get,
     Post,

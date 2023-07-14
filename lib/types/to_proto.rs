@@ -34,6 +34,7 @@ impl From<Trigger> for trigger_proto::Trigger {
             schedule: value.schedule.map(|s| s.into()),
             action: Some(value.action.into()),
             status: value.status.into(),
+            last_ran_at: value.last_ran_at.map(|d| d.to_rfc3339()),
         }
     }
 }

@@ -1,4 +1,4 @@
-use dto_helpers::IntoProto;
+use dto::IntoProto;
 
 mod sub {
     pub struct Recurring {
@@ -17,17 +17,17 @@ mod subsub {
 }
 
 #[derive(IntoProto, Debug, Clone, PartialEq)]
-#[into_proto(into = "sub::Recurring")]
+#[proto(target = "sub::Recurring")]
 pub struct Recurring {
-    #[into_proto(required)]
+    #[proto(required)]
     pub cron: Option<String>,
     pub timezone: String,
     pub limit: u64,
     // restricted but will still be converted.
     pub(crate) remaining: u64,
-    #[into_proto(skip)]
+    #[proto(skip)]
     pub stuff: String,
-    #[into_proto(map_fn = "subsub::to_string")]
+    #[proto(map_into_proto = "subsub::to_string", map_into_by_ref)]
     pub data: Vec<i32>,
     // non-public will not be included in the proto
     internal: String,

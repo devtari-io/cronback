@@ -28,10 +28,6 @@ message Recurring {
   optional uint64 remaining = 4;
 }
 
-message Test {
-  string _data = 1;
-}
-
 enum RetryPolicy {
   RetryPolicy_UNKNOWN = 0;
   SIMPLE = 1;
@@ -78,6 +74,7 @@ message Trigger {
   Payload payload = 9;
   Schedule schedule = 10;
   TriggerStatus status = 11;
+  optional string last_ran_at = 12;
 }
 
 message TriggerManifest {

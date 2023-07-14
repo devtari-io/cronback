@@ -89,3 +89,30 @@ pub(crate) fn extract_type_from_vec(ty: &syn::Type) -> Option<&syn::Type> {
             }
         })
 }
+
+pub(crate) fn to_snake_case(input: &str) -> String {
+    let mut snake = String::new();
+    for (i, ch) in input.char_indices() {
+        if i > 0 && ch.is_uppercase() {
+            snake.push('_');
+        }
+        snake.push(ch.to_ascii_lowercase());
+    }
+    snake
+}
+
+pub(crate) fn to_pascal_case(input: &str) -> String {
+    let mut pascal = String::new();
+    let mut capitalize = true;
+    for ch in input.chars() {
+        if ch == '_' {
+            capitalize = true;
+        } else if capitalize {
+            pascal.push(ch.to_ascii_uppercase());
+            capitalize = false;
+        } else {
+            pascal.push(ch);
+        }
+    }
+    pascal
+}

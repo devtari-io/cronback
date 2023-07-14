@@ -1,0 +1,17 @@
+[package]
+name = "dto"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[[test]]
+name = "tests"
+path = "tests/tests.rs"
+
+[dependencies]
+dto-derive = { path = "../dto-derive" }
+dto-core = { path = "../dto-core" }
+
+[dev-dependencies]
+trybuild = { version = "1.0", features = ["diff"] }

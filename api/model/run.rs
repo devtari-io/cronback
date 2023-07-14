@@ -1,9 +1,9 @@
-use dto_helpers::IntoProto;
+use dto::IntoProto;
 use proto::scheduler_proto;
 use serde::{Deserialize, Serialize};
 
 #[derive(IntoProto, Debug, Deserialize, Serialize, Clone, Default)]
-#[into_proto(into = "scheduler_proto::RunMode")]
+#[proto(target = "scheduler_proto::RunMode")]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum RunMode {
     Sync,

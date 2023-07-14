@@ -47,7 +47,11 @@ impl From<trigger_proto::Trigger> for Trigger {
             status: value.status.into(),
             // We are not supposed to send this to other services, it is
             // internal.
-            last_ran_at: None,
+            last_ran_at: value.last_ran_at.map(|l| {
+                DateTime::parse_from_rfc3339(&l)
+                    .unwrap()
+                    .with_timezone(&Utc)
+            }),
         }
     }
 }

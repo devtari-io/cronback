@@ -2,6 +2,11 @@ use chrono::{DateTime, Timelike, Utc};
 use chrono_tz::{Tz, UTC};
 use iso8601_duration::Duration as IsoDuration;
 
+pub fn parse_utc_from_rfc3339(input: &str) -> DateTime<Utc> {
+    DateTime::parse_from_rfc3339(input)
+        .unwrap()
+        .with_timezone(&Utc)
+}
 // Note that we reset nanoseconds to 0 to:
 // - Ensure that the same time is always returned, regardless of the nanosecond
 //   value
@@ -38,6 +43,11 @@ pub fn parse_iso8601(input: &str) -> Option<DateTime<Tz>> {
             .unwrap()
             .with_timezone(&UTC),
     )
+}
+
+// Only use when the input is trusted to be correct ISO8601
+pub fn parse_iso8601_unsafe(input: &str) -> DateTime<Tz> {
+    parse_iso8601(input).unwrap()
 }
 
 pub fn to_iso8601(input: &DateTime<Tz>) -> String {
