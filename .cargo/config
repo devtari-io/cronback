@@ -1,2 +1,5 @@
 [build]
 rustflags = ["--cfg", "tracing_unstable"]
+
+[alias]
+cli = "run -p cronback-cli --"

@@ -1,5 +1,6 @@
 {
   "schedule": {
+    "type": "timepoints",
     "timepoints": [
       "PT1M",
       "2023-09-22T16:58:02+07:00"

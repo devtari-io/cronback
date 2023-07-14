@@ -138,6 +138,7 @@ mod tests {
         let request = json!(
           {
             "schedule": {
+              "type": "recurring",
               "cron": "*/3 * * * * *",
               "limit": 5
             },

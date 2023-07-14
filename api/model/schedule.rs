@@ -6,6 +6,7 @@ use cron::Schedule as CronSchedule;
 use dto::{FromProto, IntoProto};
 use lib::timeutil::{default_timezone, iso8601_dateformat_vec_serde};
 use lib::validation::{validate_timezone, validation_error};
+use monostate::MustBe;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use validator::{Validate, ValidationError};
@@ -36,6 +37,8 @@ pub(crate) enum Schedule {
 #[serde(deny_unknown_fields)]
 #[serde(rename_all = "snake_case")]
 pub struct Recurring {
+    #[serde(rename = "type")]
+    _kind: MustBe!("recurring"),
     #[validate(custom = "validate_cron", required)]
     #[proto(required)]
     pub cron: Option<String>,
@@ -63,6 +66,8 @@ pub struct Recurring {
 #[serde(deny_unknown_fields)]
 #[serde(rename_all = "snake_case")]
 pub(crate) struct RunAt {
+    #[serde(rename = "type")]
+    _kind: MustBe!("timepoints"),
     #[validate(
         length(
             min = 1,
@@ -130,6 +135,7 @@ mod tests {
     fn validate_run_at() -> Result<()> {
         let run_at = json!(
             {
+                "type": "timepoints",
                 "timepoints": [ "PT1M", "PT2M" ]
             }
         );
@@ -140,6 +146,7 @@ mod tests {
         // at least one is needed
         let run_at = json!(
             {
+                "type": "timepoints",
                 "timepoints": [ ]
             }
         );
@@ -156,6 +163,7 @@ mod tests {
         // no duplicates allowed
         let run_at = json!(
             {
+                "type": "timepoints",
                 "timepoints": [ "PT1M", "PT1M" ]
             }
         );
@@ -174,6 +182,7 @@ mod tests {
         // valid cron, every minute.
         let recurring = json!(
             {
+                "type": "recurring",
                 "cron": "0 * * * * *",
             }
         );
@@ -187,6 +196,7 @@ mod tests {
         // invalid cron
         let recurring = json!(
             {
+                "type": "recurring",
                 "cron": "0 * invalid",
             }
         );

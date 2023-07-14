@@ -1,0 +1,15 @@
+{
+  "schedule": {
+    "type": "recurring",
+    "cron": "*/15 * * * * *",
+    "limit": 50
+  },
+  "payload": {
+    "content_type": "text/plain",
+    "body": "Hello, World!"
+  },
+  "action": {
+    "type": "webhook",
+    "url": "http://localhost:3000/action"
+  }
+}
