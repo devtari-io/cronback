@@ -21,7 +21,6 @@ pub enum ValidationError {
     NonRoutableIp(String),
 }
 
-#[allow(dead_code)]
 fn validate_endpoint_scheme(scheme: &str) -> Result<(), ValidationError> {
     if scheme == "http" || scheme == "https" {
         Ok(())
@@ -30,7 +29,6 @@ fn validate_endpoint_scheme(scheme: &str) -> Result<(), ValidationError> {
     }
 }
 
-#[allow(dead_code)]
 fn validate_endpoint_url_public_ip(url: &Url) -> Result<(), ValidationError> {
     // This function does the DNS resolution. Unfortunately, it's synchronous.
     let addrs = url

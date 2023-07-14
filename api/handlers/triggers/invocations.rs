@@ -26,7 +26,7 @@ pub(crate) async fn list(
     let Some(trigger) = state
         .db
         .trigger_store
-        .get_trigger(&trigger_id)
+        .get_trigger(&project, &trigger_id)
         .await
         .map_err(|e| AppStateError::DatabaseError(e.to_string()))? else {
             return Err(ApiError::NotFound(trigger_id.to_string()));

@@ -5,8 +5,9 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
 use lib::model::ValidShardedId;
-use lib::types::{ProjectId, RequestId, Schedule, Trigger};
+use lib::types::{ProjectId, RequestId, Schedule, Trigger, TriggerId};
 use proto::scheduler_proto::InstallTriggerRequest;
+use tracing::error;
 
 use crate::api_model::InstallTrigger;
 use crate::errors::ApiError;
@@ -19,8 +20,31 @@ pub(crate) async fn install(
     State(state): State<Arc<AppState>>,
     Extension(project): Extension<ValidShardedId<ProjectId>>,
     Extension(request_id): Extension<RequestId>,
-    ValidatedJson(mut request): ValidatedJson<InstallTrigger>,
+    ValidatedJson(request): ValidatedJson<InstallTrigger>,
 ) -> Result<impl IntoResponse, ApiError> {
+    // TODO (AhmedSoliman): Make this configurable via a HEADER
+    let fail_if_exists = false;
+    install_or_update(state, None, request_id, fail_if_exists, project, request)
+        .await
+}
+
+pub(crate) async fn install_or_update(
+    state: Arc<AppState>,
+    id: Option<ValidShardedId<TriggerId>>,
+    request_id: RequestId,
+    fail_if_exists: bool,
+    project: ValidShardedId<ProjectId>,
+    mut request: InstallTrigger,
+) -> Result<impl IntoResponse, ApiError> {
+    // If we have an Id already, we must allow updates.
+    if id.is_some() && fail_if_exists {
+        error!(
+            trigger_id = ?id,
+            "Bad request: fail_if_exists is true, but we have an Id already."
+        );
+
+        return Err(ApiError::ServiceUnavailable);
+    }
     // Decide the scheduler cell
     // Pick cell.
     let mut scheduler = state.get_scheduler(&request_id, &project).await?;
@@ -36,14 +60,19 @@ pub(crate) async fn install(
         run_at.remaining = run_at.timepoints.len() as u64;
     };
     // Send the request to the scheduler
-    let install_request: InstallTriggerRequest = request.into_proto(project);
-    let trigger = scheduler
+    let install_request: InstallTriggerRequest =
+        request.into_proto(project, id, fail_if_exists);
+
+    let response = scheduler
         .install_trigger(install_request)
         .await?
-        .into_inner()
-        .trigger
-        .unwrap();
-    let trigger: Trigger = trigger.into();
+        .into_inner();
+    let trigger: Trigger = response.trigger.unwrap().into();
+    let status = if response.already_existed {
+        StatusCode::OK
+    } else {
+        StatusCode::CREATED
+    };
 
-    Ok((StatusCode::CREATED, Json(trigger)))
+    Ok((status, Json(trigger)))
 }

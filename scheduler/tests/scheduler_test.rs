@@ -9,6 +9,7 @@ use proto::scheduler_proto::{GetTriggerRequest, InstallTriggerRequest};
 use proto::trigger_proto::{
     Cron,
     Schedule,
+    TriggerStatus,
     {self},
 };
 use scheduler::test_helpers;
@@ -28,6 +29,8 @@ async fn install_trigger_valid_test() {
         test_helpers::test_server_and_client(context).await;
     let install_trigger = InstallTriggerRequest {
         project_id: project.to_string(),
+        id: None,
+        fail_if_exists: false,
         reference: None,
         name: "sample-trigger".to_owned(),
         description: None,
@@ -53,9 +56,9 @@ async fn install_trigger_valid_test() {
             .unwrap()
             .into_inner();
         assert!(installed_trigger.trigger.is_some());
+        assert!(!installed_trigger.already_existed);
         let created_trigger = installed_trigger.trigger.unwrap();
         assert!(created_trigger.id.len() > 5);
-        println!("{}", created_trigger.id);
         let created_trigger: Trigger = created_trigger.into();
         // Validate that the cron pattern is what we have set.
         // No errors. Let's try and get it from server.
@@ -70,6 +73,134 @@ async fn install_trigger_valid_test() {
         assert!(response.trigger.is_some());
         let trigger_retrieved: Trigger = response.trigger.unwrap().into();
         assert_eq!(trigger_retrieved.id, created_trigger.id);
+    };
+
+    // Wait for completion, when the client request future completes
+    tokio::select! {
+        _ = serve_future => panic!("server returned first"),
+        _ = request_future => (),
+    }
+}
+
+#[tokio::test]
+async fn install_trigger_reference_test() {
+    let shutdown = Shutdown::default();
+    let config_loader = Arc::new(ConfigLoader::from_path(&None));
+    let context = ServiceContext::new(
+        format!("{:?}", Role::Scheduler),
+        config_loader,
+        shutdown,
+    );
+    let project = ProjectId::generate();
+    let (serve_future, mut client) =
+        test_helpers::test_server_and_client(context).await;
+    let install_trigger = InstallTriggerRequest {
+        project_id: project.to_string(),
+        id: None,
+        fail_if_exists: false,
+        reference: Some("some-meaningful-reference".to_owned()),
+        name: "sample-trigger".to_owned(),
+        description: None,
+        emit: Vec::default(),
+        payload: Some(proto::trigger_proto::Payload {
+            content_type: "application/json".to_owned(),
+            headers: HashMap::new(),
+            body: "Hello World".into(),
+        }),
+        schedule: Some(Schedule {
+            schedule: Some(trigger_proto::schedule::Schedule::Cron(Cron {
+                cron: "0 * * * * *".to_owned(),
+                timezone: "Europe/London".into(),
+                limit: 4,
+                remaining: 0, // will be overridden by the server.
+            })),
+        }),
+    };
+    let request_future = async {
+        let installed_trigger = client
+            .install_trigger(Request::new(install_trigger))
+            .await
+            .unwrap()
+            .into_inner();
+        assert!(installed_trigger.trigger.is_some());
+        // new trigger.
+        assert!(!installed_trigger.already_existed);
+        // updated at is NOT set.
+        assert_eq!(None, installed_trigger.trigger.unwrap().updated_at);
+        // let's update the description.
+        let install_trigger = InstallTriggerRequest {
+            project_id: project.to_string(),
+            // We rely on the reference to match the trigger.
+            id: None,
+            fail_if_exists: false,
+            // UPDATED
+            reference: Some("some-meaningful-reference".to_owned()),
+            name: "sample-trigger".to_owned(),
+            description: Some("new description is here".to_owned()),
+            emit: Vec::default(),
+            payload: Some(proto::trigger_proto::Payload {
+                content_type: "application/json".to_owned(),
+                headers: HashMap::new(),
+                body: "Hello World".into(),
+            }),
+            schedule: Some(Schedule {
+                schedule: Some(trigger_proto::schedule::Schedule::Cron(Cron {
+                    cron: "0 * * * * *".to_owned(),
+                    timezone: "Europe/London".into(),
+                    limit: 4,
+                    remaining: 0, // will be overridden by the server.
+                })),
+            }),
+        };
+
+        let installed_trigger = client
+            .install_trigger(Request::new(install_trigger))
+            .await
+            .unwrap()
+            .into_inner();
+        assert!(installed_trigger.trigger.is_some());
+        // updated trigger.
+        assert!(installed_trigger.already_existed);
+        let updated_trigger = installed_trigger.trigger.unwrap();
+        assert_eq!(
+            Some("new description is here".to_owned()),
+            updated_trigger.description
+        );
+        assert_eq!(TriggerStatus::Scheduled, updated_trigger.status());
+
+        // let's switch this to on-demand
+        let install_trigger = InstallTriggerRequest {
+            project_id: project.to_string(),
+            id: Some(updated_trigger.id),
+            fail_if_exists: false,
+            // Unset the reference.
+            reference: None,
+            name: "sample-trigger".to_owned(),
+            description: None,
+            emit: Vec::default(),
+            payload: Some(proto::trigger_proto::Payload {
+                content_type: "application/json".to_owned(),
+                headers: HashMap::new(),
+                body: "Hello World".into(),
+            }),
+            // Unset the schedule
+            schedule: None,
+        };
+
+        let installed_trigger = client
+            .install_trigger(Request::new(install_trigger))
+            .await
+            .unwrap()
+            .into_inner();
+        assert!(installed_trigger.trigger.is_some());
+        // updated trigger.
+        assert!(installed_trigger.already_existed);
+        let updated_trigger = installed_trigger.trigger.unwrap();
+        assert_eq!(None, updated_trigger.description);
+        assert_eq!(None, updated_trigger.reference);
+        // updated at is set.
+        assert_ne!(None, updated_trigger.updated_at);
+        assert_eq!(TriggerStatus::OnDemand, updated_trigger.status());
     };
 
     // Wait for completion, when the client request future completes

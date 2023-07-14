@@ -37,6 +37,11 @@ impl From<trigger_proto::Trigger> for Trigger {
             created_at: DateTime::parse_from_rfc3339(&value.created_at)
                 .unwrap()
                 .with_timezone(&Utc),
+            updated_at: value.updated_at.map(|s| {
+                DateTime::parse_from_rfc3339(&s)
+                    .unwrap()
+                    .with_timezone(&Utc)
+            }),
             reference: value.reference,
             payload: value.payload.map(|p| p.into()),
             schedule: value.schedule.map(|s| s.into()),
@@ -59,6 +64,11 @@ impl From<trigger_proto::TriggerManifest> for TriggerManifest {
             created_at: DateTime::parse_from_rfc3339(&value.created_at)
                 .unwrap()
                 .with_timezone(&Utc),
+            updated_at: value.updated_at.map(|s| {
+                DateTime::parse_from_rfc3339(&s)
+                    .unwrap()
+                    .with_timezone(&Utc)
+            }),
             emit: value.emit.into_iter().map(|e| e.into()).collect(),
             reference: value.reference,
             schedule: value.schedule.map(|s| s.into()),

@@ -52,10 +52,7 @@ impl Scheduler for SchedulerAPIHandler {
         let project =
             ProjectId::from(request.project_id.clone()).validated()?;
         // Creating a new trigger from install_trigger
-        let trigger = self.scheduler.install_trigger(project, request).await?;
-        let reply = InstallTriggerResponse {
-            trigger: Some(trigger.into()),
-        };
+        let reply = self.scheduler.install_trigger(project, request).await?;
         Ok(Response::new(reply))
     }
 

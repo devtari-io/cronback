@@ -26,6 +26,7 @@ pub struct Trigger {
     pub name: String,
     pub description: Option<String>,
     pub created_at: DateTime<Utc>,
+    pub updated_at: Option<DateTime<Utc>>,
     pub reference: Option<String>,
     pub payload: Option<Payload>,
     pub schedule: Option<Schedule>,
@@ -46,6 +47,7 @@ impl Trigger {
             name: self.name,
             description: self.description,
             created_at: self.created_at,
+            updated_at: self.updated_at,
             emit: self.emit,
             reference: self.reference,
             schedule: self.schedule,
@@ -61,12 +63,38 @@ impl Trigger {
             name: self.name.clone(),
             description: self.description.clone(),
             created_at: self.created_at,
+            updated_at: self.updated_at,
             emit: self.emit.clone(),
             reference: self.reference.clone(),
             schedule: self.schedule.clone(),
             status: self.status.clone(),
             last_invoked_at: self.last_invoked_at,
         }
+    }
+
+    pub fn update(
+        &mut self,
+        new_name: String,
+        new_description: Option<String>,
+        new_reference: Option<String>,
+        new_payload: Option<Payload>,
+        new_schedule: Option<Schedule>,
+        new_emit: Vec<Emit>,
+    ) {
+        self.updated_at = Some(Utc::now());
+
+        self.name = new_name;
+        self.description = new_description;
+        self.reference = new_reference;
+        self.payload = new_payload;
+        self.schedule = new_schedule;
+        self.emit = new_emit;
+        self.status = if self.schedule.is_some() {
+            Status::Scheduled
+        } else {
+            Status::OnDemand
+        };
+        // NOTE: we leave last_invoked_at as is.
     }
 }
 
@@ -79,6 +107,7 @@ pub struct TriggerManifest {
     pub name: String,
     pub description: Option<String>,
     pub created_at: DateTime<Utc>,
+    pub updated_at: Option<DateTime<Utc>>,
     pub emit: Vec<Emit>,
     pub reference: Option<String>,
     pub schedule: Option<Schedule>,

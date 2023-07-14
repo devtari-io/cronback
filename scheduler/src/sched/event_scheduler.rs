@@ -14,7 +14,7 @@ use lib::types::{
     TriggerId,
     TriggerManifest,
 };
-use proto::scheduler_proto::InstallTriggerRequest;
+use proto::scheduler_proto::{InstallTriggerRequest, InstallTriggerResponse};
 use tracing::{debug, error, info, trace, warn};
 
 use super::dispatch::dispatch;
@@ -176,21 +176,128 @@ impl EventScheduler {
     }
 
     #[tracing::instrument(skip_all)]
+    pub async fn update_trigger(
+        &self,
+        mut existing_trigger: Trigger,
+        install_trigger: InstallTriggerRequest,
+    ) -> Result<InstallTriggerResponse, TriggerError> {
+        // TODO: Take snapshots of previous triggers and store for auditing.
+        if install_trigger.fail_if_exists {
+            return Err(TriggerError::UpdateNotAllowed(existing_trigger.id));
+        }
+
+        // Is the updated trigger a "Scheduled" trigger?
+        // Do we have the existing trigger in memory?
+        let trigger_id = existing_trigger.id.clone();
+        let triggers_map = self.triggers.clone();
+        // Why clone? because we might need it if the trigger was not in the
+        // active map.
+        let install_cloned = install_trigger.clone();
+        let mut updated_trigger = tokio::task::spawn_blocking(move || {
+            let mut w = triggers_map.write().unwrap();
+            let Some(alive_trigger) = w.get(&trigger_id) else {
+                return None;
+            };
+            // are we attempting to install a `scheduled` replacement, or is
+            // the replacement an on_demand one?
+            let mut updated_trigger = alive_trigger.clone();
+            updated_trigger.update(
+                install_cloned.name,
+                install_cloned.description,
+                install_cloned.reference,
+                install_cloned.payload.map(Into::into),
+                install_cloned.schedule.map(Into::into),
+                install_cloned.emit.into_iter().map(Into::into).collect(),
+            );
+            if updated_trigger.schedule.is_some() {
+                Some(w.add_or_update(
+                    updated_trigger,
+                    // We fast forward on update to avoid triggering old
+                    // events if the new trigger
+                    // has any old timestamps.
+                    /* fast_forward = */
+                    true,
+                ))
+            } else {
+                // If the old is scheduled and the new is not,
+                // we are in trouble, so we remove it from
+                // the map.
+                w.pop_trigger(&trigger_id);
+                Some(Ok(updated_trigger))
+            }
+        })
+        .await?
+        .transpose()?;
+
+        // if we don't have an updated_trigger, it means that we can merge with
+        // the `existing_trigger` to get the updated one.
+        if updated_trigger.is_none() {
+            existing_trigger.update(
+                install_trigger.name,
+                install_trigger.description,
+                install_trigger.reference,
+                install_trigger.payload.map(|p| p.into()),
+                install_trigger.schedule.map(|s| s.into()),
+                install_trigger.emit.into_iter().map(|e| e.into()).collect(),
+            );
+            updated_trigger = Some(existing_trigger);
+        }
+
+        // Guaranteed to be set at this point.
+        let updated_trigger = updated_trigger.unwrap();
+
+        // We have the updated trigger, let's save it to the database.
+        self.store.update_trigger(&updated_trigger).await?;
+
+        //
+        // RESPOND
+        let reply = InstallTriggerResponse {
+            trigger: Some(updated_trigger.into()),
+            already_existed: true,
+        };
+        Ok(reply)
+    }
+
+    #[tracing::instrument(skip_all)]
     pub async fn install_trigger(
         &self,
         project: ValidShardedId<ProjectId>,
         install_trigger: InstallTriggerRequest,
-    ) -> Result<Trigger, TriggerError> {
+    ) -> Result<InstallTriggerResponse, TriggerError> {
+        // If we have an Id already, we must allow updates.
+        if install_trigger.id.is_some() && install_trigger.fail_if_exists {
+            return Err(TriggerError::UpdateNotAllowed(
+                install_trigger.id.unwrap().into(),
+            ));
+        }
+        // ** Are we installing new or updating an existing trigger? **
+        //
+        // find the existing trigger by id
+        if let Some(trigger_id) = install_trigger.id.clone() {
+            let trigger_id = TriggerId::from(trigger_id);
+            let existing_trigger =
+                self.store.get_trigger(&project, &trigger_id).await?;
+            let Some(existing_trigger) = existing_trigger else {
+                return Err(TriggerError::NotFound(trigger_id));
+            };
+            return self
+                .update_trigger(existing_trigger, install_trigger)
+                .await;
+        }
+
         let id = TriggerId::generate(&project);
 
+        // We want to keep a copy in case we have to call update later.
+        let copied_request = install_trigger.clone();
         let is_scheduled = install_trigger.schedule.is_some();
         let trigger = Trigger {
             id: id.into(),
-            project,
-            reference: install_trigger.reference,
+            project: project.clone(),
+            reference: install_trigger.reference.clone(),
             name: install_trigger.name,
             description: install_trigger.description,
             created_at: Utc::now(),
+            updated_at: None,
             emit: install_trigger.emit.into_iter().map(|e| e.into()).collect(),
             payload: install_trigger.payload.map(|p| p.into()),
             schedule: install_trigger.schedule.map(|s| s.into()),
@@ -207,6 +314,31 @@ impl EventScheduler {
         match store_result {
             | Ok(_) => {}
             | Err(TriggerStoreError::DuplicateRecord) => {
+                // Do we have an existing trigger with this reference?
+                // if we search first, then we might end up inserting twice and
+                // failing with duplicate error to the user. If
+                // we always attempt to insert and fallback to
+                // update, we won't produce duplicate
+                // errors unless the user asks to fail if exists explicitly.
+                if copied_request.reference.is_some()
+                    && !copied_request.fail_if_exists
+                {
+                    let mut triggers = self
+                        .store
+                        .get_triggers_by_project(
+                            &project.clone(),
+                            copied_request.reference.clone(),
+                            /* before = */ None,
+                            /* after = */ None,
+                            /* limit = */ 1,
+                        )
+                        .await?;
+                    if let Some(trigger) = triggers.pop() {
+                        return self
+                            .update_trigger(trigger, copied_request)
+                            .await;
+                    }
+                }
                 return Err(TriggerError::AlreadyExists(
                     trigger.reference.unwrap(),
                 ));
@@ -214,7 +346,7 @@ impl EventScheduler {
             | Err(e) => return Err(e.into()),
         };
 
-        if is_scheduled {
+        let trigger = if is_scheduled {
             // We only install scheduled triggers in the ActiveMap
             let triggers = self.triggers.clone();
             tokio::task::spawn_blocking(move || {
@@ -224,7 +356,13 @@ impl EventScheduler {
             .await?
         } else {
             Ok(trigger)
-        }
+        }?;
+
+        let reply = InstallTriggerResponse {
+            trigger: Some(trigger.into()),
+            already_existed: false,
+        };
+        Ok(reply)
     }
 
     #[tracing::instrument(skip_all, fields(trigger_id = %id))]
@@ -249,7 +387,7 @@ impl EventScheduler {
             | Ok(_) => Err(TriggerError::NotFound(id.clone())),
             | Err(TriggerError::NotFound(_)) => {
                 self.store
-                    .get_trigger(&id)
+                    .get_trigger(&project, &id)
                     .await?
                     .ok_or_else(|| TriggerError::NotFound(id))
             }

@@ -77,8 +77,9 @@ message Trigger {
   string name = 4;
   optional string description = 5;
   string created_at = 6;
-  repeated Emit emit = 7;
-  Payload payload = 8;
+  optional string updated_at = 7;
+  repeated Emit emit = 8;
+  Payload payload = 9;
   Schedule schedule = 10;
   TriggerStatus status = 11;
   OnStatusHandler on_success = 12;
@@ -93,9 +94,10 @@ message TriggerManifest {
   string name = 4;
   optional string description = 5;
   string created_at = 6;
-  repeated Emit emit = 7;
-  Schedule schedule = 8;
-  TriggerStatus status = 9;
-  optional string last_invoked_at = 10;
+  optional string updated_at = 7;
+  repeated Emit emit = 8;
+  Schedule schedule = 9;
+  TriggerStatus status = 10;
+  optional string last_invoked_at = 11;
 }
 

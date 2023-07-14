@@ -44,6 +44,7 @@ pub trait TriggerStore {
 
     async fn get_trigger(
         &self,
+        project: &ProjectId,
         id: &TriggerId,
     ) -> Result<Option<Trigger>, TriggerStoreError>;
 
@@ -186,9 +187,11 @@ impl TriggerStore for SqlTriggerStore {
 
     async fn get_trigger(
         &self,
+        project: &ProjectId,
         id: &TriggerId,
     ) -> Result<Option<Trigger>, TriggerStoreError> {
-        get_by_id_query(&self.db, TriggersIden::Triggers, id).await
+        let t = get_by_id_query(&self.db, TriggersIden::Triggers, id).await?;
+        Ok(t.filter(|x: &Trigger| x.project.inner() == project))
     }
 
     async fn get_status(
@@ -247,6 +250,7 @@ mod tests {
             name: name.to_string(),
             description: Some(format!("Desc: {}", name)),
             created_at: now,
+            updated_at: None,
             payload: None,
             schedule: None,
             emit: vec![Emit::Webhook(Webhook {
@@ -284,15 +288,20 @@ mod tests {
         store.install_trigger(&t4).await?;
 
         // Test getters
-        assert_eq!(store.get_trigger(&t1.id).await?, Some(t1.clone()));
-        assert_eq!(store.get_trigger(&t2.id).await?, Some(t2.clone()));
-        assert_eq!(store.get_trigger(&t3.id).await?, Some(t3.clone()));
-        assert_eq!(store.get_trigger(&t4.id).await?, Some(t4.clone()));
+        assert_eq!(store.get_trigger(&owner1, &t1.id).await?, Some(t1.clone()));
+        assert_eq!(store.get_trigger(&owner1, &t2.id).await?, Some(t2.clone()));
+        assert_eq!(store.get_trigger(&owner2, &t3.id).await?, Some(t3.clone()));
+        assert_eq!(store.get_trigger(&owner2, &t4.id).await?, Some(t4.clone()));
+        // Wrong project.
+        assert_eq!(store.get_trigger(&owner1, &t4.id).await?, None);
 
         // Test fetching non existent trigger
         assert_eq!(
             store
-                .get_trigger(&TriggerId::from("non_existent".to_string()))
+                .get_trigger(
+                    &owner1,
+                    &TriggerId::from("non_existent".to_string())
+                )
                 .await?,
             None
         );

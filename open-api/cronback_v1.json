@@ -42,8 +42,8 @@
           },
           "name": "trigger_id",
           "in": "path",
-          "required": true,
-          "description": "Trigger token"
+          "description": "Trigger token",
+          "required": true
         }
       ],
       "get": {
@@ -125,6 +125,33 @@
         "tags": [
           "Triggers"
         ]
+      },
+      "put": {
+        "summary": "",
+        "operationId": "put-triggers-trigger_id",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Trigger"
+                }
+              }
+            }
+          }
+        },
+        "description": "Update an existing trigger",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Trigger"
+              }
+            }
+          },
+          "description": ""
+        }
       }
     },
     "/triggers": {
@@ -206,8 +233,18 @@
         "summary": "Install a new trigger",
         "operationId": "install-triggers",
         "responses": {
+          "200": {
+            "description": "An existing Trigger has been updated (only possible if an existing trigger matches the supplied `reference`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Trigger"
+                }
+              }
+            }
+          },
           "201": {
-            "description": "Trigger has been installed",
+            "description": "A new Trigger has been installed (see 200 if an existing trigger matches the supplied `reference`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -637,6 +674,13 @@
             "format": "date-time",
             "example": "2023-03-25T17:43:23.654278298Z",
             "description": "ISO8601 datetime when this trigger was installed",
+            "readOnly": true
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2023-03-25T17:43:23.654278298Z",
+            "description": "ISO8601 datetime when this trigger was updated",
             "readOnly": true
           },
           "reference": {

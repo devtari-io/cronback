@@ -28,6 +28,8 @@ pub(crate) enum TriggerError {
     NotFound(TriggerId),
     #[error("Cannot {0} on a trigger with status {1}")]
     InvalidStatus(String, Status),
+    #[error("Cannot update trigger {0}")]
+    UpdateNotAllowed(TriggerId),
     //join error
     #[error("Internal async processing failure!")]
     JoinError(#[from] tokio::task::JoinError),
@@ -566,6 +568,7 @@ mod tests {
             name: "sample-trigger".to_owned(),
             description: None,
             created_at: Utc::now(),
+            updated_at: None,
             emit: Vec::default(),
             payload: None,
             status: Status::Scheduled,
