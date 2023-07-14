@@ -15,6 +15,7 @@ use super::{
     Schedule,
     Status,
     Trigger,
+    TriggerManifest,
     Webhook,
     WebhookDeliveryStatus,
     WebhookStatus,
@@ -40,6 +41,22 @@ impl From<Trigger> for trigger_proto::Trigger {
             on_success: todo!(),
             on_failure: todo!(),
             */
+        }
+    }
+}
+
+impl From<TriggerManifest> for trigger_proto::TriggerManifest {
+    fn from(value: TriggerManifest) -> Self {
+        Self {
+            id: value.id.into(),
+            owner_id: value.owner_id.into(),
+            name: value.name,
+            description: value.description,
+            created_at: value.created_at.to_rfc3339(),
+            reference_id: value.reference_id,
+            schedule: value.schedule.map(|s| s.into()),
+            status: value.status.into(),
+            last_invoked_at: value.last_invoked_at.map(|d| d.to_rfc3339()),
         }
     }
 }

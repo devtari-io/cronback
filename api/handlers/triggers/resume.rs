@@ -5,7 +5,7 @@ use axum::http::header::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
-use lib::types::{OwnerId, Trigger, TriggerId, ValidId};
+use lib::types::{OwnerId, TriggerId, TriggerManifest, ValidId};
 use proto::scheduler_proto::ResumeTriggerRequest;
 use tracing::info;
 
@@ -44,7 +44,7 @@ pub(crate) async fn resume(
         .trigger
         .unwrap();
 
-    let trigger: Trigger = trigger.into();
+    let trigger: TriggerManifest = trigger.into();
 
     Ok((StatusCode::OK, response_headers, Json(trigger)).into_response())
 }

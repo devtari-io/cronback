@@ -115,7 +115,7 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: '#/components/schemas/Trigger'
+                      $ref: '#/components/schemas/TriggerManifest'
                   has_more:
                     type: boolean
                     description: '`has_more` is true if limit was reached before returning all results.'
@@ -200,6 +200,66 @@ paths:
       tags:
         - Admin
       description: ''
+  '/triggers/{trigger_id}/cancel':
+    parameters:
+      - schema:
+          type: string
+        name: trigger_id
+        in: path
+        required: true
+    post:
+      summary: ''
+      operationId: post-triggers-trigger_id-cancel
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TriggerManifest'
+      tags:
+        - Triggers
+      description: Cancels a live trigger. The trigger must be in either `active` or `paused`
+  '/triggers/{trigger_id}/resume':
+    parameters:
+      - schema:
+          type: string
+        name: trigger_id
+        in: path
+        required: true
+    post:
+      summary: ''
+      operationId: post-triggers-trigger_id-resume
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TriggerManifest'
+      tags:
+        - Triggers
+      description: Resumes a `paused` trigger.
+  '/triggers/{trigger_id}/invoke':
+    parameters:
+      - schema:
+          type: string
+        name: trigger_id
+        in: path
+        required: true
+    post:
+      summary: ''
+      operationId: post-triggers-trigger_id-invoke
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invocation'
+      tags:
+        - Triggers
+      description: Runs an ad hoc invocation of the trigger.
 components:
   schemas:
     Trigger:
@@ -507,6 +567,108 @@ components:
               minimum: 1
               description: The delay in seconds between every attempt
       x-internal: true
+    TriggerManifest:
+      title: TriggerManifest
+      x-stoplight:
+        id: crf0j8v9wzj63
+      type: object
+      x-examples:
+        Example 1:
+          created_at: '2023-03-25T17:43:23.654278298Z'
+          description: Periodically ping healthcheck.io
+          emit:
+            - webhook:
+                http_method: GET
+                retry: null
+                timeout_s: 5
+                url: 'https://hc-ping.com/812aaa48-08a5-45b7-a74c-e5baebc10ec1'
+          hidden_last_invoked_at: '2023-03-25T21:35:00.057112087Z'
+          id: trig_ab1.01GWCXWB869BXW8Q2XZGE0JBQ6
+          name: Healthchecks.io
+          owner_id: ab1
+          payload:
+            body: '{}'
+            content_type: application/json
+            headers:
+              test-header: test-value
+          schedule:
+            recurring:
+              cron: 0 35 * * * *
+              limit: 0
+              remaining: 0
+              timezone: Etc/UTC
+          status: active
+      description: Defines a scheduled or on-demand trigger.
+      examples: []
+      properties:
+        id:
+          type: string
+          example: trig_ab1.01GWCXWB869BXW8Q2XZGE0JBQ6
+          description: A unique identifier for the trigger
+          readOnly: true
+        owner_id:
+          type: string
+          example: acc_0FGWCXWB869BXWSQ2XZGE0JBA3
+          description: The account owning this trigger
+          readOnly: true
+        name:
+          type: string
+          example: my example trigger
+          description: A human-readable name to identify the trigger. This doesn't need to be unique but we recommend picking unique names to avoid confusion
+        created_at:
+          type: string
+          format: date-time
+          example: '2023-03-25T17:43:23.654278298Z'
+          description: ISO8601 datetime when this trigger was installed
+          readOnly: true
+        reference_id:
+          type: string
+          description: Unique user-supplied identified for this trigger. This can be used as an idempotency key when creating triggers. Must be unique if set.
+        description:
+          type: string
+          example: Periodically ping healthcheck.io
+          description: A human-readable description.
+        schedule:
+          oneOf:
+            - $ref: '#/components/schemas/Cron'
+            - $ref: '#/components/schemas/RunAt'
+        status:
+          type: string
+          enum:
+            - active
+            - paused
+            - expired
+            - cancelled
+          description: |-
+            Status of the trigger. 
+            - `active` triggers can be invoked either manually of according to their `trigger.schedule`
+            - `paused` triggers will be invoked but will not emit anything.
+            - `expired` triggers are scheduled triggers that exhausted their invocations or have no future timepoints.
+            - `cancelled` triggers cannot be invoked. Those have been cancelled manually via the `/triggers/{trigger_id}/cancel` API.
+          example: active
+          readOnly: true
+        last_invoked_at:
+          type: string
+          description: ISO8601 datetime when this trigger was last invoked
+    Invocation:
+      title: Invocation
+      x-stoplight:
+        id: mcl1jeypmouci
+      type: object
+      properties:
+        id:
+          type: string
+        trigger_id:
+          type: string
+        owner_id:
+          type: string
+        created_at:
+          type: string
+        payload:
+          type: string
+        status:
+          type: array
+          items: {}
   securitySchemes:
     api_key:
       type: http

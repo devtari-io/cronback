@@ -221,7 +221,7 @@ mod tests {
             })],
             status,
             reference_id: None,
-            hidden_last_invoked_at: None,
+            last_invoked_at: None,
         }
     }
 

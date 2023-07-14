@@ -5,7 +5,14 @@ use chrono::Utc;
 use lib::database::trigger_store::TriggerStore;
 use lib::grpc_client_provider::DispatcherClientProvider;
 use lib::service::ServiceContext;
-use lib::types::{Invocation, OwnerId, Status, Trigger, TriggerId};
+use lib::types::{
+    Invocation,
+    OwnerId,
+    Status,
+    Trigger,
+    TriggerId,
+    TriggerManifest,
+};
 use proto::scheduler_proto::InstallTriggerRequest;
 use tracing::{debug, error, info, warn};
 
@@ -184,7 +191,7 @@ impl EventScheduler {
             payload: install_trigger.payload.unwrap().into(),
             schedule: install_trigger.schedule.map(|s| s.into()),
             status: Status::Active,
-            hidden_last_invoked_at: None,
+            last_invoked_at: None,
         };
 
         self.store.install_trigger(&trigger).await?;
@@ -225,6 +232,48 @@ impl EventScheduler {
             }
             | Err(e) => Err(e),
         }
+    }
+
+    #[tracing::instrument(skip(self))]
+    pub async fn list_triggers(
+        &self,
+        owner_id: OwnerId,
+        limit: usize,
+        before: Option<TriggerId>,
+        after: Option<TriggerId>,
+    ) -> Result<Vec<TriggerManifest>, TriggerError> {
+        // Hopefully in the future we will be able to get the manifest directly
+        // from database instead of fetching the entire trigger.
+        let triggers = self
+            .store
+            .get_triggers_by_owner(&owner_id, before, after, limit)
+            .await?;
+
+        let (alive, dead): (Vec<_>, Vec<_>) =
+            triggers.into_iter().partition(Trigger::alive);
+
+        // Swap live triggers with ones from the scheduler in-memory state.
+        let active_trigger_map = self.triggers.clone();
+        let alive_triggers: Vec<TriggerManifest> =
+            tokio::task::spawn_blocking(move || {
+                let r = active_trigger_map.read().unwrap();
+                alive
+                    .into_iter()
+                    .filter_map(|t| r.get(&t.id))
+                    .map(Trigger::get_manifest)
+                    .collect()
+            })
+            .await?;
+
+        let mut results: Vec<TriggerManifest> =
+            Vec::with_capacity(dead.len() + alive_triggers.len());
+
+        // merge live and dead
+        results.extend(dead.into_iter().map(Trigger::into_manifest));
+        results.extend(alive_triggers);
+        // reverse sort the list by created_at (newer first)
+        results.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        Ok(results)
     }
 
     #[tracing::instrument(skip_all, fields(trigger_id = %id))]

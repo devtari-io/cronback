@@ -39,7 +39,56 @@ pub struct Trigger {
 
     pub status: Status,
 
-    pub hidden_last_invoked_at: Option<DateTime<Utc>>,
+    pub last_invoked_at: Option<DateTime<Utc>>,
+}
+
+impl Trigger {
+    pub fn alive(&self) -> bool {
+        self.status.alive()
+    }
+
+    pub fn into_manifest(self) -> TriggerManifest {
+        TriggerManifest {
+            id: self.id,
+            owner_id: self.owner_id,
+            name: self.name,
+            description: self.description,
+            created_at: self.created_at,
+            reference_id: self.reference_id,
+            schedule: self.schedule,
+            status: self.status,
+            last_invoked_at: self.last_invoked_at,
+        }
+    }
+
+    pub fn get_manifest(&self) -> TriggerManifest {
+        TriggerManifest {
+            id: self.id.clone(),
+            owner_id: self.owner_id.clone(),
+            name: self.name.clone(),
+            description: self.description.clone(),
+            created_at: self.created_at,
+            reference_id: self.reference_id.clone(),
+            schedule: self.schedule.clone(),
+            status: self.status.clone(),
+            last_invoked_at: self.last_invoked_at,
+        }
+    }
+}
+
+#[serde_as]
+#[skip_serializing_none]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct TriggerManifest {
+    pub id: TriggerId,
+    pub owner_id: OwnerId,
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub reference_id: Option<String>,
+    pub schedule: Option<Schedule>,
+    pub status: Status,
+    pub last_invoked_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
@@ -54,6 +103,9 @@ pub enum Status {
 }
 
 impl Status {
+    // Alive means that it should continue to live in the spinner map. A paused
+    // trigger is considered alive, but it won't be invoked. We will advance
+    // its clock as if it was invoked though.
     pub fn alive(&self) -> bool {
         [Self::Active, Self::Paused].contains(self)
     }

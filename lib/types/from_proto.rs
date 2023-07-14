@@ -18,6 +18,7 @@ use super::{
     SimpleRetry,
     Status,
     Trigger,
+    TriggerManifest,
     Webhook,
     WebhookAttemptDetails,
     WebhookDeliveryStatus,
@@ -42,7 +43,31 @@ impl From<trigger_proto::Trigger> for Trigger {
             status: value.status.into(),
             // We are not supposed to send this to other services, it is
             // internal.
-            hidden_last_invoked_at: None,
+            last_invoked_at: None,
+        }
+    }
+}
+
+impl From<trigger_proto::TriggerManifest> for TriggerManifest {
+    fn from(value: trigger_proto::TriggerManifest) -> Self {
+        Self {
+            id: value.id.into(),
+            owner_id: value.owner_id.into(),
+            name: value.name,
+            description: value.description,
+            created_at: DateTime::parse_from_rfc3339(&value.created_at)
+                .unwrap()
+                .with_timezone(&Utc),
+            reference_id: value.reference_id,
+            schedule: value.schedule.map(|s| s.into()),
+            status: value.status.into(),
+            // We are not supposed to send this to other services, it is
+            // internal.
+            last_invoked_at: value.last_invoked_at.map(|l| {
+                DateTime::parse_from_rfc3339(&l)
+                    .unwrap()
+                    .with_timezone(&Utc)
+            }),
         }
     }
 }

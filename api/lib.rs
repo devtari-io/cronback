@@ -23,7 +23,7 @@ use lib::database::attempt_log_store::{AttemptLogStore, SqlAttemptLogStore};
 use lib::database::invocation_store::{InvocationStore, SqlInvocationStore};
 use lib::database::trigger_store::{SqlTriggerStore, TriggerStore};
 use lib::database::SqliteDatabase;
-use lib::types::{CellId, TriggerId};
+use lib::types::{CellId, OwnerId, TriggerId};
 use lib::{netutils, service};
 use metrics::{histogram, increment_counter};
 use proto::scheduler_proto::scheduler_client::SchedulerClient as GenSchedulerClient;
@@ -90,6 +90,16 @@ impl AppState {
     ) -> Result<SchedulerClient, AppStateError> {
         // Decide the scheduler cell
         // TODO: Now, how do we figure which scheduler has this trigger?
+        // For now, we'll assume all triggers are on Cell 0
+        let cell_id = CellId::from(0);
+        self.scheduler(cell_id).await
+    }
+
+    pub async fn scheduler_for_owner(
+        &self,
+        _owner_id: &OwnerId,
+    ) -> Result<SchedulerClient, AppStateError> {
+        // Decide the scheduler cell
         // For now, we'll assume all triggers are on Cell 0
         let cell_id = CellId::from(0);
         self.scheduler(cell_id).await

@@ -13,6 +13,8 @@ use proto::scheduler_proto::{
     InstallTriggerResponse,
     InvokeTriggerRequest,
     InvokeTriggerResponse,
+    ListTriggersRequest,
+    ListTriggersResponse,
     PauseTriggerRequest,
     PauseTriggerResponse,
     ResumeTriggerRequest,
@@ -108,7 +110,7 @@ impl Scheduler for SchedulerAPIHandler {
             .pause_trigger(request.owner_id.into(), request.id.into())
             .await?;
         Ok(Response::new(PauseTriggerResponse {
-            trigger: Some(trigger.into()),
+            trigger: Some(trigger.into_manifest().into()),
         }))
     }
 
@@ -123,7 +125,7 @@ impl Scheduler for SchedulerAPIHandler {
             .resume_trigger(request.owner_id.into(), request.id.into())
             .await?;
         Ok(Response::new(ResumeTriggerResponse {
-            trigger: Some(trigger.into()),
+            trigger: Some(trigger.into_manifest().into()),
         }))
     }
 
@@ -138,7 +140,26 @@ impl Scheduler for SchedulerAPIHandler {
             .cancel_trigger(request.owner_id.into(), request.id.into())
             .await?;
         Ok(Response::new(CancelTriggerResponse {
-            trigger: Some(trigger.into()),
+            trigger: Some(trigger.into_manifest().into()),
+        }))
+    }
+
+    async fn list_triggers(
+        &self,
+        request: Request<ListTriggersRequest>,
+    ) -> Result<Response<ListTriggersResponse>, Status> {
+        let (_metadata, _ext, request) = request.into_parts();
+        let manifests = self
+            .scheduler
+            .list_triggers(
+                request.owner_id.into(),
+                request.limit as usize,
+                request.before.map(Into::into),
+                request.after.map(Into::into),
+            )
+            .await?;
+        Ok(Response::new(ListTriggersResponse {
+            triggers: manifests.into_iter().map(Into::into).collect(),
         }))
     }
 

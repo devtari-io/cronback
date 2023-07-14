@@ -174,7 +174,7 @@ impl ActiveTriggerMap {
             return None;
         };
 
-        if !trigger.is_alive() {
+        if !trigger.alive() {
             return None;
         }
 
@@ -263,8 +263,8 @@ impl ActiveTriggerMap {
 
         // We are guarding this because we should not add this trigger to
         // `awaiting_db_flush` if we didn't really update it.
-        if trigger.inner.hidden_last_invoked_at != new_val {
-            trigger.inner.hidden_last_invoked_at = new_val;
+        if trigger.inner.last_invoked_at != new_val {
+            trigger.inner.last_invoked_at = new_val;
             self.add_to_awaiting_db_flush(trigger_id.clone());
         }
     }
@@ -452,7 +452,7 @@ impl ActiveTrigger {
         let last_invoked_at = if fast_forward {
             None
         } else {
-            trigger.hidden_last_invoked_at
+            trigger.last_invoked_at
         };
         let ticks = TriggerFutureTicks::from_schedule(k, last_invoked_at)?;
         // We assume that Trigger.schedule is never None
@@ -473,9 +473,8 @@ impl ActiveTrigger {
     // Active means that it should continue to live in the spinner map. A paused
     // trigger is considered alive, but it won't be invoked. We will advance
     // its clock as if it was invoked though.
-    pub fn is_alive(&self) -> bool {
-        self.inner.status == Status::Active
-            || self.inner.status == Status::Paused
+    pub fn alive(&self) -> bool {
+        self.inner.alive()
     }
 
     pub fn advance(&mut self) -> Option<DateTime<Tz>> {
@@ -493,7 +492,7 @@ impl ActiveTrigger {
     }
 
     pub fn last_invoked_at(&self) -> Option<DateTime<Utc>> {
-        self.inner.hidden_last_invoked_at
+        self.inner.last_invoked_at
     }
 
     // Returns true if state has changed.
@@ -557,7 +556,7 @@ mod tests {
             payload: Payload::default(),
             status: Status::Active,
             schedule: Some(sched),
-            hidden_last_invoked_at: None,
+            last_invoked_at: None,
         }
     }
 

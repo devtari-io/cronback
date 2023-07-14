@@ -5,14 +5,14 @@ use axum::http::header::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
-use lib::types::{OwnerId, Trigger, TriggerId, ValidId};
-use proto::scheduler_proto::GetTriggerRequest;
+use lib::types::{OwnerId, Trigger, TriggerId, TriggerManifest, ValidId};
+use proto::scheduler_proto::{GetTriggerRequest, ListTriggersRequest};
 use tracing::info;
 use validator::Validate;
 
 use crate::api_model::{paginate, Pagination};
 use crate::errors::ApiError;
-use crate::{AppState, AppStateError};
+use crate::AppState;
 
 #[tracing::instrument(skip(state))]
 #[debug_handler]
@@ -72,17 +72,20 @@ pub(crate) async fn list(
     // Trick. We want to know if there is a next page, so we ask for one more
     let limit = pagination.limit() + 1;
 
-    let triggers = state
-        .db
-        .trigger_store
-        .get_triggers_by_owner(
-            &owner_id,
-            pagination.before.clone(),
-            pagination.after.clone(),
-            limit,
-        )
-        .await
-        .map_err(|e| AppStateError::DatabaseError(e.to_string()))?;
+    let mut scheduler = state.scheduler_for_owner(&owner_id).await?;
+    let triggers = scheduler
+        .list_triggers(ListTriggersRequest {
+            owner_id: owner_id.0.clone(),
+            limit: limit as u64,
+            before: pagination.before.clone().map(Into::into),
+            after: pagination.after.clone().map(Into::into),
+        })
+        .await?
+        .into_inner()
+        .triggers;
+
+    let triggers: Vec<TriggerManifest> =
+        triggers.into_iter().map(Into::into).collect();
 
     Ok((
         StatusCode::OK,

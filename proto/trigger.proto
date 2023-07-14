@@ -66,7 +66,7 @@ message Schedule {
 message Trigger {
   string id = 1;
   string owner_id = 2;
-  /// [Future] User supplied identifier, unique per owner account
+  /// User supplied identifier, unique per owner
   optional string reference_id = 3;
   optional string name = 4;
   optional string description = 5;
@@ -77,5 +77,18 @@ message Trigger {
   TriggerStatus status = 11;
   OnStatusHandler on_success = 12;
   OnStatusHandler on_failure = 13;
+}
+
+message TriggerManifest {
+  string id = 1;
+  string owner_id = 2;
+  /// User supplied identifier, unique per owner
+  optional string reference_id = 3;
+  optional string name = 4;
+  optional string description = 5;
+  string created_at = 6;
+  Schedule schedule = 7;
+  TriggerStatus status = 8;
+  optional string last_invoked_at = 9;
 }
 

@@ -4,6 +4,7 @@ use anyhow::{anyhow, Result};
 use lib::types::{Emit, Webhook};
 use url::Url;
 
+#[allow(dead_code)]
 fn validate_endpoint_scheme(scheme: &str) -> Result<()> {
     if scheme == "http" || scheme == "https" {
         Ok(())
@@ -12,6 +13,7 @@ fn validate_endpoint_scheme(scheme: &str) -> Result<()> {
     }
 }
 
+#[allow(dead_code)]
 fn validate_endpoint_url_public_ip(host: Option<&str>) -> Result<()> {
     let host = host.ok_or(anyhow!("The endpoint must contain a host"))?;
 
@@ -45,6 +47,7 @@ fn validate_endpoint_url_public_ip(host: Option<&str>) -> Result<()> {
     Ok(())
 }
 
+#[allow(dead_code)]
 pub(crate) fn validate_dispatch_request(emit: Emit) -> Result<()> {
     let url_string = match emit {
         | Emit::Webhook(Webhook { url, .. }) => url.unwrap(),

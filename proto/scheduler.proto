@@ -12,8 +12,10 @@ service Scheduler {
   rpc InvokeTrigger (InvokeTriggerRequest)  returns (InvokeTriggerResponse);
   /// Get a trigger by id
   rpc GetTrigger (GetTriggerRequest)  returns (GetTriggerResponse);
-  /// Retrieve a trigger by token
+  /// Find a list of triggers by condition
   rpc FindTriggers (FindTriggersRequest)  returns (FindTriggersResponse);
+  /// Retrieve a list of triggers 
+  rpc ListTriggers (ListTriggersRequest)  returns (ListTriggersResponse);
   /// Pause a running trigger
   rpc PauseTrigger (PauseTriggerRequest)  returns (PauseTriggerResponse);
   /// Resume a paused/active trigger
@@ -49,7 +51,7 @@ message PauseTriggerRequest {
 }
 
 message PauseTriggerResponse {
-  trigger_proto.Trigger trigger = 1;
+  trigger_proto.TriggerManifest trigger = 1;
 }
 
 // RESUME TRIGGER
@@ -59,7 +61,7 @@ message ResumeTriggerRequest {
 }
 
 message ResumeTriggerResponse {
-  trigger_proto.Trigger trigger = 1;
+  trigger_proto.TriggerManifest trigger = 1;
 }
 
 // CANCEL TRIGGER
@@ -69,7 +71,7 @@ message CancelTriggerRequest {
 }
 
 message CancelTriggerResponse {
-  trigger_proto.Trigger trigger = 1;
+  trigger_proto.TriggerManifest trigger = 1;
 }
 
 
@@ -97,4 +99,16 @@ message GetTriggerResponse {
 message FindTriggersRequest {
 }
 message FindTriggersResponse {
+}
+
+// == LIST TRIGGER ==
+message ListTriggersRequest {
+  string owner_id = 1;
+  uint64 limit = 2;
+  optional string before = 3;
+  optional string after = 4;
+}
+
+message ListTriggersResponse {
+  repeated trigger_proto.TriggerManifest triggers = 1;
 }
