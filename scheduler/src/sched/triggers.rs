@@ -525,6 +525,8 @@ mod tests {
 
     use lib::timeutil::parse_iso8601;
     use lib::types::{
+        Emit,
+        HttpMethod,
         ProjectId,
         Recurring,
         RunAt,
@@ -532,6 +534,7 @@ mod tests {
         Status,
         Trigger,
         TriggerId,
+        Webhook,
     };
 
     use super::*;
@@ -566,7 +569,13 @@ mod tests {
             description: None,
             created_at: Utc::now(),
             updated_at: None,
-            emit: Vec::default(),
+            emit: Emit::Webhook(Webhook {
+                _kind: Default::default(),
+                url: Some("http://google.com".to_owned()),
+                http_method: HttpMethod::Get,
+                timeout_s: Duration::from_secs(30),
+                retry: None,
+            }),
             payload: None,
             status: Status::Scheduled,
             schedule: Some(sched),

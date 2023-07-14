@@ -1,15 +1,13 @@
 use std::sync::Arc;
 
 use dispatcher_proto::DispatchMode;
-use futures::stream::FuturesUnordered;
-use futures::StreamExt;
 use lib::database::attempt_log_store::AttemptLogStore;
 use lib::database::invocation_store::{InvocationStore, InvocationStoreError};
-use lib::types::{Invocation, InvocationStatus, WebhookDeliveryStatus};
+use lib::types::{Emit, Invocation, InvocationStatus};
 use metrics::{decrement_gauge, increment_gauge};
 use proto::dispatcher_proto;
 use thiserror::Error;
-use tracing::{error, Instrument};
+use tracing::error;
 
 use crate::emits;
 
@@ -86,51 +84,34 @@ impl InvocationJob {
     #[tracing::instrument(skip(self))]
     async fn run(mut self) -> Invocation {
         increment_gauge!("dispatcher.inflight_invocations_total", 1.0);
-        let mut emits = FuturesUnordered::new();
-        for (idx, emit) in self.invocation.status.iter().enumerate() {
-            match emit.clone() {
-                | InvocationStatus::WebhookStatus(mut web) => {
-                    if web.delivery_status != WebhookDeliveryStatus::Attempting
-                    {
-                        continue;
-                    }
-                    let p = self.invocation.payload.clone();
-                    let id = self.invocation.id.clone();
-                    let tid = self.invocation.trigger.clone();
-                    let oid = self.invocation.project.clone();
-                    let attempt_store = Arc::clone(&self.attempt_store);
-                    emits.push(
-                        async move {
-                            let e = emits::webhook::WebhookEmitJob {
-                                webhook: web.webhook.clone(),
-                                payload: p,
-                                invocation_id: id,
-                                trigger_id: tid,
-                                project: oid,
-                                attempt_store,
-                            };
-                            web.delivery_status = e.run().await;
-                            (idx, InvocationStatus::WebhookStatus(web))
-                        }
-                        .instrument(tracing::Span::current()),
-                    );
-                }
-            }
-        }
 
-        while let Some((idx, result)) = emits.next().await {
-            *self.invocation.status.get_mut(idx).unwrap() = result;
-            if let Err(e) = self
-                .invocation_store
-                .update_invocation(&self.invocation)
-                .await
-            {
-                error!(
-                    "Failed to persist invocation status for invocation {} \
-                     for emit #{}: {}",
-                    self.invocation.id, idx, e
-                );
+        assert_eq!(self.invocation.status, InvocationStatus::Attempting);
+
+        let result = match &self.invocation.emit {
+            | Emit::Webhook(web) => {
+                let e = emits::webhook::WebhookEmitJob {
+                    webhook: web.clone(),
+                    payload: self.invocation.payload.clone(),
+                    invocation_id: self.invocation.id.clone(),
+                    trigger_id: self.invocation.trigger.clone(),
+                    project: self.invocation.project.clone(),
+                    attempt_store: Arc::clone(&self.attempt_store),
+                };
+                e.run().await
             }
+            | Emit::Event(_) => unimplemented!(),
+        };
+        self.invocation.status = result;
+        if let Err(e) = self
+            .invocation_store
+            .update_invocation(&self.invocation)
+            .await
+        {
+            error!(
+                "Failed to persist invocation status for invocation {} for \
+                 emit : {}",
+                self.invocation.id, e
+            );
         }
 
         decrement_gauge!("dispatcher.inflight_invocations_total", 1.0);

@@ -273,13 +273,13 @@ mod tests {
             updated_at: None,
             payload: None,
             schedule: None,
-            emit: vec![Emit::Webhook(Webhook {
+            emit: Emit::Webhook(Webhook {
                 _kind: Default::default(),
                 url: Some("http://test".to_string()),
                 http_method: crate::types::HttpMethod::Get,
                 timeout_s: Duration::from_secs(5),
                 retry: None,
-            })],
+            }),
             status,
             reference: None,
             last_invoked_at: None,

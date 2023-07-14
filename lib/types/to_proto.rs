@@ -17,8 +17,6 @@ use super::{
     Trigger,
     TriggerManifest,
     Webhook,
-    WebhookDeliveryStatus,
-    WebhookStatus,
 };
 use crate::timeutil::to_iso8601;
 
@@ -34,7 +32,7 @@ impl From<Trigger> for trigger_proto::Trigger {
             reference: value.reference,
             payload: value.payload.map(|p| p.into()),
             schedule: value.schedule.map(|s| s.into()),
-            emit: value.emit.into_iter().map(|e| e.into()).collect(),
+            emit: Some(value.emit.into()),
             status: value.status.into(),
         }
     }
@@ -49,7 +47,7 @@ impl From<TriggerManifest> for trigger_proto::TriggerManifest {
             description: value.description,
             created_at: value.created_at.to_rfc3339(),
             updated_at: value.updated_at.map(|s| s.to_rfc3339()),
-            emit: value.emit.into_iter().map(|e| e.into()).collect(),
+            emit: Some(value.emit.into()),
             reference: value.reference,
             schedule: value.schedule.map(|s| s.into()),
             status: value.status.into(),
@@ -185,44 +183,20 @@ impl From<RetryConfig> for webhook_proto::RetryConfig {
     }
 }
 
-impl From<WebhookDeliveryStatus> for i32 {
-    fn from(value: WebhookDeliveryStatus) -> Self {
-        let enum_value: invocation_proto::WebhookDeliveryStatus = match value {
-            | WebhookDeliveryStatus::Failed => {
-                invocation_proto::WebhookDeliveryStatus::Failed
+impl From<InvocationStatus> for i32 {
+    fn from(value: InvocationStatus) -> Self {
+        let enum_value: invocation_proto::InvocationStatus = match value {
+            | InvocationStatus::Failed => {
+                invocation_proto::InvocationStatus::Failed
             }
-            | WebhookDeliveryStatus::Attempting => {
-                invocation_proto::WebhookDeliveryStatus::Attempting
+            | InvocationStatus::Attempting => {
+                invocation_proto::InvocationStatus::Attempting
             }
-            | WebhookDeliveryStatus::Succeeded => {
-                invocation_proto::WebhookDeliveryStatus::Succeeded
+            | InvocationStatus::Succeeded => {
+                invocation_proto::InvocationStatus::Succeeded
             }
         };
         enum_value as i32
-    }
-}
-
-impl From<WebhookStatus> for invocation_proto::WebhookStatus {
-    fn from(value: WebhookStatus) -> Self {
-        Self {
-            webhook: Some(value.webhook.into()),
-            delivery_status: value.delivery_status.into(),
-        }
-    }
-}
-
-impl From<InvocationStatus> for invocation_proto::InvocationStatus {
-    fn from(value: InvocationStatus) -> Self {
-        let status = match value {
-            | InvocationStatus::WebhookStatus(webhook) => {
-                invocation_proto::invocation_status::Status::Webhook(
-                    webhook.into(),
-                )
-            }
-        };
-        invocation_proto::InvocationStatus {
-            status: Some(status),
-        }
     }
 }
 
@@ -234,7 +208,8 @@ impl From<Invocation> for invocation_proto::Invocation {
             project_id: value.project.into(),
             created_at: to_iso8601(&value.created_at),
             payload: value.payload.map(|p| p.into()),
-            status: value.status.into_iter().map(|s| s.into()).collect(),
+            emit: Some(value.emit.into()),
+            status: value.status.into(),
         }
     }
 }

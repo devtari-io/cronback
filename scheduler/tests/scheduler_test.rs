@@ -7,6 +7,7 @@ use lib::shutdown::Shutdown;
 use lib::types::*;
 use proto::scheduler_proto::{GetTriggerRequest, InstallTriggerRequest};
 use proto::trigger_proto::{self, Schedule, TriggerStatus};
+use proto::webhook_proto;
 use scheduler::test_helpers;
 use tonic::Request;
 
@@ -29,7 +30,16 @@ async fn install_trigger_valid_test() {
         reference: None,
         name: "sample-trigger".to_owned(),
         description: None,
-        emit: Vec::default(),
+        emit: Some(trigger_proto::Emit {
+            emit: Some(trigger_proto::emit::Emit::Webhook(
+                webhook_proto::Webhook {
+                    url: "http://google.com".to_owned(),
+                    http_method: webhook_proto::HttpMethod::Get.into(),
+                    timeout_s: 30.0,
+                    retry: None,
+                },
+            )),
+        }),
         payload: Some(proto::trigger_proto::Payload {
             content_type: "application/json".to_owned(),
             headers: HashMap::new(),
@@ -98,7 +108,16 @@ async fn install_trigger_reference_test() {
         reference: Some("some-meaningful-reference".to_owned()),
         name: "sample-trigger".to_owned(),
         description: None,
-        emit: Vec::default(),
+        emit: Some(trigger_proto::Emit {
+            emit: Some(trigger_proto::emit::Emit::Webhook(
+                webhook_proto::Webhook {
+                    url: "http://google.com".to_owned(),
+                    http_method: webhook_proto::HttpMethod::Get.into(),
+                    timeout_s: 30.0,
+                    retry: None,
+                },
+            )),
+        }),
         payload: Some(proto::trigger_proto::Payload {
             content_type: "application/json".to_owned(),
             headers: HashMap::new(),
@@ -136,7 +155,16 @@ async fn install_trigger_reference_test() {
             reference: Some("some-meaningful-reference".to_owned()),
             name: "sample-trigger".to_owned(),
             description: Some("new description is here".to_owned()),
-            emit: Vec::default(),
+            emit: Some(trigger_proto::Emit {
+                emit: Some(trigger_proto::emit::Emit::Webhook(
+                    webhook_proto::Webhook {
+                        url: "http://google.com".to_owned(),
+                        http_method: webhook_proto::HttpMethod::Get.into(),
+                        timeout_s: 30.0,
+                        retry: None,
+                    },
+                )),
+            }),
             payload: Some(proto::trigger_proto::Payload {
                 content_type: "application/json".to_owned(),
                 headers: HashMap::new(),
@@ -178,7 +206,16 @@ async fn install_trigger_reference_test() {
             reference: None,
             name: "sample-trigger".to_owned(),
             description: None,
-            emit: Vec::default(),
+            emit: Some(trigger_proto::Emit {
+                emit: Some(trigger_proto::emit::Emit::Webhook(
+                    webhook_proto::Webhook {
+                        url: "http://google.com".to_owned(),
+                        http_method: webhook_proto::HttpMethod::Get.into(),
+                        timeout_s: 30.0,
+                        retry: None,
+                    },
+                )),
+            }),
             payload: Some(proto::trigger_proto::Payload {
                 content_type: "application/json".to_owned(),
                 headers: HashMap::new(),

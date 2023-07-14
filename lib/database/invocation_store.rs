@@ -196,14 +196,13 @@ mod tests {
     use crate::database::Database;
     use crate::model::ValidShardedId;
     use crate::types::{
+        Emit,
         Invocation,
         InvocationId,
         InvocationStatus,
         ProjectId,
         TriggerId,
         Webhook,
-        WebhookDeliveryStatus,
-        WebhookStatus,
     };
 
     fn build_invocation(
@@ -219,17 +218,15 @@ mod tests {
             trigger: trigger_id.into(),
             project,
             created_at: now,
-            status: vec![InvocationStatus::WebhookStatus(WebhookStatus {
-                webhook: Webhook {
-                    _kind: Default::default(),
-                    url: Some("http://test".to_string()),
-                    http_method: crate::types::HttpMethod::Get,
-                    timeout_s: Duration::from_secs(5),
-                    retry: None,
-                },
-                delivery_status: WebhookDeliveryStatus::Attempting,
-            })],
+            emit: Emit::Webhook(Webhook {
+                _kind: Default::default(),
+                url: Some("http://test".to_string()),
+                http_method: crate::types::HttpMethod::Get,
+                timeout_s: Duration::from_secs(5),
+                retry: None,
+            }),
             payload: None,
+            status: InvocationStatus::Attempting,
         }
     }
 
@@ -305,16 +302,7 @@ mod tests {
         let expected = vec![i2.clone()];
         assert_eq!(results, expected);
 
-        i1.status = vec![InvocationStatus::WebhookStatus(WebhookStatus {
-            webhook: Webhook {
-                _kind: Default::default(),
-                url: Some("http://test".to_string()),
-                http_method: crate::types::HttpMethod::Get,
-                timeout_s: Duration::from_secs(5),
-                retry: None,
-            },
-            delivery_status: WebhookDeliveryStatus::Failed,
-        })];
+        i1.status = InvocationStatus::Failed;
 
         // Update the invocation
         store.update_invocation(&i1).await?;
@@ -326,7 +314,7 @@ mod tests {
         // Update should fail when using wrong project
         let mut mismatch_project_i1 = i1.clone();
         mismatch_project_i1.project = ProjectId::generate();
-        mismatch_project_i1.status = vec![];
+        mismatch_project_i1.status = InvocationStatus::Succeeded;
         assert!(matches!(
             store.update_invocation(&mismatch_project_i1).await,
             Err(DatabaseError::Query(sqlx::Error::RowNotFound))

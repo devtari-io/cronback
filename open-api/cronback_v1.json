@@ -704,17 +704,7 @@
             "description": "A human-readable description."
           },
           "emit": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/WebhookTarget"
-              },
-              {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/WebhookTarget"
-                }
-              }
-            ]
+            "$ref": "#/components/schemas/WebhookTarget"
           },
           "payload": {
             "$ref": "#/components/schemas/Payload"
@@ -1107,6 +1097,9 @@
             "example": "Periodically ping healthcheck.io",
             "description": "A human-readable description."
           },
+          "emit": {
+            "$ref": "#/components/schemas/WebhookTarget"
+          },
           "schedule": {
             "oneOf": [
               {
@@ -1165,11 +1158,11 @@
             "format": "date-time",
             "readOnly": true
           },
+          "emit": {
+            "$ref": "#/components/schemas/WebhookTarget"
+          },
           "status": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/InvocationStatus"
-            }
+            "type": "string"
           }
         }
       },
@@ -1234,65 +1227,6 @@
             "example": "2023-03-25T17:43:23.654278298Z",
             "format": "date-time",
             "readOnly": true
-          }
-        }
-      },
-      "InvocationStatus": {
-        "title": "WebhookStatus",
-        "x-stoplight": {
-          "id": "rtwpwqwefad1t"
-        },
-        "type": "object",
-        "properties": {
-          "delivery_status": {
-            "type": "string",
-            "enum": [
-              "attempting",
-              "succeeded",
-              "failed"
-            ],
-            "example": "succeeded",
-            "readOnly": true
-          },
-          "type": {
-            "type": "string",
-            "example": "webhook",
-            "default": "webhook",
-            "readOnly": true
-          },
-          "url": {
-            "type": "string",
-            "example": "http://myendpoint.com/endpoint",
-            "readOnly": true
-          },
-          "http_method": {
-            "type": "string",
-            "enum": [
-              "POST",
-              "GET",
-              "HEAD",
-              "PATCH",
-              "PUT",
-              "DELETE"
-            ],
-            "default": "POST",
-            "readOnly": true
-          },
-          "timeout_s": {
-            "type": "number",
-            "format": "float",
-            "example": 5.5,
-            "readOnly": true
-          },
-          "retry": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/SimplyRetry"
-              },
-              {
-                "$ref": "#/components/schemas/ExponentialBackoffRetry"
-              }
-            ]
           }
         }
       }

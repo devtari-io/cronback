@@ -25,7 +25,7 @@ pub struct Trigger {
     pub reference: Option<String>,
     pub payload: Option<Payload>,
     pub schedule: Option<Schedule>,
-    pub emit: Vec<Emit>,
+    pub emit: Emit,
     pub status: Status,
     pub last_invoked_at: Option<DateTime<Utc>>,
 }
@@ -74,7 +74,7 @@ impl Trigger {
         new_reference: Option<String>,
         new_payload: Option<Payload>,
         new_schedule: Option<Schedule>,
-        new_emit: Vec<Emit>,
+        new_emit: Emit,
     ) {
         self.updated_at = Some(Utc::now());
 
@@ -103,7 +103,7 @@ pub struct TriggerManifest {
     pub description: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: Option<DateTime<Utc>>,
-    pub emit: Vec<Emit>,
+    pub emit: Emit,
     pub reference: Option<String>,
     pub schedule: Option<Schedule>,
     pub status: Status,

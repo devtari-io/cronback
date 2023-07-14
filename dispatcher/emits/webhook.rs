@@ -13,12 +13,12 @@ use lib::types::{
     EmitAttemptLog,
     HttpMethod,
     InvocationId,
+    InvocationStatus,
     Payload,
     ProjectId,
     TriggerId,
     Webhook,
     WebhookAttemptDetails,
-    WebhookDeliveryStatus,
 };
 use metrics::counter;
 use reqwest::header::HeaderValue;
@@ -56,7 +56,7 @@ impl WebhookEmitJob {
             trigger_id = %self.trigger_id,
             webhook_url = self.webhook.url
             ))]
-    pub async fn run(&self) -> WebhookDeliveryStatus {
+    pub async fn run(&self) -> InvocationStatus {
         let retry_policy = if let Some(config) = &self.webhook.retry {
             RetryPolicy::with_config(config.clone())
         } else {
@@ -130,8 +130,8 @@ impl WebhookEmitJob {
             .await;
 
         match res {
-            | Ok(_) => WebhookDeliveryStatus::Succeeded,
-            | Err(_) => WebhookDeliveryStatus::Failed,
+            | Ok(_) => InvocationStatus::Succeeded,
+            | Err(_) => InvocationStatus::Failed,
         }
     }
 }

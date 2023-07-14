@@ -2,14 +2,7 @@ use chrono::Utc;
 use chrono_tz::UTC;
 use lib::model::ModelId;
 use lib::service::ServiceContext;
-use lib::types::{
-    Emit,
-    Invocation,
-    InvocationId,
-    InvocationStatus,
-    ProjectId,
-    WebhookStatus,
-};
+use lib::types::{Invocation, InvocationId, ProjectId};
 use metrics::counter;
 use proto::dispatcher_proto::dispatcher_server::Dispatcher;
 use proto::dispatcher_proto::{DispatchRequest, DispatchResponse};
@@ -53,21 +46,8 @@ impl Dispatcher for DispatcherAPIHandler {
             project,
             created_at: Utc::now().with_timezone(&UTC),
             payload: request.payload.map(|p| p.into()),
-            status: request
-                .emits
-                .into_iter()
-                .map(|e| {
-                    match Emit::from(e) {
-                        | Emit::Webhook(webhook) => {
-                            InvocationStatus::WebhookStatus(WebhookStatus {
-                                webhook,
-                                delivery_status: lib::types::WebhookDeliveryStatus::Attempting,
-                            })
-                        }
-                        | Emit::Event(_) => unimplemented!(),
-                    }
-                })
-                .collect(),
+            emit: request.emit.unwrap().into(),
+            status: lib::types::InvocationStatus::Attempting,
         };
 
         counter!("dispatcher.invocations_total", 1);

@@ -55,11 +55,7 @@ impl DispatchJob {
             dispatch_request: DispatchRequest {
                 trigger_id: trigger.id.to_string(),
                 project_id: trigger.project.to_string(),
-                emits: trigger
-                    .emit
-                    .into_iter()
-                    .map(|e| e.into())
-                    .collect::<Vec<_>>(),
+                emit: Some(trigger.emit.into()),
                 payload: trigger.payload.map(|p| p.into()),
                 mode: dispatcher_proto::DispatchMode::from(mode).into(),
             },

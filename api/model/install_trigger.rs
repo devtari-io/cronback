@@ -27,16 +27,8 @@ pub(crate) struct InstallTriggerRequest {
     pub payload: Option<Payload>,
     #[validate]
     pub schedule: Option<Schedule>,
-    #[validate(length(
-        min = 1,
-        message = "emit must contain at least one emit"
-    ))]
-    // Necessary to perform nested validation.
     #[validate]
-    #[serde_as(
-        as = "serde_with::OneOrMany<_, serde_with::formats::PreferMany>"
-    )]
-    pub emit: Vec<Emit>,
+    pub emit: Emit,
 }
 
 impl InstallTriggerRequest {
@@ -55,7 +47,7 @@ impl InstallTriggerRequest {
             description: self.description,
             reference: self.reference,
             payload: self.payload.map(Into::into),
-            emit: self.emit.into_iter().map(Into::into).collect(),
+            emit: Some(self.emit.into()),
             schedule: self.schedule.map(Into::into),
         }
     }
@@ -92,48 +84,6 @@ mod tests {
 
     #[test]
     fn validate_install_trigger_01() -> Result<()> {
-        // List of emits.
-        std::env::set_var("CRONBACK__SKIP_PUBLIC_IP_VALIDATION", "true");
-        // Validate that the following JSON install trigger can be parsed
-        // correctly.
-
-        let request = json!(
-            {
-              "name": "test-trigger-1",
-              "schedule": {
-                "timepoints": [ "PT1M", "PT2M" ]
-              },
-              "payload": {
-                "content_type": "application/json",
-                "headers": {
-                  "X-My-Header": "my-header-value"
-                },
-                "body": "some-body"
-              },
-              // Emit is a list.
-              "emit": [
-                {
-                  "type": "webhook",
-                  "url": "http://localhost:3000/emit",
-                  "timeout_s": 30
-                }
-              ]
-            }
-        );
-
-        //
-        let parsed: InstallTriggerRequest = serde_json::from_value(request)?;
-
-        assert_eq!(parsed.name, Some("test-trigger-1".to_string()));
-        assert!(parsed.schedule.is_some());
-        parsed.validate()?;
-        Ok(())
-        // TODO: Switch to using insta for snapshot testing.
-    }
-
-    #[test]
-    fn validate_install_trigger_02() -> Result<()> {
-        // Single emit. no payload.
         std::env::set_var("CRONBACK__SKIP_PUBLIC_IP_VALIDATION", "true");
 
         let request = json!(
@@ -153,7 +103,6 @@ mod tests {
           }
         );
 
-        //
         let parsed: InstallTriggerRequest = serde_json::from_value(request)?;
         parsed.validate()?;
         Ok(())

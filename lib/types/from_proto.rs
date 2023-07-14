@@ -21,8 +21,6 @@ use super::{
     TriggerManifest,
     Webhook,
     WebhookAttemptDetails,
-    WebhookDeliveryStatus,
-    WebhookStatus,
 };
 use crate::model::ValidShardedId;
 use crate::timeutil::parse_iso8601;
@@ -45,7 +43,7 @@ impl From<trigger_proto::Trigger> for Trigger {
             reference: value.reference,
             payload: value.payload.map(|p| p.into()),
             schedule: value.schedule.map(|s| s.into()),
-            emit: value.emit.into_iter().map(|e| e.into()).collect(),
+            emit: value.emit.unwrap().into(),
             status: value.status.into(),
             // We are not supposed to send this to other services, it is
             // internal.
@@ -69,7 +67,7 @@ impl From<trigger_proto::TriggerManifest> for TriggerManifest {
                     .unwrap()
                     .with_timezone(&Utc)
             }),
-            emit: value.emit.into_iter().map(|e| e.into()).collect(),
+            emit: value.emit.unwrap().into(),
             reference: value.reference,
             schedule: value.schedule.map(|s| s.into()),
             status: value.status.into(),
@@ -281,45 +279,25 @@ impl From<invocation_proto::Invocation> for Invocation {
             project: ValidShardedId::from_string_unsafe(value.project_id),
             created_at: parse_iso8601(&value.created_at).unwrap(),
             payload: value.payload.map(|p| p.into()),
-            status: value.status.into_iter().map(|v| v.into()).collect(),
+            emit: value.emit.unwrap().into(),
+            status: value.status.into(),
         }
     }
 }
 
-impl From<invocation_proto::InvocationStatus> for InvocationStatus {
-    fn from(value: invocation_proto::InvocationStatus) -> Self {
-        match value.status.unwrap() {
-            | invocation_proto::invocation_status::Status::Webhook(
-                webhook_status,
-            ) => Self::WebhookStatus(webhook_status.into()),
-        }
-    }
-}
-
-impl From<invocation_proto::WebhookStatus> for WebhookStatus {
-    fn from(value: invocation_proto::WebhookStatus) -> Self {
-        Self {
-            webhook: value.webhook.unwrap().into(),
-            delivery_status: value.delivery_status.into(),
-        }
-    }
-}
-
-impl From<i32> for WebhookDeliveryStatus {
+impl From<i32> for InvocationStatus {
     fn from(value: i32) -> Self {
         let enum_value =
-            invocation_proto::WebhookDeliveryStatus::from_i32(value).unwrap();
+            invocation_proto::InvocationStatus::from_i32(value).unwrap();
         match enum_value {
-            | invocation_proto::WebhookDeliveryStatus::Unknown => {
-                panic!("We should never see WebhookDelivery::Unknown")
+            | invocation_proto::InvocationStatus::Unknown => {
+                panic!("We should never see InvocationStatus::Unknown")
             }
-            | invocation_proto::WebhookDeliveryStatus::Attempting => {
+            | invocation_proto::InvocationStatus::Attempting => {
                 Self::Attempting
             }
-            | invocation_proto::WebhookDeliveryStatus::Succeeded => {
-                Self::Succeeded
-            }
-            | invocation_proto::WebhookDeliveryStatus::Failed => Self::Failed,
+            | invocation_proto::InvocationStatus::Succeeded => Self::Succeeded,
+            | invocation_proto::InvocationStatus::Failed => Self::Failed,
         }
     }
 }

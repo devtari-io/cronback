@@ -18,7 +18,7 @@ enum DispatchMode {
 message DispatchRequest {
   string trigger_id = 1;
   string project_id = 2;
-  repeated trigger_proto.Emit emits = 3;
+  trigger_proto.Emit emit = 3;
   trigger_proto.Payload payload = 4;
   DispatchMode mode = 5;
 }

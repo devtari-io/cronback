@@ -11,29 +11,16 @@ message Invocation {
   string project_id = 3;
   string created_at = 4;
   trigger_proto.Payload payload = 5;
-  // One invocation status per emit. If the trigger has a single emit
-  // then we would expect a single invocation_status to be set.
-  repeated InvocationStatus status = 6;
+  trigger_proto.Emit emit = 6;
+  InvocationStatus status = 7;
 }
 
-enum WebhookDeliveryStatus {
-    WebhookDeliveryStatus_UNKNOWN = 0;
-    // We are attempting or retrying the webhook
+enum InvocationStatus {
+    InvocationStatus_UNKNOWN = 0;
+    // We are attempting or retrying the action
     ATTEMPTING = 1;
-    // Webhook delivery succeeded.
+    // Action succeeded
     SUCCEEDED = 2;
-    // Webhook delivery failed and we gave up.
+    // Action failed and we gave up.
     FAILED = 3;
-}
-
-message WebhookStatus {
-  webhook_proto.Webhook webhook = 1;
-  WebhookDeliveryStatus delivery_status = 2;
-  // optional string latest_attempt = 3;
-}
-
-message InvocationStatus {
-  oneof status {
-    WebhookStatus webhook = 1;
-  }
 }
