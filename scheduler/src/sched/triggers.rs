@@ -9,7 +9,7 @@ use cron::{OwnedScheduleIterator, Schedule as CronSchedule};
 use lib::database::trigger_store::TriggerStoreError;
 use lib::types::{Schedule, Status, Trigger, TriggerId};
 use thiserror::Error;
-use tracing::info;
+use tracing::{info, trace};
 
 use super::event_dispatcher::DispatchError;
 
@@ -22,8 +22,8 @@ pub(crate) enum TriggerError {
          IANA timezone?"
     )]
     InvalidTimezone(String),
-    #[error("Trigger '{0}' should not have passed validation!")]
-    MalformedTrigger(TriggerId),
+    #[error("Trigger '{0}' has no schedule!")]
+    NotScheduled(TriggerId),
     #[error("Trigger with Id '{0}' is unknown to this scheduler!")]
     NotFound(TriggerId),
     #[error("Cannot {0} on a trigger with status {1}")]
@@ -67,6 +67,10 @@ impl ActiveTriggerMap {
         self.state.insert(trigger_id, active_trigger);
         self.mark_dirty();
         Ok(cloned_trigger)
+    }
+
+    pub fn len(&self) -> usize {
+        self.state.len()
     }
 
     pub fn is_dirty(&self) -> bool {
@@ -132,6 +136,8 @@ impl ActiveTriggerMap {
         &mut self,
     ) -> BinaryHeap<Reverse<TriggerTemporalState>> {
         let mut new_state = BinaryHeap::new();
+        let mut expired_triggers = Vec::new();
+        trace!("Building temporal state for {} triggers", self.state.len());
         for trigger in self.state.values_mut() {
             if let Some(tick) = trigger.peek() {
                 let state = TriggerTemporalState {
@@ -143,7 +149,17 @@ impl ActiveTriggerMap {
                     state.trigger_id, tick
                 );
                 new_state.push(Reverse(state));
+            } else {
+                trace!(
+                    "Trigger '{}' has no timepoints in the future, marking as \
+                     expired until it gets retired",
+                    trigger.get().id,
+                );
+                expired_triggers.push(trigger.get().id.clone());
             }
+        }
+        for trigger in expired_triggers {
+            self.update_status(&trigger, Status::Expired, &[]).unwrap();
         }
         self.reset_dirty();
         new_state
@@ -445,9 +461,10 @@ impl ActiveTrigger {
         fast_forward: bool,
     ) -> Result<Self, TriggerError> {
         // Do we have a cron pattern or a set of time points?
-        let k = trigger.schedule.as_ref().ok_or_else(|| {
-            TriggerError::MalformedTrigger(trigger.id.clone())
-        })?;
+        let k = trigger
+            .schedule
+            .as_ref()
+            .ok_or_else(|| TriggerError::NotScheduled(trigger.id.clone()))?;
         // On fast forward, we ignore the last invocation time.
         let last_invoked_at = if fast_forward {
             None
