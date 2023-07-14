@@ -80,8 +80,13 @@ impl RunStore for SqlRunStore {
         id: &RunId,
     ) -> Result<Option<Run>, RunStoreError> {
         let res = Runs::find_by_id((id.clone(), project.clone()))
+            .find_also_related(super::models::attempts::Entity)
             .one(&self.db.orm)
-            .await?;
+            .await?
+            .map(|mut r| {
+                r.0.latest_attempt = r.1;
+                r.0
+            });
         Ok(res)
     }
 
@@ -92,11 +97,20 @@ impl RunStore for SqlRunStore {
         pagination: PaginationIn,
     ) -> Result<PaginatedResponse<Run>, RunStoreError> {
         let query = Runs::find()
+            .find_also_related(super::models::attempts::Entity)
             .filter(runs::Column::TriggerId.eq(trigger_id.value()))
             .filter(runs::Column::ProjectId.eq(project.value()))
             .with_pagination(&pagination);
 
-        let res = query.all(&self.db.orm).await?;
+        let res = query
+            .all(&self.db.orm)
+            .await?
+            .into_iter()
+            .map(|mut r| {
+                r.0.latest_attempt = r.1;
+                r.0
+            })
+            .collect::<Vec<_>>();
         Ok(PaginatedResponse::paginate(res, &pagination))
     }
 
@@ -106,10 +120,19 @@ impl RunStore for SqlRunStore {
         pagination: PaginationIn,
     ) -> Result<PaginatedResponse<Run>, RunStoreError> {
         let query = Runs::find()
+            .find_also_related(super::models::attempts::Entity)
             .filter(runs::Column::ProjectId.eq(project.value()))
             .with_pagination(&pagination);
 
-        let res = query.all(&self.db.orm).await?;
+        let res = query
+            .all(&self.db.orm)
+            .await?
+            .into_iter()
+            .map(|mut r| {
+                r.0.latest_attempt = r.1;
+                r.0
+            })
+            .collect::<Vec<_>>();
 
         Ok(PaginatedResponse::paginate(res, &pagination))
     }
@@ -119,9 +142,16 @@ impl RunStore for SqlRunStore {
         status: RunStatus,
     ) -> Result<Vec<Run>, RunStoreError> {
         let result = Runs::find()
+            .find_also_related(super::models::attempts::Entity)
             .filter(runs::Column::Status.eq(status))
             .all(&self.db.orm)
-            .await?;
+            .await?
+            .into_iter()
+            .map(|mut r| {
+                r.0.latest_attempt = r.1;
+                r.0
+            })
+            .collect::<Vec<_>>();
         Ok(result)
     }
 }
@@ -169,6 +199,7 @@ mod tests {
             }),
             payload: None,
             status: RunStatus::Attempting,
+            latest_attempt_id: None,
             latest_attempt: None,
         }
     }

@@ -64,6 +64,7 @@ impl Dispatcher for DispatcherAPIHandler {
             payload: request.payload.map(|p| p.into()),
             action: request.action.unwrap().into(),
             status: RunStatus::Attempting,
+            latest_attempt_id: None,
             latest_attempt: None,
         };
 

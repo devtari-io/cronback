@@ -141,7 +141,7 @@ impl WebhookActionJob {
             }
 
             // Record the latest attempt
-            self.run.latest_attempt = Some(attempt);
+            self.run.latest_attempt_id = Some(attempt.id);
             // We record the status if successful to avoid an extra DB write
             if response.is_success() {
                 self.run.status = RunStatus::Succeeded;

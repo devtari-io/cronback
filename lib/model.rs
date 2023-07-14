@@ -2,6 +2,7 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 use derive_more::{Display, From, Into};
+use sea_orm::TryGetable;
 use serde::{Deserialize, Deserializer, Serialize};
 use thiserror::Error;
 use ulid::Ulid;
@@ -130,13 +131,12 @@ impl<T: ModelId> From<ValidShardedId<T>> for sea_query::Value {
     }
 }
 
-impl<T: ModelId> sea_orm::TryGetable for ValidShardedId<T> {
+impl<T: ModelId + TryGetable> sea_orm::TryGetable for ValidShardedId<T> {
     fn try_get_by<I: ::sea_orm::ColIdx>(
         res: &::sea_orm::QueryResult,
         index: I,
     ) -> Result<Self, sea_orm::TryGetError> {
-        let val = res.try_get_by::<String, _>(index)?;
-        let val: T = val.into();
+        let val = T::try_get_by::<_>(res, index)?;
 
         val.validated().map_err(|e| {
             sea_orm::TryGetError::DbErr(sea_orm::DbErr::TryIntoErr {
@@ -275,10 +275,12 @@ macro_rules! define_model_id_base {
                 res: &::sea_orm::QueryResult,
                 index: I
             ) -> Result<Self, sea_orm::TryGetError> {
-                let val = res.try_get_by::<String, _>(index)?;
-                Ok(val.into())
+                let val = res.try_get_by::<Option<String>, _>(index)?;
+                match (val) {
+                    Some(v) => Ok(v.into()),
+                    None => Err(sea_orm::TryGetError::Null(format!("{index:?}"))),
+                }
             }
-
         }
 
         impl ::sea_query::ValueType for $name {

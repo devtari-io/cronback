@@ -29,7 +29,11 @@ impl MigrationTrait for Migration {
                             )
                             .not_null(),
                     )
-                    .col(ColumnDef::new(Runs::LatestAttempt).json())
+                    .col(
+                        ColumnDef::new(Runs::LatestAttemptId)
+                            .string()
+                            .default(SimpleExpr::Keyword(Keyword::Null)),
+                    )
                     .primary_key(
                         Index::create().col(Runs::Id).col(Runs::ProjectId),
                     )
@@ -90,7 +94,7 @@ enum Runs {
     Payload,
     Action,
     Status,
-    LatestAttempt,
+    LatestAttemptId,
 }
 
 #[derive(Iden)]

@@ -6,7 +6,9 @@ use sea_orm::{
     QueryFilter,
     QueryOrder,
     QuerySelect,
+    Related,
     Select,
+    SelectTwo,
 };
 
 // Should be implemented for models that provide pagination cursor.
@@ -15,7 +17,7 @@ pub trait PaginatedEntity: EntityTrait {
 }
 
 pub trait PaginatedSelect<E: EntityTrait> {
-    fn with_pagination(self, pagination: &PaginationIn) -> Select<E>;
+    fn with_pagination(self, pagination: &PaginationIn) -> Self;
 }
 
 impl<E> PaginatedSelect<E> for Select<E>
@@ -23,6 +25,26 @@ where
     E: EntityTrait + PaginatedEntity,
 {
     fn with_pagination(self, pagination: &PaginationIn) -> Select<E> {
+        let cursor_column = E::cursor_column();
+        let mut query = self
+            .order_by_desc(cursor_column)
+            // Trick. We want to know if there is a next page, so we ask for one
+            // more
+            .limit(Some(pagination.paginated_query_limit()));
+
+        if let Some(ref cursor) = pagination.cursor {
+            query = query.filter(cursor_column.lte(cursor));
+        }
+        query
+    }
+}
+
+impl<E, R> PaginatedSelect<E> for SelectTwo<E, R>
+where
+    E: EntityTrait + PaginatedEntity + Related<R>,
+    R: EntityTrait,
+{
+    fn with_pagination(self, pagination: &PaginationIn) -> SelectTwo<E, R> {
         let cursor_column = E::cursor_column();
         let mut query = self
             .order_by_desc(cursor_column)

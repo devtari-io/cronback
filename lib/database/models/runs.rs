@@ -8,7 +8,7 @@ use super::attempts;
 use super::triggers::{Action, Payload};
 use crate::database::pagination::PaginatedEntity;
 use crate::prelude::ValidShardedId;
-use crate::types::{ProjectId, RunId, TriggerId};
+use crate::types::{AttemptId, ProjectId, RunId, TriggerId};
 
 #[derive(
     Clone, Debug, IntoProto, FromProto, PartialEq, DeriveEntityModel, Eq,
@@ -30,7 +30,10 @@ pub struct Model {
     #[proto(required)]
     pub action: Action,
     pub status: RunStatus,
+    #[proto(skip)]
+    pub latest_attempt_id: Option<AttemptId>,
     #[from_proto(always_none)]
+    #[sea_orm(ignore)]
     pub latest_attempt: Option<attempts::Model>,
 }
 
@@ -40,8 +43,29 @@ impl PaginatedEntity for Entity {
     }
 }
 
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
+#[derive(Copy, Clone, Debug, EnumIter)]
+pub enum Relation {
+    LatestAttempt,
+}
+
+impl RelationTrait for Relation {
+    fn def(&self) -> RelationDef {
+        match self {
+            | Self::LatestAttempt => {
+                Entity::belongs_to(super::attempts::Entity)
+                    .from(Column::LatestAttemptId)
+                    .to(super::attempts::Column::Id)
+                    .into()
+            }
+        }
+    }
+}
+
+impl Related<super::attempts::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::LatestAttempt.def()
+    }
+}
 
 impl ActiveModelBehavior for ActiveModel {}
 
