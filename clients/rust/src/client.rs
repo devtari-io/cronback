@@ -133,6 +133,23 @@ impl Client {
         ClientBuilder::new()
     }
 
+    /// Create a new trigger.
+    ///
+    /// We intentionally don't accept [`Trigger`] here since API is designed to
+    /// be more relaxed than the required fields in Trigger model. If we
+    /// accepted [`Trigger`] as input, the trigger defaults will be set on
+    /// the client side and not server side. To want to make it easy to
+    /// change those defaults on the server side without having to release a
+    /// new client version.
+    pub async fn create_trigger_from_json(
+        &self,
+        trigger_req: serde_json::Value,
+    ) -> Result<Response<Trigger>> {
+        let path = self.config.base_url.join("/v1/triggers")?;
+        self.execute_request_body(Method::POST, path, trigger_req)
+            .await
+    }
+
     /// Retrieve a trigger by name.
     pub async fn get_trigger<T>(&self, name: T) -> Result<Response<Trigger>>
     where

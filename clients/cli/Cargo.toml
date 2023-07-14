@@ -20,6 +20,7 @@ cronback-api-model = { path = "../../api-model", version = "0.1.0", features = [
   "clap",
 ] }
 clap = { version = "4", features = ["env", "derive", "wrap_help"] }
+clap-stdin = { version = "0.2.0" }
 colored = { version = "2.0" }
 colored_json = { version = "3.2.0" }
 serde_json = { workspace = true }
