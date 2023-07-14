@@ -6,8 +6,8 @@ package attempt_proto;
 
 enum AttemptStatus {
   AttemptStatus_UNKNOWN = 0;
-  AttemptStatus_SUCCEEDED = 1;
-  AttemptStatus_FAILED = 2;
+  SUCCEEDED = 1;
+  FAILED = 2;
 }
 
 message AttemptDetails {

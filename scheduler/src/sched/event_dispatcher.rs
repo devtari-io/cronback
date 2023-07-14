@@ -3,6 +3,7 @@ use std::sync::Arc;
 use lib::grpc_client_provider::DispatcherClientProvider;
 use lib::types::{Invocation, Trigger};
 use proto::dispatcher_proto::{self, DispatchRequest};
+use proto::scheduler_proto;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -23,6 +24,18 @@ impl From<DispatchMode> for dispatcher_proto::DispatchMode {
         match value {
             | DispatchMode::Sync => dispatcher_proto::DispatchMode::Sync,
             | DispatchMode::Async => dispatcher_proto::DispatchMode::Async,
+        }
+    }
+}
+
+impl From<scheduler_proto::InvocationMode> for DispatchMode {
+    fn from(value: scheduler_proto::InvocationMode) -> Self {
+        match value {
+            | scheduler_proto::InvocationMode::Unknown => {
+                panic!("Unknown invocation mode");
+            }
+            | scheduler_proto::InvocationMode::Sync => DispatchMode::Sync,
+            | scheduler_proto::InvocationMode::Async => DispatchMode::Async,
         }
     }
 }

@@ -15,7 +15,7 @@ use crate::AppState;
 #[tracing::instrument(skip(state))]
 #[debug_handler]
 pub(crate) async fn install(
-    state: State<Arc<AppState>>,
+    State(state): State<Arc<AppState>>,
     Extension(project): Extension<ProjectId>,
     Extension(request_id): Extension<RequestId>,
     ValidatedJson(mut request): ValidatedJson<InstallTrigger>,

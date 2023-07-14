@@ -88,6 +88,7 @@ pub struct TriggerManifest {
 pub enum Status {
     #[default]
     Active,
+    OnDemand,
     Expired,
     Cancelled,
     Paused,
@@ -101,12 +102,17 @@ impl Status {
         [Self::Active, Self::Paused].contains(self)
     }
 
+    pub fn cancelleable(&self) -> bool {
+        [Self::Active, Self::Paused, Self::OnDemand].contains(self)
+    }
+
     pub fn as_operation(&self) -> String {
         match self {
             | Status::Active => "resume",
             | Status::Expired => "expire",
             | Status::Cancelled => "cancel",
             | Status::Paused => "pause",
+            | _ => "invalid",
         }
         .to_owned()
     }

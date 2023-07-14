@@ -19,11 +19,11 @@ message Invocation {
 enum WebhookDeliveryStatus {
     WebhookDeliveryStatus_UNKNOWN = 0;
     // We are attempting or retrying the webhook
-    WebhookDeliveryStatus_ATTEMPTING = 1;
+    ATTEMPTING = 1;
     // Webhook delivery succeeded.
-    WebhookDeliveryStatus_SUCCEEDED = 2;
+    SUCCEEDED = 2;
     // Webhook delivery failed and we gave up.
-    WebhookDeliveryStatus_FAILED = 3;
+    FAILED = 3;
 }
 
 message WebhookStatus {

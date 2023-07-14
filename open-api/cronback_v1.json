@@ -531,7 +531,26 @@
         "tags": [
           "Triggers"
         ],
-        "description": "Creates an ad hoc invocation of the trigger."
+        "description": "Creates an ad hoc invocation of the trigger. You can invoke triggers that are _not_ in the `cancelled` state.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "sync",
+                      "async"
+                    ],
+                    "default": "async"
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     }
   },
@@ -644,11 +663,12 @@
             "type": "string",
             "enum": [
               "active",
+              "on_demand",
               "paused",
               "expired",
               "cancelled"
             ],
-            "description": "Status of the trigger. \n- `active` triggers can be invoked either manually of according to their `trigger.schedule`\n- `paused` triggers will be invoked but will not emit anything.\n- `expired` triggers are scheduled triggers that exhausted their invocations or have no future timepoints.\n- `cancelled` triggers cannot be invoked. Those have been cancelled manually via the `/triggers/{trigger_id}/cancel` API.",
+            "description": "Status of the trigger. \n- `active` triggers can be invoked either manually of according to their `trigger.schedule`\n- `on_demand` triggers can only be invoked manually, those do not have a schedule associated.\n- `paused` triggers will be invoked but will not emit anything.\n- `expired` triggers are scheduled triggers that exhausted their invocations or have no future timepoints.\n- `cancelled` triggers cannot be invoked. Those have been cancelled manually via the `/triggers/{trigger_id}/cancel` API.",
             "example": "active",
             "readOnly": true
           }

@@ -4,12 +4,12 @@ package webhook_proto;
 
 enum HttpMethod {
   HttpMethod_UNKNOWN = 0;
-  HttpMethod_GET = 1;
-  HttpMethod_POST = 2;
-  HttpMethod_PUT = 3;
-  HttpMethod_DELETE = 4;
-  HttpMethod_HEAD = 5;
-  HttpMethod_PATCH = 6;
+  GET = 1;
+  POST = 2;
+  PUT = 3;
+  DELETE = 4;
+  HEAD = 5;
+  PATCH = 6;
 }
 
 message SimpleRetry {

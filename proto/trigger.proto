@@ -6,10 +6,16 @@ package trigger_proto;
 
 enum TriggerStatus {
   TriggerStatus_UNKNOWN = 0;
-  TriggerStatus_ACTIVE = 1;
-  TriggerStatus_EXPIRED = 2;
-  TriggerStatus_PAUSED = 3;
-  TriggerStatus_CANCELLED = 4;
+  // A scheduled trigger thas has future runs
+  ACTIVE = 1;
+  // A scheduled triggers that skips future runs
+  PAUSED = 3;
+  // Trigger can only be invoked manually 
+  ON_DEMAND = 4;
+  // Scheduled future with no future runs
+  EXPIRED = 2;
+  // Trigger that cannot be invoked anymore
+  CANCELLED = 5;
 }
 
 message Cron {
@@ -22,13 +28,13 @@ message Cron {
 
 enum RetryPolicy {
   RetryPolicy_UNKNOWN = 0;
-  RetryPolicy_SIMPLE = 1;
-  RetryPolicy_EXPONENTIAL = 2;
+  SIMPLE = 1;
+  EXPONENTIAL = 2;
 }
 
 enum NotificationType {
   Notifications_UNKNOWN = 0;
-  Notifications_SLACK = 1;
+  SLACK = 1;
 }
 
 message OnStatusHandler {

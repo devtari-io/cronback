@@ -1,0 +1,14 @@
+{
+  "payload": {
+    "content_type": "application/json",
+    "headers": {
+      "X-My-Header": "my-header-value"
+    },
+    "body": "{ \"name\": \"asoli\"}"
+  },
+  "emit": {
+    "type": "webhook",
+    "url": "http://localhost:3000/emit",
+    "timeout_s": 2
+  }
+}

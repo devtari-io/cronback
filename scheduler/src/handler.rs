@@ -68,7 +68,11 @@ impl Scheduler for SchedulerAPIHandler {
         let (_metadata, _ext, request) = request.into_parts();
         let invocation = self
             .scheduler
-            .invoke_trigger(request.project_id.into(), request.id.into())
+            .invoke_trigger(
+                request.project_id.clone().into(),
+                request.id.clone().into(),
+                request.mode().into(),
+            )
             .await?;
         Ok(Response::new(InvokeTriggerResponse {
             invocation: Some(invocation.into()),
@@ -104,7 +108,7 @@ impl Scheduler for SchedulerAPIHandler {
             .pause_trigger(request.project_id.into(), request.id.into())
             .await?;
         Ok(Response::new(PauseTriggerResponse {
-            trigger: Some(trigger.into_manifest().into()),
+            trigger: Some(trigger.into()),
         }))
     }
 
@@ -118,7 +122,7 @@ impl Scheduler for SchedulerAPIHandler {
             .resume_trigger(request.project_id.into(), request.id.into())
             .await?;
         Ok(Response::new(ResumeTriggerResponse {
-            trigger: Some(trigger.into_manifest().into()),
+            trigger: Some(trigger.into()),
         }))
     }
 
@@ -132,7 +136,7 @@ impl Scheduler for SchedulerAPIHandler {
             .cancel_trigger(request.project_id.into(), request.id.into())
             .await?;
         Ok(Response::new(CancelTriggerResponse {
-            trigger: Some(trigger.into_manifest().into()),
+            trigger: Some(trigger.into()),
         }))
     }
 

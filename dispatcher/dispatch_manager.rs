@@ -52,6 +52,9 @@ impl DispatchManager {
         .run();
 
         Ok(match mode {
+            | DispatchMode::Unknown => {
+                panic!("Unknown dispatch mode");
+            }
             | DispatchMode::Async => {
                 tokio::spawn(invocation_job);
                 invocation

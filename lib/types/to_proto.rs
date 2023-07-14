@@ -124,6 +124,7 @@ impl From<Status> for i32 {
         let enum_value = match value {
             | Status::Active => trigger_proto::TriggerStatus::Active,
             | Status::Expired => trigger_proto::TriggerStatus::Expired,
+            | Status::OnDemand => trigger_proto::TriggerStatus::OnDemand,
             | Status::Cancelled => trigger_proto::TriggerStatus::Cancelled,
             | Status::Paused => trigger_proto::TriggerStatus::Paused,
         };

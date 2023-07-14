@@ -7,6 +7,9 @@ impl From<TriggerError> for Status {
     fn from(e: TriggerError) -> Self {
         // match variants of TriggerError
         match e {
+            | TriggerError::InvalidStatus { .. } => {
+                Status::failed_precondition(e.to_string())
+            }
             | TriggerError::JoinError(e) => {
                 Status::internal(format!("Internal error: {e}"))
             }

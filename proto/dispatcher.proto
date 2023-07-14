@@ -10,8 +10,9 @@ service Dispatcher {
 }
 
 enum DispatchMode {
-  DispatchMode_ASYNC = 0;
-  DispatchMode_SYNC = 1;
+  DispatchMode_UNKNOWN = 0;
+  ASYNC = 1;
+  SYNC = 2;
 }
 
 message DispatchRequest {

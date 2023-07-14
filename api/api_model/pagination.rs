@@ -4,8 +4,7 @@ use validator::Validate;
 
 // The query parameters for pagination and cursor management
 #[derive(Debug, Deserialize, Default, Validate)]
-pub struct Pagination<T> {
-    // TODO: Validate that before and after are not set at the same time
+pub(crate) struct Pagination<T> {
     pub before: Option<T>,
     pub after: Option<T>,
     #[validate(range(
@@ -22,7 +21,10 @@ impl<T> Pagination<T> {
     }
 }
 
-pub fn paginate<T, B>(mut results: Vec<T>, pagination: Pagination<B>) -> Value
+pub(crate) fn paginate<T, B>(
+    mut results: Vec<T>,
+    pagination: Pagination<B>,
+) -> Value
 where
     T: Serialize + Send + 'static,
 {

@@ -10,7 +10,7 @@ use validator::Validate;
 #[derive(Debug, Default, Clone, Serialize, Deserialize, Validate)]
 #[serde(deny_unknown_fields)]
 #[serde(default)]
-pub struct InstallTrigger {
+pub(crate) struct InstallTrigger {
     #[validate(length(
         min = 2,
         max = 1000,

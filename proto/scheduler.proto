@@ -24,6 +24,12 @@ service Scheduler {
   rpc CancelTrigger (CancelTriggerRequest)  returns (CancelTriggerResponse);
 }
 
+enum InvocationMode {
+  InvocationMode_UNKNOWN = 0;
+  ASYNC = 1;
+  SYNC = 2;
+}
+
 message InstallTriggerRequest {
   string project_id = 1;
   string name = 2;
@@ -75,6 +81,8 @@ message CancelTriggerResponse {
 message InvokeTriggerRequest {
   string id = 1;
   string project_id = 2;
+  InvocationMode mode = 3;
+
 }
 
 message InvokeTriggerResponse {

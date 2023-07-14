@@ -17,6 +17,7 @@ use proto::scheduler_proto::InstallTriggerRequest;
 use tracing::{debug, error, info, trace, warn};
 
 use super::dispatch::dispatch;
+use super::event_dispatcher::DispatchMode;
 use super::spinner::{Spinner, SpinnerHandle};
 use super::triggers::{ActiveTriggerMap, TriggerError};
 use crate::sched::triggers::ActiveTrigger;
@@ -182,6 +183,7 @@ impl EventScheduler {
             install_trigger.project_id.clone(),
         ));
 
+        let is_scheduled = install_trigger.schedule.is_some();
         let trigger = Trigger {
             id,
             project: install_trigger.project_id.into(),
@@ -192,18 +194,27 @@ impl EventScheduler {
             emit: install_trigger.emit.into_iter().map(|e| e.into()).collect(),
             payload: install_trigger.payload.map(|p| p.into()),
             schedule: install_trigger.schedule.map(|s| s.into()),
-            status: Status::Active,
+            status: if is_scheduled {
+                Status::Active
+            } else {
+                Status::OnDemand
+            },
             last_invoked_at: None,
         };
 
         self.store.install_trigger(&trigger).await?;
 
-        let triggers = self.triggers.clone();
-        tokio::task::spawn_blocking(move || {
-            let mut w = triggers.write().unwrap();
-            w.add_or_update(trigger, /* fast_forward = */ false)
-        })
-        .await?
+        if is_scheduled {
+            // We only install scheduled triggers in the ActiveMap
+            let triggers = self.triggers.clone();
+            tokio::task::spawn_blocking(move || {
+                let mut w = triggers.write().unwrap();
+                w.add_or_update(trigger, /* fast_forward = */ false)
+            })
+            .await?
+        } else {
+            Ok(trigger)
+        }
     }
 
     #[tracing::instrument(skip_all, fields(trigger_id = %id))]
@@ -283,14 +294,19 @@ impl EventScheduler {
         &self,
         project: ProjectId,
         id: TriggerId,
+        mode: DispatchMode,
     ) -> Result<Invocation, TriggerError> {
         let trigger = self.get_trigger(project, id).await?;
-        let invocation = dispatch(
-            trigger,
-            self.dispatcher_client_provider.clone(),
-            super::event_dispatcher::DispatchMode::Sync,
-        )
-        .await?;
+
+        if trigger.status == Status::Cancelled {
+            return Err(TriggerError::InvalidStatus(
+                "invoke".to_string(),
+                trigger.status,
+            ));
+        }
+        let invocation =
+            dispatch(trigger, self.dispatcher_client_provider.clone(), mode)
+                .await?;
         Ok(invocation)
     }
 
@@ -299,7 +315,7 @@ impl EventScheduler {
         &self,
         project: ProjectId,
         id: TriggerId,
-    ) -> Result<Trigger, TriggerError> {
+    ) -> Result<TriggerManifest, TriggerError> {
         let triggers = self.triggers.clone();
         let status = self.get_trigger_status(&project, &id).await?;
         // if value, check that it's alive.
@@ -311,7 +327,7 @@ impl EventScheduler {
         }
         tokio::task::spawn_blocking(move || {
             let mut w = triggers.write().unwrap();
-            w.pause(&id).map(|_| w.get(&id).unwrap().clone())
+            w.pause(&id).map(|_| w.get(&id).unwrap().get_manifest())
         })
         .await?
     }
@@ -321,7 +337,7 @@ impl EventScheduler {
         &self,
         project: ProjectId,
         id: TriggerId,
-    ) -> Result<Trigger, TriggerError> {
+    ) -> Result<TriggerManifest, TriggerError> {
         let triggers = self.triggers.clone();
         let status = self.get_trigger_status(&project, &id).await?;
         // if value, check that it's alive.
@@ -333,7 +349,7 @@ impl EventScheduler {
         }
         tokio::task::spawn_blocking(move || {
             let mut w = triggers.write().unwrap();
-            w.resume(&id).map(|_| w.get(&id).unwrap().clone())
+            w.resume(&id).map(|_| w.get(&id).unwrap().get_manifest())
         })
         .await?
     }
@@ -343,27 +359,35 @@ impl EventScheduler {
         &self,
         project: ProjectId,
         id: TriggerId,
-    ) -> Result<Trigger, TriggerError> {
+    ) -> Result<TriggerManifest, TriggerError> {
         let triggers = self.triggers.clone();
         let status = self.get_trigger_status(&project, &id).await?;
         // if value, check that it's alive.
-        if !status.alive() {
+        if !status.cancelleable() {
             return Err(TriggerError::InvalidStatus(
                 Status::Cancelled.as_operation(),
                 status,
             ));
         }
 
-        let inner_id = id.clone();
-        tokio::task::spawn_blocking(move || {
-            let mut w = triggers.write().unwrap();
-            // We blindly cancel here since we have checked earlier that this
-            // trigger is owned by the right project. Otherwise, we won't reach
-            // this line.
-            w.cancel(&inner_id)
-                .map(|_| w.get(&inner_id).unwrap().clone())
-        })
-        .await?
+        if status == Status::OnDemand {
+            let mut trigger = self.get_trigger(project, id).await?;
+            trigger.status = Status::Cancelled;
+            let manifest = trigger.get_manifest();
+            self.store.update_trigger(&trigger).await?;
+            Ok(manifest)
+        } else {
+            let inner_id = id.clone();
+            tokio::task::spawn_blocking(move || {
+                let mut w = triggers.write().unwrap();
+                // We blindly cancel here since we have checked earlier that
+                // this trigger is owned by the right project.
+                // Otherwise, we won't reach this line.
+                w.cancel(&inner_id)
+                    .map(|_| w.get(&inner_id).unwrap().get_manifest())
+            })
+            .await?
+        }
     }
 
     pub async fn shutdown(&self) {
