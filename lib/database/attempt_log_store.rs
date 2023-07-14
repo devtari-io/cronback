@@ -1,19 +1,11 @@
 use async_trait::async_trait;
-use sqlx::Row;
-use thiserror::Error;
 
-use super::helpers::paginated_query_builder;
+use super::errors::DatabaseError;
+use super::helpers::{get_by_id_query, insert_query, paginated_query};
 use crate::database::SqliteDatabase;
 use crate::types::{AttemptLogId, EmitAttemptLog, InvocationId, ValidId};
 
-#[derive(Error, Debug)]
-pub enum AttemptLogStoreError {
-    #[error("database error: {0}")]
-    DatabaseError(#[from] sqlx::Error),
-
-    #[error("serialization error: {0}")]
-    ParseError(#[from] serde_json::Error),
-}
+pub type AttemptLogStoreError = DatabaseError;
 
 #[async_trait]
 pub trait AttemptLogStore {
@@ -70,12 +62,7 @@ impl AttemptLogStore for SqlAttemptLogStore {
         &self,
         attempt: &EmitAttemptLog,
     ) -> Result<(), AttemptLogStoreError> {
-        sqlx::query("INSERT OR REPLACE INTO attempts (id,value) VALUES (?,?)")
-            .bind(&attempt.id.to_string())
-            .bind(serde_json::to_string(attempt)?)
-            .execute(&self.db.pool)
-            .await?;
-        Ok(())
+        insert_query(&self.db.pool, "attempts", &attempt.id, attempt).await
     }
 
     async fn get_attempts_for_invocation(
@@ -85,45 +72,23 @@ impl AttemptLogStore for SqlAttemptLogStore {
         after: Option<AttemptLogId>,
         limit: usize,
     ) -> Result<Vec<EmitAttemptLog>, AttemptLogStoreError> {
-        let mut builder = paginated_query_builder(
+        paginated_query(
+            &self.db.pool,
             "attempts",
             "invocation_id",
             id.value(),
             &before,
             &after,
             limit,
-        );
-
-        let results = builder
-            .build()
-            .fetch_all(&self.db.pool)
-            .await?
-            .into_iter()
-            .map(|r| {
-                let j = r.get::<String, _>("value");
-                serde_json::from_str::<EmitAttemptLog>(&j)
-            })
-            .collect::<Result<Vec<_>, _>>();
-        Ok(results?)
+        )
+        .await
     }
 
     async fn get_attempt(
         &self,
         id: &AttemptLogId,
     ) -> Result<Option<EmitAttemptLog>, AttemptLogStoreError> {
-        let result = sqlx::query("SELECT value FROM attempts WHERE id = ?")
-            .bind(&id.to_string())
-            .fetch_one(&self.db.pool)
-            .await;
-
-        match result {
-            | Ok(r) => {
-                let j = r.get::<String, _>("value");
-                Ok(Some(serde_json::from_str::<EmitAttemptLog>(&j)?))
-            }
-            | Err(sqlx::Error::RowNotFound) => Ok(None),
-            | Err(e) => Err(e.into()),
-        }
+        get_by_id_query(&self.db.pool, "attempts", id).await
     }
 }
 

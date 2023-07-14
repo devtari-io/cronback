@@ -1,20 +1,13 @@
 use async_trait::async_trait;
 use sqlx::Row;
-use thiserror::Error;
 use tracing::debug;
 
-use super::helpers::paginated_query_builder;
+use super::errors::DatabaseError;
+use super::helpers::{get_by_id_query, insert_query, paginated_query};
 use crate::database::SqliteDatabase;
 use crate::types::{OwnerId, Status, Trigger, TriggerId, ValidId};
 
-#[derive(Error, Debug)]
-pub enum TriggerStoreError {
-    #[error("database error: {0}")]
-    DatabaseError(#[from] sqlx::Error),
-
-    #[error("serialization error: {0}")]
-    ParseError(#[from] serde_json::Error),
-}
+pub type TriggerStoreError = DatabaseError;
 
 #[async_trait]
 pub trait TriggerStore {
@@ -79,12 +72,7 @@ impl TriggerStore for SqlTriggerStore {
         &self,
         trigger: &Trigger,
     ) -> Result<(), TriggerStoreError> {
-        sqlx::query("INSERT OR REPLACE INTO triggers (id,value) VALUES (?,?)")
-            .bind(&trigger.id.to_string())
-            .bind(serde_json::to_string(trigger)?)
-            .execute(&self.db.pool)
-            .await?;
-        Ok(())
+        insert_query(&self.db.pool, "triggers", &trigger.id, trigger).await
     }
 
     async fn get_all_active_triggers(
@@ -114,45 +102,23 @@ impl TriggerStore for SqlTriggerStore {
         after: Option<TriggerId>,
         limit: usize,
     ) -> Result<Vec<Trigger>, TriggerStoreError> {
-        let mut builder = paginated_query_builder(
+        paginated_query(
+            &self.db.pool,
             "triggers",
             "owner_id",
             owner_id.value(),
             &before,
             &after,
             limit,
-        );
-
-        let results = builder
-            .build()
-            .fetch_all(&self.db.pool)
-            .await?
-            .into_iter()
-            .map(|r| {
-                let j = r.get::<String, _>("value");
-                serde_json::from_str::<Trigger>(&j)
-            })
-            .collect::<Result<Vec<_>, _>>();
-        Ok(results?)
+        )
+        .await
     }
 
     async fn get_trigger(
         &self,
         id: &TriggerId,
     ) -> Result<Option<Trigger>, TriggerStoreError> {
-        let result = sqlx::query("SELECT value FROM triggers WHERE id = ?")
-            .bind(id.to_string())
-            .fetch_one(&self.db.pool)
-            .await;
-
-        match result {
-            | Ok(r) => {
-                let j = r.get::<String, _>("value");
-                Ok(Some(serde_json::from_str::<Trigger>(&j)?))
-            }
-            | Err(sqlx::Error::RowNotFound) => Ok(None),
-            | Err(e) => Err(e.into()),
-        }
+        get_by_id_query(&self.db.pool, "triggers", id).await
     }
 
     async fn get_status(

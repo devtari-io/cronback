@@ -1,19 +1,11 @@
 use async_trait::async_trait;
-use sqlx::Row;
-use thiserror::Error;
 
-use super::helpers::paginated_query_builder;
+use super::errors::DatabaseError;
+use super::helpers::{get_by_id_query, insert_query, paginated_query};
 use crate::database::SqliteDatabase;
 use crate::types::{Invocation, InvocationId, OwnerId, TriggerId, ValidId};
 
-#[derive(Error, Debug)]
-pub enum InvocationStoreError {
-    #[error("database error: {0}")]
-    DatabaseError(#[from] sqlx::Error),
-
-    #[error("serialization error: {0}")]
-    ParseError(#[from] serde_json::Error),
-}
+pub type InvocationStoreError = DatabaseError;
 
 #[async_trait]
 pub trait InvocationStore {
@@ -78,33 +70,15 @@ impl InvocationStore for SqlInvocationStore {
         &self,
         invocation: &Invocation,
     ) -> Result<(), InvocationStoreError> {
-        sqlx::query(
-            "INSERT OR REPLACE INTO invocations (id,value) VALUES (?,?)",
-        )
-        .bind(&invocation.id.to_string())
-        .bind(serde_json::to_string(invocation)?)
-        .execute(&self.db.pool)
-        .await?;
-        Ok(())
+        insert_query(&self.db.pool, "invocations", &invocation.id, invocation)
+            .await
     }
 
     async fn get_invocation(
         &self,
         id: &InvocationId,
     ) -> Result<Option<Invocation>, InvocationStoreError> {
-        let result = sqlx::query("SELECT value FROM invocations WHERE id = ?")
-            .bind(id.to_string())
-            .fetch_one(&self.db.pool)
-            .await;
-
-        match result {
-            | Ok(r) => {
-                let j = r.get::<String, _>("value");
-                Ok(Some(serde_json::from_str::<Invocation>(&j)?))
-            }
-            | Err(sqlx::Error::RowNotFound) => Ok(None),
-            | Err(e) => Err(e.into()),
-        }
+        get_by_id_query(&self.db.pool, "invocations", id).await
     }
 
     async fn get_invocations_by_trigger(
@@ -114,26 +88,16 @@ impl InvocationStore for SqlInvocationStore {
         after: Option<InvocationId>,
         limit: usize,
     ) -> Result<Vec<Invocation>, InvocationStoreError> {
-        let mut builder = paginated_query_builder(
+        paginated_query(
+            &self.db.pool,
             "invocations",
             "trigger_id",
             trigger_id.value(),
             &before,
             &after,
             limit,
-        );
-
-        let results = builder
-            .build()
-            .fetch_all(&self.db.pool)
-            .await?
-            .into_iter()
-            .map(|r| {
-                let j = r.get::<String, _>("value");
-                serde_json::from_str::<Invocation>(&j)
-            })
-            .collect::<Result<Vec<_>, _>>();
-        Ok(results?)
+        )
+        .await
     }
 
     async fn get_invocations_by_owner(
@@ -143,26 +107,16 @@ impl InvocationStore for SqlInvocationStore {
         after: Option<InvocationId>,
         limit: usize,
     ) -> Result<Vec<Invocation>, InvocationStoreError> {
-        let mut builder = paginated_query_builder(
+        paginated_query(
+            &self.db.pool,
             "invocations",
             "owner_id",
             owner_id.value(),
             &before,
             &after,
             limit,
-        );
-
-        let results = builder
-            .build()
-            .fetch_all(&self.db.pool)
-            .await?
-            .into_iter()
-            .map(|r| {
-                let j = r.get::<String, _>("value");
-                serde_json::from_str::<Invocation>(&j)
-            })
-            .collect::<Result<Vec<_>, _>>();
-        Ok(results?)
+        )
+        .await
     }
 }
 
