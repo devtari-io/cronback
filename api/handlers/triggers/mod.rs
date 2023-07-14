@@ -1,11 +1,11 @@
 mod cancel;
 mod get;
 mod install;
-mod invocations;
-mod invoke;
 mod pause;
 mod put;
 mod resume;
+mod run;
+mod runs;
 
 use std::sync::Arc;
 
@@ -19,8 +19,8 @@ pub(crate) fn routes(shared_state: Arc<AppState>) -> Router {
         .route("/", axum::routing::get(get::list))
         .route("/:id", axum::routing::get(get::get))
         .route("/:id", axum::routing::put(put::put))
-        .route("/:id/invocations", axum::routing::get(invocations::list))
-        .route("/:id/invoke", axum::routing::post(invoke::invoke))
+        .route("/:id/runs", axum::routing::get(runs::list))
+        .route("/:id/run", axum::routing::post(run::run))
         .route("/:id/pause", axum::routing::post(pause::pause))
         .route("/:id/cancel", axum::routing::post(cancel::cancel))
         .route("/:id/resume", axum::routing::post(resume::resume))

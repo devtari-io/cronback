@@ -13,8 +13,6 @@ use proto::scheduler_proto::{
     GetTriggerResponse,
     InstallTriggerRequest,
     InstallTriggerResponse,
-    InvokeTriggerRequest,
-    InvokeTriggerResponse,
     ListTriggersFilter,
     ListTriggersRequest,
     ListTriggersResponse,
@@ -22,6 +20,8 @@ use proto::scheduler_proto::{
     PauseTriggerResponse,
     ResumeTriggerRequest,
     ResumeTriggerResponse,
+    RunTriggerRequest,
+    RunTriggerResponse,
 };
 use tonic::{Request, Response, Status};
 
@@ -57,13 +57,13 @@ impl Scheduler for SchedulerAPIHandler {
         Ok(Response::new(reply))
     }
 
-    async fn invoke_trigger(
+    async fn run_trigger(
         &self,
-        request: Request<InvokeTriggerRequest>,
-    ) -> Result<Response<InvokeTriggerResponse>, Status> {
+        request: Request<RunTriggerRequest>,
+    ) -> Result<Response<RunTriggerResponse>, Status> {
         // check if trigger exists
-        // A trigger that exists will be invoked regardless of its state
-        // manual invocation has nothing to do with the spinner or event
+        // A trigger that exists will run regardless of its state
+        // manual run has nothing to do with the spinner or event
         // scheduler
         //
         let (_metadata, _ext, request) = request.into_parts();
@@ -71,16 +71,16 @@ impl Scheduler for SchedulerAPIHandler {
         // requests.
         let project =
             ProjectId::from(request.project_id.clone()).validated()?;
-        let invocation = self
+        let run = self
             .scheduler
-            .invoke_trigger(
+            .run_trigger(
                 project,
                 request.id.clone().into(),
                 request.mode().into(),
             )
             .await?;
-        Ok(Response::new(InvokeTriggerResponse {
-            invocation: Some(invocation.into()),
+        Ok(Response::new(RunTriggerResponse {
+            run: Some(run.into()),
         }))
     }
 

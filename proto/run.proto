@@ -3,20 +3,20 @@ syntax = "proto3";
 import "webhook.proto";
 import "trigger.proto";
 
-package invocation_proto;
+package run_proto;
 
-message Invocation {
+message Run {
   string id = 1;
   string trigger_id = 2;
   string project_id = 3;
   string created_at = 4;
   trigger_proto.Payload payload = 5;
   trigger_proto.Action action = 6;
-  InvocationStatus status = 7;
+  RunStatus status = 7;
 }
 
-enum InvocationStatus {
-    InvocationStatus_UNKNOWN = 0;
+enum RunStatus {
+    RunStatus_UNKNOWN = 0;
     // We are attempting or retrying the action
     ATTEMPTING = 1;
     // Action succeeded

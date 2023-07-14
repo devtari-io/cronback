@@ -27,7 +27,7 @@ pub struct Trigger {
     pub schedule: Option<Schedule>,
     pub action: Action,
     pub status: Status,
-    pub last_invoked_at: Option<DateTime<Utc>>,
+    pub last_ran_at: Option<DateTime<Utc>>,
 }
 
 impl Trigger {
@@ -47,7 +47,7 @@ impl Trigger {
             reference: self.reference,
             schedule: self.schedule,
             status: self.status,
-            last_invoked_at: self.last_invoked_at,
+            last_ran_at: self.last_ran_at,
         }
     }
 
@@ -63,7 +63,7 @@ impl Trigger {
             reference: self.reference.clone(),
             schedule: self.schedule.clone(),
             status: self.status.clone(),
-            last_invoked_at: self.last_invoked_at,
+            last_ran_at: self.last_ran_at,
         }
     }
 
@@ -89,7 +89,7 @@ impl Trigger {
         } else {
             Status::OnDemand
         };
-        // NOTE: we leave last_invoked_at as is.
+        // NOTE: we leave last_ran_at as is.
     }
 }
 
@@ -107,7 +107,7 @@ pub struct TriggerManifest {
     pub reference: Option<String>,
     pub schedule: Option<Schedule>,
     pub status: Status,
-    pub last_invoked_at: Option<DateTime<Utc>>,
+    pub last_ran_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
@@ -123,8 +123,8 @@ pub enum Status {
 
 impl Status {
     // Alive means that it should continue to live in the spinner map. A paused
-    // trigger is considered alive, but it won't be invoked. We will advance
-    // its clock as if it was invoked though.
+    // trigger is considered alive, but it won't be rund. We will advance
+    // its clock as if it was run though.
     pub fn alive(&self) -> bool {
         [Self::Scheduled, Self::Paused].contains(self)
     }

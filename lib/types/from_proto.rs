@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
-use proto::{attempt_proto, invocation_proto, trigger_proto, webhook_proto};
+use proto::{attempt_proto, run_proto, trigger_proto, webhook_proto};
 
 use super::{
     Action,
@@ -10,10 +10,10 @@ use super::{
     AttemptStatus,
     ExponentialBackoffRetry,
     HttpMethod,
-    Invocation,
-    InvocationStatus,
     Payload,
     RetryConfig,
+    Run,
+    RunStatus,
     Schedule,
     SimpleRetry,
     Status,
@@ -47,7 +47,7 @@ impl From<trigger_proto::Trigger> for Trigger {
             status: value.status.into(),
             // We are not supposed to send this to other services, it is
             // internal.
-            last_invoked_at: None,
+            last_ran_at: None,
         }
     }
 }
@@ -73,7 +73,7 @@ impl From<trigger_proto::TriggerManifest> for TriggerManifest {
             status: value.status.into(),
             // We are not supposed to send this to other services, it is
             // internal.
-            last_invoked_at: value.last_invoked_at.map(|l| {
+            last_ran_at: value.last_ran_at.map(|l| {
                 DateTime::parse_from_rfc3339(&l)
                     .unwrap()
                     .with_timezone(&Utc)
@@ -239,7 +239,7 @@ impl From<attempt_proto::ActionAttemptLog> for ActionAttemptLog {
     fn from(value: attempt_proto::ActionAttemptLog) -> Self {
         Self {
             id: value.id.into(),
-            invocation: value.invocation_id.into(),
+            run: value.run_id.into(),
             trigger: value.trigger_id.into(),
             project: ValidShardedId::from_string_unsafe(value.project_id),
             status: value.status.into(),
@@ -271,8 +271,8 @@ impl From<attempt_proto::AttemptDetails> for AttemptDetails {
     }
 }
 
-impl From<invocation_proto::Invocation> for Invocation {
-    fn from(value: invocation_proto::Invocation) -> Self {
+impl From<run_proto::Run> for Run {
+    fn from(value: run_proto::Run) -> Self {
         Self {
             id: value.id.into(),
             trigger: value.trigger_id.into(),
@@ -285,19 +285,16 @@ impl From<invocation_proto::Invocation> for Invocation {
     }
 }
 
-impl From<i32> for InvocationStatus {
+impl From<i32> for RunStatus {
     fn from(value: i32) -> Self {
-        let enum_value =
-            invocation_proto::InvocationStatus::from_i32(value).unwrap();
+        let enum_value = run_proto::RunStatus::from_i32(value).unwrap();
         match enum_value {
-            | invocation_proto::InvocationStatus::Unknown => {
-                panic!("We should never see InvocationStatus::Unknown")
+            | run_proto::RunStatus::Unknown => {
+                panic!("We should never see RunStatus::Unknown")
             }
-            | invocation_proto::InvocationStatus::Attempting => {
-                Self::Attempting
-            }
-            | invocation_proto::InvocationStatus::Succeeded => Self::Succeeded,
-            | invocation_proto::InvocationStatus::Failed => Self::Failed,
+            | run_proto::RunStatus::Attempting => Self::Attempting,
+            | run_proto::RunStatus::Succeeded => Self::Succeeded,
+            | run_proto::RunStatus::Failed => Self::Failed,
         }
     }
 }

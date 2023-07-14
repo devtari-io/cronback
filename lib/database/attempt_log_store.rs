@@ -11,12 +11,12 @@ use super::helpers::{
 };
 use crate::database::Database;
 use crate::model::ModelId;
-use crate::types::{ActionAttemptLog, AttemptLogId, InvocationId, ProjectId};
+use crate::types::{ActionAttemptLog, AttemptLogId, ProjectId, RunId};
 
 #[derive(Iden)]
 enum AttemptsIden {
     Attempts,
-    InvocationId,
+    RunId,
 }
 
 pub type AttemptLogStoreError = DatabaseError;
@@ -28,10 +28,10 @@ pub trait AttemptLogStore {
         attempt: &ActionAttemptLog,
     ) -> Result<(), AttemptLogStoreError>;
 
-    async fn get_attempts_for_invocation(
+    async fn get_attempts_for_run(
         &self,
         project: &ProjectId,
-        id: &InvocationId,
+        id: &RunId,
         before: Option<AttemptLogId>,
         after: Option<AttemptLogId>,
         limit: usize,
@@ -65,9 +65,9 @@ impl SqlAttemptLogStore {
                     .generate_from_json_field(KVIden::Value, "project"),
             )
             .col(
-                ColumnDef::new(AttemptsIden::InvocationId)
+                ColumnDef::new(AttemptsIden::RunId)
                     .text()
-                    .generate_from_json_field(KVIden::Value, "invocation"),
+                    .generate_from_json_field(KVIden::Value, "run"),
             )
             .build_any(self.db.schema_builder().as_ref());
         sqlx::query(&sql).execute(&self.db.pool).await?;
@@ -83,9 +83,9 @@ impl SqlAttemptLogStore {
 
         let sql = Index::create()
             .if_not_exists()
-            .name("IX_attempts_invocationid")
+            .name("IX_attempts_runid")
             .table(AttemptsIden::Attempts)
-            .col(AttemptsIden::InvocationId)
+            .col(AttemptsIden::RunId)
             .build_any(self.db.schema_builder().as_ref());
         sqlx::query(&sql).execute(&self.db.pool).await?;
         Ok(())
@@ -102,10 +102,10 @@ impl AttemptLogStore for SqlAttemptLogStore {
             .await
     }
 
-    async fn get_attempts_for_invocation(
+    async fn get_attempts_for_run(
         &self,
         project: &ProjectId,
-        id: &InvocationId,
+        id: &RunId,
         before: Option<AttemptLogId>,
         after: Option<AttemptLogId>,
         limit: usize,
@@ -113,7 +113,7 @@ impl AttemptLogStore for SqlAttemptLogStore {
         paginated_query(
             &self.db,
             AttemptsIden::Attempts,
-            Expr::col(AttemptsIden::InvocationId)
+            Expr::col(AttemptsIden::RunId)
                 .eq(id.value())
                 .and(Expr::col(KVIden::Project).eq(project.value())),
             &before,
@@ -145,15 +145,15 @@ mod tests {
     use crate::types::{
         ActionAttemptLog,
         AttemptLogId,
-        InvocationId,
         ProjectId,
+        RunId,
         TriggerId,
         WebhookAttemptDetails,
     };
 
     fn build_attempt(
         project: &ValidShardedId<ProjectId>,
-        invocation_id: &InvocationId,
+        run_id: &RunId,
     ) -> ActionAttemptLog {
         // Serialization drops nanoseconds, so to let's zero it here for easier
         // equality comparisons
@@ -161,7 +161,7 @@ mod tests {
 
         ActionAttemptLog {
             id: AttemptLogId::generate(project).into(),
-            invocation: invocation_id.clone(),
+            run: run_id.clone(),
             trigger: TriggerId::generate(project).into(),
             project: project.clone(),
             status: crate::types::AttemptStatus::Succeeded,
@@ -184,8 +184,8 @@ mod tests {
 
         let project = ProjectId::generate();
         let project2 = ProjectId::generate();
-        let inv1 = InvocationId::generate(&project);
-        let inv2 = InvocationId::generate(&project);
+        let inv1 = RunId::generate(&project);
+        let inv2 = RunId::generate(&project);
 
         let a1 = build_attempt(&project, &inv1);
         let a2 = build_attempt(&project, &inv2);
@@ -224,9 +224,9 @@ mod tests {
         // Test fetching an attempt with wrong project
         assert_eq!(store.get_attempt(&project2, &a1.id).await?, None);
 
-        // Test get all attempts for a certain invocation
+        // Test get all attempts for a certain run
         let mut results = store
-            .get_attempts_for_invocation(&project, &inv1, None, None, 100)
+            .get_attempts_for_run(&project, &inv1, None, None, 100)
             .await?;
         let mut expected = vec![a1, a3];
         expected.sort_by(|a, b| a.id.cmp(&b.id));
@@ -234,10 +234,10 @@ mod tests {
 
         assert_eq!(results, expected);
 
-        // Test get all attempts for a certain invocation with a wrong project
+        // Test get all attempts for a certain run with a wrong project
         assert_eq!(
             store
-                .get_attempts_for_invocation(&project2, &inv1, None, None, 100)
+                .get_attempts_for_run(&project2, &inv1, None, None, 100)
                 .await?,
             vec![]
         );

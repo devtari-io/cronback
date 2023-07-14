@@ -295,13 +295,13 @@
       },
       "parameters": []
     },
-    "/invocations": {
+    "/runs": {
       "get": {
-        "summary": "List Invocations",
+        "summary": "List Runs",
         "responses": {},
-        "operationId": "get-invocations",
+        "operationId": "get-runs",
         "tags": [
-          "Invocations"
+          "Runs"
         ],
         "parameters": [
           {
@@ -332,7 +332,7 @@
         "description": ""
       }
     },
-    "/triggers/{trigger_id}/invocations": {
+    "/triggers/{trigger_id}/runs": {
       "parameters": [
         {
           "schema": {
@@ -345,7 +345,7 @@
         }
       ],
       "get": {
-        "summary": "Get invocations for a trigger",
+        "summary": "Get runs for a trigger",
         "responses": {
           "200": {
             "description": "OK",
@@ -357,7 +357,7 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/Invocation"
+                        "$ref": "#/components/schemas/Run"
                       }
                     },
                     "has_more": {
@@ -371,10 +371,10 @@
             }
           }
         },
-        "operationId": "get-triggers-trigger_id-invocations",
+        "operationId": "get-triggers-trigger_id-runs",
         "tags": [
           "Triggers",
-          "Invocations"
+          "Runs"
         ],
         "parameters": [
           {
@@ -404,19 +404,19 @@
         ]
       }
     },
-    "/invocations/{invocation_id}/attempts": {
+    "/runs/{run_id}/attempts": {
       "parameters": [
         {
           "schema": {
             "type": "string"
           },
-          "name": "invocation_id",
+          "name": "run_id",
           "in": "path",
           "required": true
         }
       ],
       "get": {
-        "summary": "List attempts for an invocation",
+        "summary": "List attempts for a run",
         "responses": {
           "200": {
             "description": "OK",
@@ -443,9 +443,9 @@
             "headers": {}
           }
         },
-        "operationId": "get-invocations-invocation_id-attempts",
+        "operationId": "get-runs-run_id-attempts",
         "tags": [
-          "Invocations"
+          "Runs"
         ],
         "parameters": [
           {
@@ -475,23 +475,23 @@
         ]
       }
     },
-    "/invocations/{invocation_id}": {
+    "/runs/{run_id}": {
       "parameters": [
         {
           "schema": {
             "type": "string"
           },
-          "name": "invocation_id",
+          "name": "run_id",
           "in": "path",
           "required": true
         }
       ],
       "get": {
-        "summary": "Get an invocation",
+        "summary": "Get a run",
         "responses": {},
-        "operationId": "get-invocations-invocation_id",
+        "operationId": "get-runs-run_id",
         "tags": [
-          "Invocations"
+          "Runs"
         ]
       }
     },
@@ -565,7 +565,7 @@
         "description": "Resumes a `paused` trigger."
       }
     },
-    "/triggers/{trigger_id}/invoke": {
+    "/triggers/{trigger_id}/run": {
       "parameters": [
         {
           "schema": {
@@ -577,15 +577,15 @@
         }
       ],
       "post": {
-        "summary": "Manually invoke a trigger",
-        "operationId": "post-triggers-trigger_id-invoke",
+        "summary": "Manually run a trigger",
+        "operationId": "post-triggers-trigger_id-run",
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Invocation"
+                  "$ref": "#/components/schemas/Run"
                 }
               }
             }
@@ -594,7 +594,7 @@
         "tags": [
           "Triggers"
         ],
-        "description": "Creates an ad hoc invocation of the trigger. You can invoke triggers that are _not_ in the `cancelled` state.",
+        "description": "Creates an ad hoc run of the trigger. You can run triggers that are _not_ in the `cancelled` state.",
         "requestBody": {
           "content": {
             "application/json": {
@@ -635,7 +635,7 @@
                 }
               }
             ],
-            "hidden_last_invoked_at": "2023-03-25T21:35:00.057112087Z",
+            "hidden_last_ran_at": "2023-03-25T21:35:00.057112087Z",
             "id": "trig_ab1.01GWCXWB869BXW8Q2XZGE0JBQ6",
             "name": "Healthchecks.io",
             "owner_id": "ab1",
@@ -728,7 +728,7 @@
               "expired",
               "cancelled"
             ],
-            "description": "Status of the trigger. \n- `scheduled` trigger will be invoked according to their `trigger.schedule`\n- `on_demand` trigger can only be invoked manually, those do not have a schedule associated.\n- `paused` triggers will be invoked but will not do anything.\n- `expired` triggers are scheduled triggers that exhausted their invocations or have no future timepoints.\n- `cancelled` triggers cannot be invoked. Those have been cancelled manually via the `/triggers/{trigger_id}/cancel` API.",
+            "description": "Status of the trigger. \n- `scheduled` trigger will be rund according to their `trigger.schedule`\n- `on_demand` trigger can only be rund manually, those do not have a schedule associated.\n- `paused` triggers will be rund but will not do anything.\n- `expired` triggers are scheduled triggers that exhausted their runs or have no future timepoints.\n- `cancelled` triggers cannot be rund. Those have been cancelled manually via the `/triggers/{trigger_id}/cancel` API.",
             "example": "scheduled",
             "readOnly": true
           }
@@ -792,7 +792,7 @@
               "id": "i4c7adqqo0h26"
             },
             "example": "*/30 * * * * *",
-            "description": "A cron-like string to specify when the trigger will be invoked. The cron pattern uses this format: `sec  min   hour   day-of-month   month   day-of-week   year`"
+            "description": "A cron-like string to specify when the trigger will be rund. The cron pattern uses this format: `sec  min   hour   day-of-month   month   day-of-week   year`"
           },
           "timezone": {
             "type": "string",
@@ -812,7 +812,7 @@
             "format": "int64",
             "minimum": 0,
             "example": 4,
-            "description": "The maximum number of invocations. The trigger's status will transition to `expired` automatically when no more invocations are left"
+            "description": "The maximum number of runs. The trigger's status will transition to `expired` automatically when no more runs are left"
           },
           "remaining": {
             "type": "integer",
@@ -820,7 +820,7 @@
               "id": "2d3nwf30r6s2h"
             },
             "default": 0,
-            "description": "If limit is set, this will indicate how many future invocations this trigger still has before expiring",
+            "description": "If limit is set, this will indicate how many future runs this trigger still has before expiring",
             "readOnly": true
           }
         }
@@ -1038,7 +1038,7 @@
                 }
               }
             ],
-            "hidden_last_invoked_at": "2023-03-25T21:35:00.057112087Z",
+            "hidden_last_ran_at": "2023-03-25T21:35:00.057112087Z",
             "id": "trig_ab1.01GWCXWB869BXW8Q2XZGE0JBQ6",
             "name": "Healthchecks.io",
             "owner_id": "ab1",
@@ -1118,19 +1118,19 @@
               "expired",
               "cancelled"
             ],
-            "description": "Status of the trigger. \n- `scheduled` trigger will be invoked according to their `trigger.schedule`\n- `paused` triggers will be invoked but will not do anything.\n- `expired` triggers are scheduled triggers that exhausted their invocations or have no future timepoints.\n- `cancelled` triggers cannot be invoked. Those have been cancelled manually via the `/triggers/{trigger_id}/cancel` API.",
+            "description": "Status of the trigger. \n- `scheduled` trigger will be rund according to their `trigger.schedule`\n- `paused` triggers will be rund but will not do anything.\n- `expired` triggers are scheduled triggers that exhausted their runs or have no future timepoints.\n- `cancelled` triggers cannot be rund. Those have been cancelled manually via the `/triggers/{trigger_id}/cancel` API.",
             "example": "scheduled",
             "readOnly": true
           },
-          "last_invoked_at": {
+          "last_ran_at": {
             "type": "string",
-            "description": "ISO8601 datetime when this trigger was last invoked",
+            "description": "ISO8601 datetime when this trigger was last rund",
             "example": "2023-03-25T17:43:23.654278298Z"
           }
         }
       },
-      "Invocation": {
-        "title": "Invocation",
+      "Run": {
+        "title": "Run",
         "x-stoplight": {
           "id": "mcl1jeypmouci"
         },
@@ -1167,7 +1167,7 @@
         }
       },
       "WebhookAttempt": {
-        "title": "InvocationAttempt",
+        "title": "RunAttempt",
         "x-stoplight": {
           "id": "9s68v5iiffjv7"
         },
@@ -1178,7 +1178,7 @@
             "example": "att_054001GXBF3E9MDBACQVCCY6D5E3MN",
             "readOnly": true
           },
-          "invocation": {
+          "run": {
             "type": "string",
             "example": "inv_054001GXBF2FAYW9S8N8Y4Y3E4R4N9",
             "readOnly": true

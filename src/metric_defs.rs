@@ -43,9 +43,9 @@ pub(crate) fn install_metrics() {
 
     // Dipatcher
     describe_counter!(
-        "dispatcher.invocations_total",
+        "dispatcher.runs_total",
         Unit::Count,
-        "Total number of invocations invoked by the dispatcher"
+        "Total number of runs by the dispatcher"
     );
     describe_counter!(
         "dispatcher.attempts_total",
@@ -54,8 +54,8 @@ pub(crate) fn install_metrics() {
     );
 
     describe_gauge!(
-        "dispatcher.inflight_invocations_total",
+        "dispatcher.inflight_runs_total",
         Unit::Count,
-        "Total number of inflight invocations in the dispatcher"
+        "Total number of inflight runs in the dispatcher"
     );
 }

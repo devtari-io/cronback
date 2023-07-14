@@ -19,7 +19,7 @@ message AttemptDetails {
 // Can be extended later as needed.
 message ActionAttemptLog {
   string id = 1;
-  string invocation_id = 2;
+  string run_id = 2;
   string trigger_id = 3;
   string project_id = 4;
   AttemptStatus status = 5;

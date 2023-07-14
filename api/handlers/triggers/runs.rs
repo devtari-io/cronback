@@ -5,7 +5,7 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
 use lib::model::ValidShardedId;
-use lib::types::{InvocationId, ProjectId, TriggerId};
+use lib::types::{ProjectId, RunId, TriggerId};
 use validator::Validate;
 
 use crate::errors::ApiError;
@@ -15,7 +15,7 @@ use crate::{AppState, AppStateError};
 #[tracing::instrument(skip(state))]
 #[debug_handler]
 pub(crate) async fn list(
-    pagination: Option<Query<Pagination<InvocationId>>>,
+    pagination: Option<Query<Pagination<RunId>>>,
     state: State<Arc<AppState>>,
     Extension(project): Extension<ValidShardedId<ProjectId>>,
     Path(trigger_id): Path<TriggerId>,
@@ -36,10 +36,10 @@ pub(crate) async fn list(
     // Trick. We want to know if there is a next page, so we ask for one more
     let limit = pagination.limit() + 1;
 
-    let invocations = state
+    let runs = state
         .db
-        .invocation_store
-        .get_invocations_by_trigger(
+        .run_store
+        .get_runs_by_trigger(
             &project,
             &trigger_id,
             pagination.before.clone(),
@@ -49,6 +49,5 @@ pub(crate) async fn list(
         .await
         .map_err(|e| AppStateError::DatabaseError(e.to_string()))?;
 
-    Ok((StatusCode::OK, Json(paginate(invocations, pagination)))
-        .into_response())
+    Ok((StatusCode::OK, Json(paginate(runs, pagination))).into_response())
 }

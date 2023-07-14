@@ -1,4 +1,4 @@
-use proto::{attempt_proto, invocation_proto, trigger_proto, webhook_proto};
+use proto::{attempt_proto, run_proto, trigger_proto, webhook_proto};
 
 use super::{
     Action,
@@ -6,12 +6,12 @@ use super::{
     AttemptDetails,
     AttemptStatus,
     HttpMethod,
-    Invocation,
-    InvocationStatus,
     Payload,
     Recurring,
     RetryConfig,
+    Run,
     RunAt,
+    RunStatus,
     Schedule,
     Status,
     Trigger,
@@ -51,7 +51,7 @@ impl From<TriggerManifest> for trigger_proto::TriggerManifest {
             reference: value.reference,
             schedule: value.schedule.map(|s| s.into()),
             status: value.status.into(),
-            last_invoked_at: value.last_invoked_at.map(|d| d.to_rfc3339()),
+            last_ran_at: value.last_ran_at.map(|d| d.to_rfc3339()),
         }
     }
 }
@@ -185,25 +185,19 @@ impl From<RetryConfig> for webhook_proto::RetryConfig {
     }
 }
 
-impl From<InvocationStatus> for i32 {
-    fn from(value: InvocationStatus) -> Self {
-        let enum_value: invocation_proto::InvocationStatus = match value {
-            | InvocationStatus::Failed => {
-                invocation_proto::InvocationStatus::Failed
-            }
-            | InvocationStatus::Attempting => {
-                invocation_proto::InvocationStatus::Attempting
-            }
-            | InvocationStatus::Succeeded => {
-                invocation_proto::InvocationStatus::Succeeded
-            }
+impl From<RunStatus> for i32 {
+    fn from(value: RunStatus) -> Self {
+        let enum_value: run_proto::RunStatus = match value {
+            | RunStatus::Failed => run_proto::RunStatus::Failed,
+            | RunStatus::Attempting => run_proto::RunStatus::Attempting,
+            | RunStatus::Succeeded => run_proto::RunStatus::Succeeded,
         };
         enum_value as i32
     }
 }
 
-impl From<Invocation> for invocation_proto::Invocation {
-    fn from(value: Invocation) -> Self {
+impl From<Run> for run_proto::Run {
+    fn from(value: Run) -> Self {
         Self {
             id: value.id.into(),
             trigger_id: value.trigger.into(),
@@ -222,7 +216,7 @@ impl From<ActionAttemptLog> for attempt_proto::ActionAttemptLog {
     fn from(value: ActionAttemptLog) -> Self {
         Self {
             id: value.id.into(),
-            invocation_id: value.invocation.into(),
+            run_id: value.run.into(),
             trigger_id: value.trigger.into(),
             project_id: value.project.into(),
             status: value.status.into(),

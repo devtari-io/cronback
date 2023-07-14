@@ -32,7 +32,7 @@ pub(crate) struct SpinnerHandle {
 
 struct InflightDispatch {
     pub trigger_id: TriggerId,
-    pub invoked_at: DateTime<Utc>,
+    pub ran_at: DateTime<Utc>,
     pub handle: tokio::task::JoinHandle<Result<(), DispatchError>>,
 }
 
@@ -137,7 +137,7 @@ impl Spinner {
                 }
             }
 
-            // Successful dispatches should update the last_invoked_at in
+            // Successful dispatches should update the last_ran_at in
             // ActiveTriggerMap and compacted.
             {
                 // Scoped to drop memory asap.
@@ -154,10 +154,8 @@ impl Spinner {
                             .unwrap()
                             .is_ok()
                         {
-                            success_dispatches.push((
-                                inflight.trigger_id,
-                                inflight.invoked_at,
-                            ));
+                            success_dispatches
+                                .push((inflight.trigger_id, inflight.ran_at));
                         }
                     } else {
                         // keep it around, we are still waiting for them.
@@ -169,8 +167,8 @@ impl Spinner {
                 {
                     // Those who succeeded should be updated in the active map
                     let mut w = self.triggers.write().unwrap();
-                    for (trigger_id, invoked_at) in success_dispatches {
-                        w.update_last_invoked_at(&trigger_id, invoked_at);
+                    for (trigger_id, ran_at) in success_dispatches {
+                        w.update_last_ran_at(&trigger_id, ran_at);
                     }
                 }
             }
@@ -239,7 +237,7 @@ impl Spinner {
                 if let Some(handle) = self.dispatch(&id) {
                     inflight_dispatches.push(InflightDispatch {
                         trigger_id: id.clone(),
-                        invoked_at: Utc::now(),
+                        ran_at: Utc::now(),
                         handle,
                     });
                 }
@@ -326,7 +324,7 @@ impl Spinner {
         if trigger.status == Status::Paused {
             let handle = self.tokio_handle.spawn(
                 async move {
-                    // We probably should persist this fake invocation
+                    // We probably should persist this fake run
                     // somewhere.
                     debug!(
                         "Skipping dispatch of PAUSED trigger {}",
@@ -350,7 +348,7 @@ impl Spinner {
         let handle = self.tokio_handle.spawn(
             async move {
                 // TODO add a few retries if not logic error.
-                // We are throwing away the returned Invocation object to save
+                // We are throwing away the returned Run object to save
                 // memory we are only interested in knowing if
                 // we errored or not.
                 dispatch::dispatch(

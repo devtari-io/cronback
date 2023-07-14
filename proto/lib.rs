@@ -14,8 +14,8 @@ pub mod trigger_proto {
     tonic::include_proto!("trigger_proto");
 }
 
-pub mod invocation_proto {
-    tonic::include_proto!("invocation_proto");
+pub mod run_proto {
+    tonic::include_proto!("run_proto");
 }
 
 pub mod attempt_proto {

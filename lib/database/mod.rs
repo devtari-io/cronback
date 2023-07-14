@@ -1,7 +1,7 @@
 pub mod attempt_log_store;
 mod errors;
 mod helpers;
-pub mod invocation_store;
+pub mod run_store;
 pub mod trigger_store;
 
 use sea_query::{

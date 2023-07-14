@@ -2,7 +2,7 @@ use chrono::Utc;
 use chrono_tz::UTC;
 use lib::model::ModelId;
 use lib::service::ServiceContext;
-use lib::types::{Invocation, InvocationId, ProjectId};
+use lib::types::{ProjectId, Run, RunId};
 use metrics::counter;
 use proto::dispatcher_proto::dispatcher_server::Dispatcher;
 use proto::dispatcher_proto::{DispatchRequest, DispatchResponse};
@@ -38,27 +38,27 @@ impl Dispatcher for DispatcherAPIHandler {
 
         let dispatch_mode = request.mode();
         let project = ProjectId::from(request.project_id).validated()?;
-        let invocation_id = InvocationId::generate(&project);
+        let run_id = RunId::generate(&project);
 
-        let invocation = Invocation {
-            id: invocation_id.into(),
+        let run = Run {
+            id: run_id.into(),
             trigger: request.trigger_id.into(),
             project,
             created_at: Utc::now().with_timezone(&UTC),
             payload: request.payload.map(|p| p.into()),
             action: request.action.unwrap().into(),
-            status: lib::types::InvocationStatus::Attempting,
+            status: lib::types::RunStatus::Attempting,
         };
 
-        counter!("dispatcher.invocations_total", 1);
-        let invocation = self
+        counter!("dispatcher.runs_total", 1);
+        let run = self
             .dispatch_manager
-            .invoke(invocation, dispatch_mode)
+            .run(run, dispatch_mode)
             .await
             .map_err(|e| Status::internal(e.to_string()))?;
 
         Ok(Response::new(DispatchResponse {
-            invocation: Some(invocation.into()),
+            run: Some(run.into()),
         }))
     }
 }

@@ -13,7 +13,7 @@ define_model_id! {
 
 define_model_id! {
     #[prefix = "inv"]
-    pub struct InvocationId;
+    pub struct RunId;
 }
 
 define_model_id! {

@@ -5,7 +5,7 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
 use lib::model::ValidShardedId;
-use lib::types::{InvocationId, ProjectId};
+use lib::types::{ProjectId, RunId};
 use validator::Validate;
 
 use crate::errors::ApiError;
@@ -18,26 +18,26 @@ use crate::{AppState, AppStateError};
 pub(crate) async fn get(
     state: State<Arc<AppState>>,
     Extension(project): Extension<ValidShardedId<ProjectId>>,
-    ValidatedId(id): ValidatedId<InvocationId>,
+    ValidatedId(id): ValidatedId<RunId>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let invocation = state
+    let run = state
         .db
-        .invocation_store
-        .get_invocation(&project, &id)
+        .run_store
+        .get_run(&project, &id)
         .await
         .map_err(|e| AppStateError::DatabaseError(e.to_string()))?;
 
-    let Some(invocation) = invocation else {
+    let Some(run) = run else {
             return Err(ApiError::NotFound(id.to_string()));
     };
 
-    Ok((StatusCode::OK, Json(invocation)).into_response())
+    Ok((StatusCode::OK, Json(run)).into_response())
 }
 
 #[tracing::instrument(skip(state))]
 #[debug_handler]
 pub(crate) async fn list(
-    pagination: Option<Query<Pagination<InvocationId>>>,
+    pagination: Option<Query<Pagination<RunId>>>,
     state: State<Arc<AppState>>,
     Extension(project): Extension<ValidShardedId<ProjectId>>,
 ) -> Result<impl IntoResponse, ApiError> {
@@ -47,10 +47,10 @@ pub(crate) async fn list(
     // Trick. We want to know if there is a next page, so we ask for one more
     let limit = pagination.limit() + 1;
 
-    let invocations = state
+    let runs = state
         .db
-        .invocation_store
-        .get_invocations_by_project(
+        .run_store
+        .get_runs_by_project(
             &project,
             pagination.before.clone(),
             pagination.after.clone(),
@@ -59,5 +59,5 @@ pub(crate) async fn list(
         .await
         .map_err(|e| AppStateError::DatabaseError(e.to_string()))?;
 
-    Ok((StatusCode::OK, Json(paginate(invocations, pagination))))
+    Ok((StatusCode::OK, Json(paginate(runs, pagination))))
 }

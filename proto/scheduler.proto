@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 import "trigger.proto";
-import "invocation.proto";
+import "run.proto";
 
 package scheduler_proto;
 
@@ -9,7 +9,7 @@ service Scheduler {
   /// Install or update a trigger onto the scheduler
   rpc InstallTrigger (InstallTriggerRequest)  returns (InstallTriggerResponse);
   /// Manually run a trigger
-  rpc InvokeTrigger (InvokeTriggerRequest)  returns (InvokeTriggerResponse);
+  rpc RunTrigger (RunTriggerRequest)  returns (RunTriggerResponse);
   /// Get a trigger by id
   rpc GetTrigger (GetTriggerRequest)  returns (GetTriggerResponse);
   /// Find a list of triggers by condition
@@ -24,8 +24,8 @@ service Scheduler {
   rpc CancelTrigger (CancelTriggerRequest)  returns (CancelTriggerResponse);
 }
 
-enum InvocationMode {
-  InvocationMode_UNKNOWN = 0;
+enum RunMode {
+  RunMode_UNKNOWN = 0;
   ASYNC = 1;
   SYNC = 2;
 }
@@ -82,15 +82,15 @@ message CancelTriggerResponse {
 
 
 // == EXECUTE TRIGGER MANUALLY ==
-message InvokeTriggerRequest {
+message RunTriggerRequest {
   string id = 1;
   string project_id = 2;
-  InvocationMode mode = 3;
+  RunMode mode = 3;
 
 }
 
-message InvokeTriggerResponse {
-  invocation_proto.Invocation invocation = 1;
+message RunTriggerResponse {
+  run_proto.Run run = 1;
 }
 
 // == GET TRIGGER ==

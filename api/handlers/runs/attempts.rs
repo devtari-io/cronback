@@ -5,7 +5,7 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
 use lib::model::ValidShardedId;
-use lib::types::{AttemptLogId, InvocationId, ProjectId};
+use lib::types::{AttemptLogId, ProjectId, RunId};
 use validator::Validate;
 
 use crate::errors::ApiError;
@@ -19,16 +19,16 @@ pub(crate) async fn list(
     pagination: Option<Query<Pagination<AttemptLogId>>>,
     state: State<Arc<AppState>>,
     Extension(project): Extension<ValidShardedId<ProjectId>>,
-    ValidatedId(id): ValidatedId<InvocationId>,
+    ValidatedId(id): ValidatedId<RunId>,
 ) -> Result<impl IntoResponse, ApiError> {
     let Query(pagination) = pagination.unwrap_or_default();
     pagination.validate()?;
 
-    // Ensure that the invocation exists for better user experience
+    // Ensure that the run exists for better user experience
     let Some(_) = state
         .db
-        .invocation_store
-        .get_invocation(&project, &id)
+        .run_store
+        .get_run(&project, &id)
         .await
         .map_err(|e| AppStateError::DatabaseError(e.to_string()))? else {
             return Err(ApiError::NotFound(id.to_string()));
@@ -40,7 +40,7 @@ pub(crate) async fn list(
     let attempts = state
         .db
         .attempt_store
-        .get_attempts_for_invocation(
+        .get_attempts_for_run(
             &project,
             &id,
             pagination.before.clone(),

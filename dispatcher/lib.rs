@@ -6,7 +6,7 @@ mod retry;
 use std::sync::Arc;
 
 use lib::database::attempt_log_store::{AttemptLogStore, SqlAttemptLogStore};
-use lib::database::invocation_store::{InvocationStore, SqlInvocationStore};
+use lib::database::run_store::{RunStore, SqlRunStore};
 use lib::database::Database;
 use lib::{netutils, service};
 use proto::dispatcher_proto::dispatcher_server::DispatcherServer;
@@ -32,14 +32,13 @@ pub async fn start_dispatcher_server(
         s
     });
 
-    let invocation_store: Arc<dyn InvocationStore + Send + Sync> = Arc::new({
-        let s = SqlInvocationStore::new(db);
+    let run_store: Arc<dyn RunStore + Send + Sync> = Arc::new({
+        let s = SqlRunStore::new(db);
         s.prepare().await?;
         s
     });
 
-    let dispatch_manager =
-        DispatchManager::new(invocation_store, attempt_store);
+    let dispatch_manager = DispatchManager::new(run_store, attempt_store);
     let handler =
         handler::DispatcherAPIHandler::new(context.clone(), dispatch_manager);
     let svc = DispatcherServer::new(handler);

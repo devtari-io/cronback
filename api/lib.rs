@@ -18,7 +18,7 @@ use axum::routing::get;
 use axum::Router;
 use lib::config::Config;
 use lib::database::attempt_log_store::{AttemptLogStore, SqlAttemptLogStore};
-use lib::database::invocation_store::{InvocationStore, SqlInvocationStore};
+use lib::database::run_store::{RunStore, SqlRunStore};
 use lib::database::trigger_store::{SqlTriggerStore, TriggerStore};
 use lib::database::Database;
 use lib::grpc_client_provider::GrpcRequestTracingInterceptor;
@@ -49,7 +49,7 @@ pub enum AppStateError {
 
 pub struct Db {
     pub trigger_store: Box<dyn TriggerStore + Send + Sync>,
-    pub invocation_store: Box<dyn InvocationStore + Send + Sync>,
+    pub run_store: Box<dyn RunStore + Send + Sync>,
     pub attempt_store: Box<dyn AttemptLogStore + Send + Sync>,
     pub auth_store: Box<dyn AuthStore + Send + Sync>,
 }
@@ -126,7 +126,7 @@ pub async fn start_api_server(
 
     let stores = Db {
         trigger_store: Box::new(SqlTriggerStore::new(db.clone())),
-        invocation_store: Box::new(SqlInvocationStore::new(db.clone())),
+        run_store: Box::new(SqlRunStore::new(db.clone())),
         attempt_store: Box::new(SqlAttemptLogStore::new(db.clone())),
         auth_store: Box::new(auth_store),
     };

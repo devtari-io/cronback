@@ -120,7 +120,7 @@
                 }
               }
             ],
-            "hidden_last_invoked_at": "2023-03-25T21:35:00.057112087Z",
+            "hidden_last_ran_at": "2023-03-25T21:35:00.057112087Z",
             "id": "trig_ab1.01GWCXWB869BXW8Q2XZGE0JBQ6",
             "name": "Healthchecks.io",
             "owner_id": "ab1",
@@ -183,7 +183,7 @@
           },
           "action": {
             "type": "array",
-            "description": "Which actions to run when this trigger is invoked, whether this was invoked on a schedule or manually.",
+            "description": "Which actions to take when this trigger runs, whether this was a scheduled or manuall run.",
             "items": {
               "oneOf": [
                 {
@@ -221,7 +221,7 @@
               "expired",
               "cancelled"
             ],
-            "description": "Status of the trigger. \n- `scheduled` triggers can be invoked either manually of according to their `trigger.schedule`\n- `paused` triggers will be invoked but will not do anything.\n- `expired` triggers are scheduled triggers that exhausted their invocations or have no future timepoints.\n- `cancelled` triggers cannot be invoked. Those have been cancelled manually via the `/triggers/{trigger_id}/cancel` API.",
+            "description": "Status of the trigger. \n- `scheduled` triggers can run either manually of according to their `trigger.schedule`\n- `paused` triggers will run but will not do anything.\n- `expired` triggers are scheduled triggers that exhausted their runs or have no future timepoints.\n- `cancelled` triggers cannot run. Those have been cancelled manually via the `/triggers/{trigger_id}/cancel` API.",
             "example": "active",
             "readOnly": true
           }
@@ -282,7 +282,7 @@
                   "id": "i4c7adqqo0h26"
                 },
                 "example": "15 35 * * * *",
-                "description": "A cron-like string to specify when the trigger will be invoked. The cron pattern uses this format: `sec  min   hour   day-of-month   month   day-of-week   year`"
+                "description": "A cron-like string to specify when the trigger will run. The cron pattern uses this format: `sec  min   hour   day-of-month   month   day-of-week   year`"
               },
               "timezone": {
                 "type": "string",
@@ -302,7 +302,7 @@
                 "format": "int64",
                 "minimum": 0,
                 "example": 4,
-                "description": "The maximum number of invocations. The trigger's status will transition to `expired` automatically when no more invocations are left"
+                "description": "The maximum number of runs. The trigger's status will transition to `expired` automatically when no more runs are left"
               },
               "remaining": {
                 "type": "integer",
@@ -310,7 +310,7 @@
                   "id": "2d3nwf30r6s2h"
                 },
                 "default": 0,
-                "description": "If limit is set, this will indicate how many future invocations this trigger still has before expiring",
+                "description": "If limit is set, this will indicate how many future runs this trigger still has before expiring",
                 "readOnly": true
               }
             }
@@ -546,7 +546,7 @@
                 }
               }
             ],
-            "hidden_last_invoked_at": "2023-03-25T21:35:00.057112087Z",
+            "hidden_last_ran_at": "2023-03-25T21:35:00.057112087Z",
             "id": "trig_ab1.01GWCXWB869BXW8Q2XZGE0JBQ6",
             "name": "Healthchecks.io",
             "owner_id": "ab1",
@@ -622,18 +622,18 @@
               "expired",
               "cancelled"
             ],
-            "description": "Status of the trigger. \n- `scheduled` triggers can be invoked either manually of according to their `trigger.schedule`\n- `paused` triggers will be invoked but will not do anything.\n- `expired` triggers are scheduled triggers that exhausted their invocations or have no future timepoints.\n- `cancelled` triggers cannot be invoked. Those have been cancelled manually via the `/triggers/{trigger_id}/cancel` API.",
+            "description": "Status of the trigger. \n- `scheduled` triggers can run either manually of according to their `trigger.schedule`\n- `paused` triggers will run but will not do anything.\n- `expired` triggers are scheduled triggers that exhausted their runs or have no future timepoints.\n- `cancelled` triggers cannot run. Those have been cancelled manually via the `/triggers/{trigger_id}/cancel` API.",
             "example": "active",
             "readOnly": true
           },
-          "last_invoked_at": {
+          "last_ran_at": {
             "type": "string",
-            "description": "ISO8601 datetime when this trigger was last invoked"
+            "description": "ISO8601 datetime when this trigger last ran"
           }
         }
       },
-      "Invocation": {
-        "title": "Invocation",
+      "Run": {
+        "title": "Run",
         "x-stoplight": {
           "id": "mcl1jeypmouci"
         },
@@ -672,7 +672,7 @@
           }
         }
       },
-      "InvocationStatus": {
+      "RunStatus": {
         "title": "WebhookStatus",
         "x-stoplight": {
           "id": "rtwpwqwefad1t"

@@ -6,14 +6,7 @@ use lib::database::trigger_store::{TriggerStore, TriggerStoreError};
 use lib::grpc_client_provider::DispatcherClientProvider;
 use lib::model::ValidShardedId;
 use lib::service::ServiceContext;
-use lib::types::{
-    Invocation,
-    ProjectId,
-    Status,
-    Trigger,
-    TriggerId,
-    TriggerManifest,
-};
+use lib::types::{ProjectId, Run, Status, Trigger, TriggerId, TriggerManifest};
 use proto::scheduler_proto::{InstallTriggerRequest, InstallTriggerResponse};
 use tracing::{debug, error, info, trace, warn};
 
@@ -329,7 +322,7 @@ impl EventScheduler {
             } else {
                 Status::OnDemand
             },
-            last_invoked_at: None,
+            last_ran_at: None,
         };
 
         let store_result = self.store.install_trigger(&trigger).await;
@@ -466,24 +459,24 @@ impl EventScheduler {
     }
 
     #[tracing::instrument(skip_all, fields(trigger_id = %id))]
-    pub async fn invoke_trigger(
+    pub async fn run_trigger(
         &self,
         project: ValidShardedId<ProjectId>,
         id: TriggerId,
         mode: DispatchMode,
-    ) -> Result<Invocation, TriggerError> {
+    ) -> Result<Run, TriggerError> {
         let trigger = self.get_trigger(project, id).await?;
 
         if trigger.status == Status::Cancelled {
             return Err(TriggerError::InvalidStatus(
-                "invoke".to_string(),
+                "run".to_string(),
                 trigger.status,
             ));
         }
-        let invocation =
+        let run =
             dispatch(trigger, self.dispatcher_client_provider.clone(), mode)
                 .await?;
-        Ok(invocation)
+        Ok(run)
     }
 
     #[tracing::instrument(skip_all, fields(trigger_id = %id))]
@@ -588,8 +581,8 @@ impl EventScheduler {
         let config = self.context.get_config();
         if config.scheduler.dangerous_fast_forward {
             warn!(
-                "Skipping missed invocations, the scheduler will ignore the \
-                 last_invoked_at of all triggers. This will cause triggers to \
+                "Skipping missed runs, the scheduler will ignore the \
+                 last_ran_at of all triggers. This will cause triggers to \
                  execute future events only"
             );
         }

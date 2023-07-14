@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use lib::grpc_client_provider::DispatcherClientProvider;
-use lib::types::{Invocation, Trigger};
+use lib::types::{Run, Trigger};
 use tracing::info;
 
 use super::event_dispatcher::{DispatchError, DispatchMode};
@@ -12,7 +12,7 @@ pub(crate) async fn dispatch(
     trigger: Trigger,
     dispatcher_provider: Arc<DispatcherClientProvider>,
     mode: DispatchMode,
-) -> Result<Invocation, DispatchError> {
+) -> Result<Run, DispatchError> {
     let mut job = DispatchJob::from_trigger(trigger, dispatcher_provider, mode);
     info!(trigger = job.trigger_id(), "async-dispatch");
     job.run().await

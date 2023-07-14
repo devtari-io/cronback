@@ -5,7 +5,7 @@ use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none, DurationSecondsWithFrac};
 
-use super::{AttemptLogId, InvocationId, ProjectId, TriggerId};
+use super::{AttemptLogId, ProjectId, RunId, TriggerId};
 use crate::model::ValidShardedId;
 use crate::timeutil::iso8601_dateformat_serde;
 
@@ -14,7 +14,7 @@ use crate::timeutil::iso8601_dateformat_serde;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ActionAttemptLog {
     pub id: AttemptLogId,
-    pub invocation: InvocationId,
+    pub run: RunId,
     pub trigger: TriggerId,
     pub project: ValidShardedId<ProjectId>,
     pub status: AttemptStatus,

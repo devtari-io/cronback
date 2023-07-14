@@ -3,9 +3,9 @@ use proto::scheduler_proto;
 use serde::{Deserialize, Serialize};
 
 #[derive(IntoProto, Debug, Deserialize, Serialize, Clone, Default)]
-#[into_proto(into = "scheduler_proto::InvocationMode")]
+#[into_proto(into = "scheduler_proto::RunMode")]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum InvocationMode {
+pub(crate) enum RunMode {
     Sync,
     #[default]
     Async,
@@ -14,6 +14,6 @@ pub(crate) enum InvocationMode {
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 #[serde(default)]
-pub(crate) struct InvokeTrigger {
-    pub mode: InvocationMode,
+pub(crate) struct RunTrigger {
+    pub mode: RunMode,
 }

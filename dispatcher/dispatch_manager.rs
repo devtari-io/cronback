@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use dispatcher_proto::DispatchMode;
 use lib::database::attempt_log_store::AttemptLogStore;
-use lib::database::invocation_store::{InvocationStore, InvocationStoreError};
-use lib::types::{Action, Invocation, InvocationStatus};
+use lib::database::run_store::{RunStore, RunStoreError};
+use lib::types::{Action, Run, RunStatus};
 use metrics::{decrement_gauge, increment_gauge};
 use proto::dispatcher_proto;
 use thiserror::Error;
@@ -14,37 +14,37 @@ use crate::actions;
 #[derive(Error, Debug)]
 pub enum DispatcherManagerError {
     #[error("store error: {0}")]
-    StoreError(#[from] InvocationStoreError),
+    StoreError(#[from] RunStoreError),
 }
 
 pub struct DispatchManager {
     attempt_store: Arc<dyn AttemptLogStore + Send + Sync>,
-    invocation_store: Arc<dyn InvocationStore + Send + Sync>,
+    run_store: Arc<dyn RunStore + Send + Sync>,
 }
 
 impl DispatchManager {
     pub fn new(
-        invocation_store: Arc<dyn InvocationStore + Send + Sync>,
+        run_store: Arc<dyn RunStore + Send + Sync>,
         attempt_store: Arc<dyn AttemptLogStore + Send + Sync>,
     ) -> Self {
-        // TODO: Load all non completed invocations from the database
+        // TODO: Load all non completed runs from the database
 
         Self {
-            invocation_store,
+            run_store,
             attempt_store,
         }
     }
 
-    pub async fn invoke(
+    pub async fn run(
         &self,
-        invocation: Invocation,
+        run: Run,
         mode: DispatchMode,
-    ) -> Result<Invocation, DispatcherManagerError> {
-        self.invocation_store.store_invocation(&invocation).await?;
+    ) -> Result<Run, DispatcherManagerError> {
+        self.run_store.store_run(&run).await?;
 
-        let invocation_job = InvocationJob::from(
-            invocation.clone(),
-            Arc::clone(&self.invocation_store),
+        let run_job = RunJob::from(
+            run.clone(),
+            Arc::clone(&self.run_store),
             Arc::clone(&self.attempt_store),
         )
         .run();
@@ -54,68 +54,63 @@ impl DispatchManager {
                 panic!("Unknown dispatch mode");
             }
             | DispatchMode::Async => {
-                tokio::spawn(invocation_job);
-                invocation
+                tokio::spawn(run_job);
+                run
             }
-            | DispatchMode::Sync => invocation_job.await,
+            | DispatchMode::Sync => run_job.await,
         })
     }
 }
 
-struct InvocationJob {
-    invocation: Invocation,
-    invocation_store: Arc<dyn InvocationStore + Send + Sync>,
+struct RunJob {
+    run: Run,
+    run_store: Arc<dyn RunStore + Send + Sync>,
     attempt_store: Arc<dyn AttemptLogStore + Send + Sync>,
 }
 
-impl InvocationJob {
+impl RunJob {
     fn from(
-        invocation: Invocation,
-        invocation_store: Arc<dyn InvocationStore + Send + Sync>,
+        run: Run,
+        run_store: Arc<dyn RunStore + Send + Sync>,
         attempt_store: Arc<dyn AttemptLogStore + Send + Sync>,
     ) -> Self {
         Self {
-            invocation,
-            invocation_store,
+            run,
+            run_store,
             attempt_store,
         }
     }
 
     #[tracing::instrument(skip(self))]
-    async fn run(mut self) -> Invocation {
-        increment_gauge!("dispatcher.inflight_invocations_total", 1.0);
+    async fn run(mut self) -> Run {
+        increment_gauge!("dispatcher.inflight_runs_total", 1.0);
 
-        assert_eq!(self.invocation.status, InvocationStatus::Attempting);
+        assert_eq!(self.run.status, RunStatus::Attempting);
 
-        let result = match &self.invocation.action {
+        let result = match &self.run.action {
             | Action::Webhook(web) => {
                 let e = actions::webhook::WebhookActionJob {
                     webhook: web.clone(),
-                    payload: self.invocation.payload.clone(),
-                    invocation_id: self.invocation.id.clone(),
-                    trigger_id: self.invocation.trigger.clone(),
-                    project: self.invocation.project.clone(),
+                    payload: self.run.payload.clone(),
+                    run_id: self.run.id.clone(),
+                    trigger_id: self.run.trigger.clone(),
+                    project: self.run.project.clone(),
                     attempt_store: Arc::clone(&self.attempt_store),
                 };
                 e.run().await
             }
             | Action::Event(_) => unimplemented!(),
         };
-        self.invocation.status = result;
-        if let Err(e) = self
-            .invocation_store
-            .update_invocation(&self.invocation)
-            .await
-        {
+        self.run.status = result;
+        if let Err(e) = self.run_store.update_run(&self.run).await {
             error!(
-                "Failed to persist invocation status for invocation {} for \
-                 action : {}",
-                self.invocation.id, e
+                "Failed to persist run status for run {} for action : {}",
+                self.run.id, e
             );
         }
 
-        decrement_gauge!("dispatcher.inflight_invocations_total", 1.0);
+        decrement_gauge!("dispatcher.inflight_runs_total", 1.0);
 
-        self.invocation
+        self.run
     }
 }

@@ -35,8 +35,8 @@ pub(crate) enum TriggerError {
     JoinError(#[from] tokio::task::JoinError),
     #[error("Operation on underlying trigger store failed: {0}")]
     TriggerStore(#[from] TriggerStoreError),
-    #[error("Cannot dispatch an invocation for this trigger")]
-    Invocation(#[from] DispatchError),
+    #[error("Cannot dispatch a run for this trigger")]
+    Run(#[from] DispatchError),
     #[error("Trigger with reference '{0}' already exists")]
     AlreadyExists(/* reference */ String),
 }
@@ -258,29 +258,29 @@ impl ActiveTriggerMap {
         Ok(())
     }
 
-    pub fn update_last_invoked_at(
+    pub fn update_last_ran_at(
         &mut self,
         trigger_id: &TriggerId,
-        invoked_at: DateTime<Utc>,
+        ran_at: DateTime<Utc>,
     ) {
         let Some(trigger) = self.state.get_mut(trigger_id) else {
              return;
         };
-        // Keep the last known invocation time (if set) unless we are seeing
+        // Keep the last known run time (if set) unless we are seeing
         // a more recent one.
-        let new_val = match trigger.last_invoked_at() {
-            // If we have never seen an invocation time, set it
-            | None => Some(invoked_at),
-            // If we are seeing a more recent invocation time, update it
-            | Some(last_known) if invoked_at > last_known => Some(invoked_at),
-            // Use the last known invocation time
+        let new_val = match trigger.last_ran_at() {
+            // If we have never seen a run time, set it
+            | None => Some(ran_at),
+            // If we are seeing a more recent run time, update it
+            | Some(last_known) if ran_at > last_known => Some(ran_at),
+            // Use the last known run time
             | Some(last_known) => Some(last_known),
         };
 
         // We are guarding this because we should not add this trigger to
         // `awaiting_db_flush` if we didn't really update it.
-        if trigger.inner.last_invoked_at != new_val {
-            trigger.inner.last_invoked_at = new_val;
+        if trigger.inner.last_ran_at != new_val {
+            trigger.inner.last_ran_at = new_val;
             self.add_to_awaiting_db_flush(trigger_id.clone());
         }
     }
@@ -344,7 +344,7 @@ pub(crate) enum TriggerFutureTicks {
 impl TriggerFutureTicks {
     pub fn from_schedule(
         schedule_raw: &Schedule,
-        last_invoked_at: Option<DateTime<Utc>>,
+        last_ran_at: Option<DateTime<Utc>>,
     ) -> Result<Self, TriggerError> {
         match schedule_raw {
             | Schedule::Recurring(cron) => {
@@ -353,10 +353,9 @@ impl TriggerFutureTicks {
                 let tz: Tz = cron.timezone.parse().map_err(|_| {
                     TriggerError::InvalidTimezone(cron.timezone.clone())
                 })?;
-                let next_ticks = if let Some(last_invoked_at) = last_invoked_at
-                {
+                let next_ticks = if let Some(last_ran_at) = last_ran_at {
                     cron_schedule
-                        .after_owned(last_invoked_at.with_timezone(&UTC))
+                        .after_owned(last_ran_at.with_timezone(&UTC))
                         .peekable()
                 } else {
                     cron_schedule.upcoming_owned(tz).peekable()
@@ -369,12 +368,12 @@ impl TriggerFutureTicks {
             }
             | Schedule::RunAt(run_at) => {
                 let mut ticks = BinaryHeap::new();
-                let last_invoked_at =
-                    last_invoked_at.unwrap_or(Utc::now()).with_timezone(&UTC);
+                let last_ran_at =
+                    last_ran_at.unwrap_or(Utc::now()).with_timezone(&UTC);
                 let mut remaining = 0;
 
                 for ts in run_at.timepoints.iter() {
-                    if *ts > last_invoked_at {
+                    if *ts > last_ran_at {
                         remaining += 1;
                         // Reversed to make this min-heap
                         ticks.push(Reverse(*ts));
@@ -461,13 +460,13 @@ impl ActiveTrigger {
             .schedule
             .as_ref()
             .ok_or_else(|| TriggerError::NotScheduled(trigger.id.clone()))?;
-        // On fast forward, we ignore the last invocation time.
-        let last_invoked_at = if fast_forward {
+        // On fast forward, we ignore the last run time.
+        let last_ran_at = if fast_forward {
             None
         } else {
-            trigger.last_invoked_at
+            trigger.last_ran_at
         };
-        let ticks = TriggerFutureTicks::from_schedule(k, last_invoked_at)?;
+        let ticks = TriggerFutureTicks::from_schedule(k, last_ran_at)?;
         // We assume that Trigger.schedule is never None
         Ok(Self {
             inner: trigger,
@@ -484,8 +483,8 @@ impl ActiveTrigger {
     }
 
     // Active means that it should continue to live in the spinner map. A paused
-    // trigger is considered alive, but it won't be invoked. We will advance
-    // its clock as if it was invoked though.
+    // trigger is considered alive, but it won't run. We will advance
+    // its clock as if it ran though.
     pub fn alive(&self) -> bool {
         self.inner.alive()
     }
@@ -504,8 +503,8 @@ impl ActiveTrigger {
         res
     }
 
-    pub fn last_invoked_at(&self) -> Option<DateTime<Utc>> {
-        self.inner.last_invoked_at
+    pub fn last_ran_at(&self) -> Option<DateTime<Utc>> {
+        self.inner.last_ran_at
     }
 
     // Returns true if state has changed.
@@ -579,7 +578,7 @@ mod tests {
             payload: None,
             status: Status::Scheduled,
             schedule: Some(sched),
-            last_invoked_at: None,
+            last_ran_at: None,
         }
     }
 

@@ -289,7 +289,7 @@ mod tests {
             }),
             status,
             reference: None,
-            last_invoked_at: None,
+            last_ran_at: None,
         }
     }
 

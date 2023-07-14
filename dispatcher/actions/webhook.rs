@@ -12,10 +12,10 @@ use lib::types::{
     AttemptLogId,
     AttemptStatus,
     HttpMethod,
-    InvocationId,
-    InvocationStatus,
     Payload,
     ProjectId,
+    RunId,
+    RunStatus,
     TriggerId,
     Webhook,
     WebhookAttemptDetails,
@@ -40,7 +40,7 @@ fn to_reqwest_http_method(method: &HttpMethod) -> reqwest::Method {
 }
 
 pub struct WebhookActionJob {
-    pub invocation_id: InvocationId,
+    pub run_id: RunId,
     pub trigger_id: TriggerId,
     pub project: ValidShardedId<ProjectId>,
 
@@ -52,11 +52,11 @@ pub struct WebhookActionJob {
 
 impl WebhookActionJob {
     #[tracing::instrument(skip_all, fields(
-            invocation_id = %self.invocation_id,
+            run_id = %self.run_id,
             trigger_id = %self.trigger_id,
             webhook_url = self.webhook.url
             ))]
-    pub async fn run(&self) -> InvocationStatus {
+    pub async fn run(&self) -> RunStatus {
         let retry_policy = if let Some(config) = &self.webhook.retry {
             RetryPolicy::with_config(config.clone())
         } else {
@@ -69,8 +69,8 @@ impl WebhookActionJob {
                     async move {
                         counter!("dispatcher.attempts_total", 1);
                         info!(
-                            "Executing retry #{retry_num} for invocation {}",
-                            &self.invocation_id,
+                            "Executing retry #{retry_num} for run {}",
+                            &self.run_id,
                         );
 
                         let attempt_start_time = Utc::now().with_timezone(&UTC);
@@ -78,7 +78,7 @@ impl WebhookActionJob {
                         let attempt_id = AttemptLogId::generate(&self.project);
                         let response = dispatch_webhook(
                             &self.trigger_id,
-                            &self.invocation_id,
+                            &self.run_id,
                             &attempt_id,
                             retry_num,
                             &self.webhook,
@@ -88,7 +88,7 @@ impl WebhookActionJob {
 
                         let attempt_log = ActionAttemptLog {
                             id: attempt_id.clone().into(),
-                            invocation: self.invocation_id.clone(),
+                            run: self.run_id.clone(),
                             trigger: self.trigger_id.clone(),
                             project: self.project.clone(),
                             status: if response.is_success() {
@@ -130,8 +130,8 @@ impl WebhookActionJob {
             .await;
 
         match res {
-            | Ok(_) => InvocationStatus::Succeeded,
-            | Err(_) => InvocationStatus::Failed,
+            | Ok(_) => RunStatus::Succeeded,
+            | Err(_) => RunStatus::Failed,
         }
     }
 }
@@ -139,7 +139,7 @@ impl WebhookActionJob {
 #[tracing::instrument(skip(payload))]
 async fn dispatch_webhook(
     trigger_id: &TriggerId,
-    invocation_id: &InvocationId,
+    run_id: &RunId,
     attempt_id: &AttemptLogId,
     retry_num: u32,
     webhook: &Webhook,
@@ -172,10 +172,7 @@ async fn dispatch_webhook(
     let mut http_headers = reqwest::header::HeaderMap::new();
     http_headers
         .insert("Cronback-Trigger", trigger_id.to_string().parse().unwrap());
-    http_headers.insert(
-        "Cronback-Invocation",
-        invocation_id.to_string().parse().unwrap(),
-    );
+    http_headers.insert("Cronback-Run", run_id.to_string().parse().unwrap());
     // TODO: Consider removing this.
     http_headers
         .insert("Cronback-Attempt", attempt_id.to_string().parse().unwrap());

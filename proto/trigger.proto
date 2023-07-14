@@ -10,11 +10,11 @@ enum TriggerStatus {
   SCHEDULED = 1;
   // A scheduled triggers that skips future runs
   PAUSED = 3;
-  // Trigger can only be invoked manually 
+  // Trigger can only run manually 
   ON_DEMAND = 4;
-  // Scheduled future with no future runs
+  // Scheduled trigger with no future runs
   EXPIRED = 2;
-  // Trigger that cannot be invoked anymore
+  // Trigger that cannot run anymore
   CANCELLED = 5;
 }
 
@@ -92,6 +92,6 @@ message TriggerManifest {
   Action action = 8;
   Schedule schedule = 9;
   TriggerStatus status = 10;
-  optional string last_invoked_at = 11;
+  optional string last_ran_at = 11;
 }
 

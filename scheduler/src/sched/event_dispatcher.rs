@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use lib::grpc_client_provider::DispatcherClientProvider;
-use lib::types::{Invocation, Trigger};
+use lib::types::{Run, Trigger};
 use proto::dispatcher_proto::{self, DispatchRequest};
 use proto::scheduler_proto;
 use thiserror::Error;
@@ -28,14 +28,14 @@ impl From<DispatchMode> for dispatcher_proto::DispatchMode {
     }
 }
 
-impl From<scheduler_proto::InvocationMode> for DispatchMode {
-    fn from(value: scheduler_proto::InvocationMode) -> Self {
+impl From<scheduler_proto::RunMode> for DispatchMode {
+    fn from(value: scheduler_proto::RunMode) -> Self {
         match value {
-            | scheduler_proto::InvocationMode::Unknown => {
-                panic!("Unknown invocation mode");
+            | scheduler_proto::RunMode::Unknown => {
+                panic!("Unknown run mode");
             }
-            | scheduler_proto::InvocationMode::Sync => DispatchMode::Sync,
-            | scheduler_proto::InvocationMode::Async => DispatchMode::Async,
+            | scheduler_proto::RunMode::Sync => DispatchMode::Sync,
+            | scheduler_proto::RunMode::Async => DispatchMode::Async,
         }
     }
 }
@@ -67,12 +67,12 @@ impl DispatchJob {
         &self.dispatch_request.trigger_id
     }
 
-    pub async fn run(&mut self) -> Result<Invocation, DispatchError> {
+    pub async fn run(&mut self) -> Result<Run, DispatchError> {
         let mut client =
             self.dispatcher_client_provider.get_or_create().await?;
 
         let resp = client.dispatch(self.dispatch_request.clone()).await?;
-        let invocation = resp.into_inner().invocation.unwrap();
-        Ok(invocation.into())
+        let run = resp.into_inner().run.unwrap();
+        Ok(run.into())
     }
 }
