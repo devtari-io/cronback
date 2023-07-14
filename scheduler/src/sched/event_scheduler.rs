@@ -144,7 +144,7 @@ impl EventScheduler {
         for trigger in triggers_to_save {
             debug!(trigger_id = %trigger.id, "Checkpointing trigger");
             // TODO: Consider batch-inserting.
-            let res = self.store.install_trigger(&trigger).await;
+            let res = self.store.update_trigger(&trigger).await;
             if let Err(e) = res {
                 error!(
                     trigger_id = %trigger.id,

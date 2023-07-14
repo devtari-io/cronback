@@ -119,7 +119,7 @@ impl InvocationJob {
             *self.invocation.status.get_mut(idx).unwrap() = result;
             if let Err(e) = self
                 .invocation_store
-                .store_invocation(&self.invocation)
+                .update_invocation(&self.invocation)
                 .await
             {
                 error!(

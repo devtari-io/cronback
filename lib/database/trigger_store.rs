@@ -1,15 +1,16 @@
 use async_trait::async_trait;
-use sea_query::{Alias, ColumnDef, Expr, Iden, Query, Table};
+use sea_query::{ColumnDef, Expr, Iden, Index, Query, Table};
 use sea_query_binder::SqlxBinder;
+use serde_json::json;
 use sqlx::Row;
-use tracing::debug;
 
 use super::errors::DatabaseError;
 use super::helpers::{
     get_by_id_query,
     insert_query,
     paginated_query,
-    JsonField,
+    update_query,
+    GeneratedJsonField,
     KVIden,
 };
 use crate::database::Database;
@@ -20,11 +21,18 @@ pub type TriggerStoreError = DatabaseError;
 #[derive(Iden)]
 enum TriggersIden {
     Triggers,
+    Reference,
+    Status,
 }
 
 #[async_trait]
 pub trait TriggerStore {
     async fn install_trigger(
+        &self,
+        trigger: &Trigger,
+    ) -> Result<(), TriggerStoreError>;
+
+    async fn update_trigger(
         &self,
         trigger: &Trigger,
     ) -> Result<(), TriggerStoreError>;
@@ -68,8 +76,52 @@ impl SqlTriggerStore {
             .if_not_exists()
             .col(ColumnDef::new(KVIden::Id).text().primary_key())
             .col(ColumnDef::new(KVIden::Value).json_binary())
+            .col(
+                ColumnDef::new(KVIden::Project)
+                    .text()
+                    .generate_from_json_field(KVIden::Value, "project"),
+            )
+            .col(
+                ColumnDef::new(TriggersIden::Reference)
+                    .text()
+                    .generate_from_json_field(KVIden::Value, "reference"),
+            )
+            .col(
+                ColumnDef::new(TriggersIden::Status)
+                    .text()
+                    .generate_from_json_field(KVIden::Value, "status"),
+            )
             .build_any(self.db.schema_builder().as_ref());
         sqlx::query(&sql).execute(&self.db.pool).await?;
+
+        // Create the indicies
+        let sql = Index::create()
+            .if_not_exists()
+            .name("IX_triggers_project")
+            .table(TriggersIden::Triggers)
+            .col(KVIden::Project)
+            .build_any(self.db.schema_builder().as_ref());
+        sqlx::query(&sql).execute(&self.db.pool).await?;
+
+        let sql = Index::create()
+            .if_not_exists()
+            .name("UQ_triggers_project_reference")
+            .table(TriggersIden::Triggers)
+            .col(KVIden::Project)
+            .col(TriggersIden::Reference)
+            .unique()
+            .build_any(self.db.schema_builder().as_ref());
+        sqlx::query(&sql).execute(&self.db.pool).await?;
+
+        let sql = Index::create()
+            .if_not_exists()
+            .name("IX_triggers_status")
+            .table(TriggersIden::Triggers)
+            .col(TriggersIden::Status)
+            .build_any(self.db.schema_builder().as_ref());
+
+        sqlx::query(&sql).execute(&self.db.pool).await?;
+
         Ok(())
     }
 }
@@ -84,33 +136,26 @@ impl TriggerStore for SqlTriggerStore {
             .await
     }
 
+    async fn update_trigger(
+        &self,
+        trigger: &Trigger,
+    ) -> Result<(), TriggerStoreError> {
+        update_query(&self.db, TriggersIden::Triggers, &trigger.id, trigger)
+            .await
+    }
+
     async fn get_all_active_triggers(
         &self,
     ) -> Result<Vec<Trigger>, TriggerStoreError> {
-        let (sql, values) = Query::select()
-            .columns([KVIden::Id, KVIden::Value])
-            .from(TriggersIden::Triggers)
-            .and_where(
-                Expr::expr(
-                    Expr::col(KVIden::Value)
-                        .cast_json_field("status", self.db.pool.any_kind()),
-                )
-                .is_in(["active", "paused"]),
-            )
-            .build_any_sqlx(self.db.builder().as_ref());
-
-        let results = sqlx::query_with(&sql, values)
-            .fetch_all(&self.db.pool)
-            .await?
-            .into_iter()
-            .map(|r| {
-                let id = r.get::<String, _>(KVIden::Id.to_string().as_str());
-                debug!(trigger_id = %id, "Loading trigger from database");
-                let j = r.get::<String, _>(KVIden::Value.to_string().as_str());
-                serde_json::from_str::<Trigger>(&j)
-            })
-            .collect::<Result<Vec<_>, _>>();
-        Ok(results?)
+        paginated_query(
+            &self.db,
+            TriggersIden::Triggers,
+            Expr::col(TriggersIden::Status).is_in(["active", "paused"]),
+            &Option::<TriggerId>::None,
+            &Option::<TriggerId>::None,
+            None,
+        )
+        .await
     }
 
     async fn get_triggers_by_project(
@@ -123,11 +168,10 @@ impl TriggerStore for SqlTriggerStore {
         paginated_query(
             &self.db,
             TriggersIden::Triggers,
-            "project",
-            project.value(),
+            Expr::col(KVIden::Project).eq(project.value()),
             &before,
             &after,
-            limit,
+            Some(limit),
         )
         .await
     }
@@ -146,18 +190,10 @@ impl TriggerStore for SqlTriggerStore {
     ) -> Result<Option<Status>, TriggerStoreError> {
         let (sql, values) = Query::select()
             .column(KVIden::Id)
-            .expr_as(
-                Expr::col(KVIden::Value)
-                    .get_json_field("status", self.db.pool.any_kind()),
-                Alias::new("status"),
-            )
+            .column(TriggersIden::Status)
             .from(TriggersIden::Triggers)
             .and_where(Expr::col(KVIden::Id).eq(id.to_string()))
-            .and_where(
-                Expr::col(KVIden::Value)
-                    .cast_json_field("project", self.db.pool.any_kind())
-                    .eq(project.to_string()),
-            )
+            .and_where(Expr::col(KVIden::Project).eq(project.to_string()))
             .build_any_sqlx(self.db.builder().as_ref());
 
         let result = sqlx::query_with(&sql, values)
@@ -166,7 +202,7 @@ impl TriggerStore for SqlTriggerStore {
 
         match result {
             | Ok(r) => {
-                let j = r.get::<String, _>("status");
+                let j = json!(r.get::<String, _>("status")).to_string();
                 Ok(Some(serde_json::from_str::<Status>(&j)?))
             }
             | Err(sqlx::Error::RowNotFound) => Ok(None),
@@ -182,6 +218,7 @@ mod tests {
     use chrono::{Timelike, Utc};
 
     use super::{SqlTriggerStore, TriggerStore};
+    use crate::database::trigger_store::TriggerStoreError;
     use crate::database::Database;
     use crate::types::{Emit, ProjectId, Status, Trigger, TriggerId, Webhook};
 
@@ -274,6 +311,16 @@ mod tests {
             Some(Status::Paused),
             store.get_status(&owner1, &t2.id).await?
         );
+
+        // Test reference uniqueness
+        let mut t5 = build_trigger("t5", owner1.clone(), Status::Active);
+        t5.reference = Some("Ref".to_string());
+        let t6 = t5.clone();
+        store.install_trigger(&t5).await?;
+        assert!(matches!(
+            store.install_trigger(&t6).await,
+            Err(TriggerStoreError::DuplicateRecord)
+        ));
 
         Ok(())
     }

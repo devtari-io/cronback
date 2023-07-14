@@ -1,14 +1,22 @@
 use async_trait::async_trait;
-use sea_query::{ColumnDef, Iden, Table};
+use sea_query::{ColumnDef, Expr, Iden, Index, Table};
 
 use super::errors::DatabaseError;
-use super::helpers::{get_by_id_query, insert_query, paginated_query, KVIden};
+use super::helpers::{
+    get_by_id_query,
+    insert_query,
+    paginated_query,
+    update_query,
+    GeneratedJsonField,
+    KVIden,
+};
 use crate::database::Database;
 use crate::types::{Invocation, InvocationId, ProjectId, ShardedId, TriggerId};
 
 #[derive(Iden)]
 enum InvocationsIden {
     Invocations,
+    TriggerId,
 }
 
 pub type InvocationStoreError = DatabaseError;
@@ -16,6 +24,11 @@ pub type InvocationStoreError = DatabaseError;
 #[async_trait]
 pub trait InvocationStore {
     async fn store_invocation(
+        &self,
+        invocation: &Invocation,
+    ) -> Result<(), InvocationStoreError>;
+
+    async fn update_invocation(
         &self,
         invocation: &Invocation,
     ) -> Result<(), InvocationStoreError>;
@@ -33,7 +46,7 @@ pub trait InvocationStore {
         limit: usize,
     ) -> Result<Vec<Invocation>, InvocationStoreError>;
 
-    async fn get_invocations_by_owner(
+    async fn get_invocations_by_project(
         &self,
         owner_id: &ProjectId,
         before: Option<InvocationId>,
@@ -57,6 +70,33 @@ impl SqlInvocationStore {
             .if_not_exists()
             .col(ColumnDef::new(KVIden::Id).text().primary_key())
             .col(ColumnDef::new(KVIden::Value).json_binary())
+            .col(
+                ColumnDef::new(KVIden::Project)
+                    .text()
+                    .generate_from_json_field(KVIden::Value, "project"),
+            )
+            .col(
+                ColumnDef::new(InvocationsIden::TriggerId)
+                    .text()
+                    .generate_from_json_field(KVIden::Value, "trigger"),
+            )
+            .build_any(self.db.schema_builder().as_ref());
+        sqlx::query(&sql).execute(&self.db.pool).await?;
+
+        // Create the indicies
+        let sql = Index::create()
+            .if_not_exists()
+            .name("IX_invocations_project")
+            .table(InvocationsIden::Invocations)
+            .col(KVIden::Project)
+            .build_any(self.db.schema_builder().as_ref());
+        sqlx::query(&sql).execute(&self.db.pool).await?;
+
+        let sql = Index::create()
+            .if_not_exists()
+            .name("IX_invocations_triggerid")
+            .table(InvocationsIden::Invocations)
+            .col(InvocationsIden::TriggerId)
             .build_any(self.db.schema_builder().as_ref());
         sqlx::query(&sql).execute(&self.db.pool).await?;
         Ok(())
@@ -70,6 +110,19 @@ impl InvocationStore for SqlInvocationStore {
         invocation: &Invocation,
     ) -> Result<(), InvocationStoreError> {
         insert_query(
+            &self.db,
+            InvocationsIden::Invocations,
+            &invocation.id,
+            invocation,
+        )
+        .await
+    }
+
+    async fn update_invocation(
+        &self,
+        invocation: &Invocation,
+    ) -> Result<(), InvocationStoreError> {
+        update_query(
             &self.db,
             InvocationsIden::Invocations,
             &invocation.id,
@@ -95,16 +148,15 @@ impl InvocationStore for SqlInvocationStore {
         paginated_query(
             &self.db,
             InvocationsIden::Invocations,
-            "trigger",
-            trigger_id.value(),
+            Expr::col(InvocationsIden::TriggerId).eq(trigger_id.value()),
             &before,
             &after,
-            limit,
+            Some(limit),
         )
         .await
     }
 
-    async fn get_invocations_by_owner(
+    async fn get_invocations_by_project(
         &self,
         project: &ProjectId,
         before: Option<InvocationId>,
@@ -114,11 +166,10 @@ impl InvocationStore for SqlInvocationStore {
         paginated_query(
             &self.db,
             InvocationsIden::Invocations,
-            "project",
-            project.value(),
+            Expr::col(KVIden::Project).eq(project.value()),
             &before,
             &after,
-            limit,
+            Some(limit),
         )
         .await
     }
@@ -215,7 +266,7 @@ mod tests {
 
         // Test get invocations by owner
         let results = store
-            .get_invocations_by_owner(&owner2, None, None, 100)
+            .get_invocations_by_project(&owner2, None, None, 100)
             .await?;
         let expected = vec![i2.clone()];
         assert_eq!(results, expected);
@@ -232,7 +283,7 @@ mod tests {
         })];
 
         // Update the invocation
-        store.store_invocation(&i1).await?;
+        store.update_invocation(&i1).await?;
         assert_eq!(store.get_invocation(&i1.id).await?, Some(i1.clone()));
 
         Ok(())

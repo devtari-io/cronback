@@ -1,14 +1,21 @@
 use async_trait::async_trait;
-use sea_query::{ColumnDef, Iden, Table};
+use sea_query::{ColumnDef, Expr, Iden, Index, Table};
 
 use super::errors::DatabaseError;
-use super::helpers::{get_by_id_query, insert_query, paginated_query, KVIden};
+use super::helpers::{
+    get_by_id_query,
+    insert_query,
+    paginated_query,
+    GeneratedJsonField,
+    KVIden,
+};
 use crate::database::Database;
 use crate::types::{AttemptLogId, EmitAttemptLog, InvocationId, ShardedId};
 
 #[derive(Iden)]
 enum AttemptsIden {
     Attempts,
+    InvocationId,
 }
 
 pub type AttemptLogStoreError = DatabaseError;
@@ -49,6 +56,33 @@ impl SqlAttemptLogStore {
             .if_not_exists()
             .col(ColumnDef::new(KVIden::Id).text().primary_key())
             .col(ColumnDef::new(KVIden::Value).json_binary())
+            .col(
+                ColumnDef::new(KVIden::Project)
+                    .text()
+                    .generate_from_json_field(KVIden::Value, "project"),
+            )
+            .col(
+                ColumnDef::new(AttemptsIden::InvocationId)
+                    .text()
+                    .generate_from_json_field(KVIden::Value, "invocation"),
+            )
+            .build_any(self.db.schema_builder().as_ref());
+        sqlx::query(&sql).execute(&self.db.pool).await?;
+
+        // Create the indices
+        let sql = Index::create()
+            .if_not_exists()
+            .name("IX_attempts_project")
+            .table(AttemptsIden::Attempts)
+            .col(KVIden::Project)
+            .build_any(self.db.schema_builder().as_ref());
+        sqlx::query(&sql).execute(&self.db.pool).await?;
+
+        let sql = Index::create()
+            .if_not_exists()
+            .name("IX_attempts_invocationid")
+            .table(AttemptsIden::Attempts)
+            .col(AttemptsIden::InvocationId)
             .build_any(self.db.schema_builder().as_ref());
         sqlx::query(&sql).execute(&self.db.pool).await?;
         Ok(())
@@ -75,11 +109,10 @@ impl AttemptLogStore for SqlAttemptLogStore {
         paginated_query(
             &self.db,
             AttemptsIden::Attempts,
-            "invocation",
-            id.value(),
+            Expr::col(AttemptsIden::InvocationId).eq(id.value()),
             &before,
             &after,
-            limit,
+            Some(limit),
         )
         .await
     }

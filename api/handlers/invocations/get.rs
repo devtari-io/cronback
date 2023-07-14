@@ -61,7 +61,7 @@ pub(crate) async fn list(
     let invocations = state
         .db
         .invocation_store
-        .get_invocations_by_owner(
+        .get_invocations_by_project(
             &project,
             pagination.before.clone(),
             pagination.after.clone(),

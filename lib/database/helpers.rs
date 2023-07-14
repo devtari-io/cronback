@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use sea_query::extension::sqlite::SqliteBinOper;
-use sea_query::{Expr, Iden, Order, Query, SimpleExpr};
+use sea_query::{Alias, ColumnDef, Expr, Iden, Order, Query, SimpleExpr};
 use sea_query_binder::SqlxBinder;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -16,6 +16,8 @@ use crate::types::ShardedId;
 pub enum KVIden {
     Id,
     Value,
+    Project,
+    ValueText,
 }
 
 pub async fn insert_query<'a, Table, IdType, Type>(
@@ -30,13 +32,33 @@ where
     Table: Iden + 'static,
 {
     let (sql, values) = Query::insert()
-        .replace()
         .into_table(table)
         .columns([KVIden::Id, KVIden::Value])
-        .values_panic([
-            id.to_string().into(),
-            serde_json::to_string(obj)?.into(),
+        .values_panic([id.to_string().into(), to_json_value(db, obj)?])
+        .build_any_sqlx(db.builder().as_ref());
+
+    sqlx::query_with(&sql, values).execute(&db.pool).await?;
+    Ok(())
+}
+
+pub async fn update_query<'a, Table, IdType, Type>(
+    db: &'a Database,
+    table: Table,
+    id: &'a IdType,
+    obj: &'a Type,
+) -> Result<(), DatabaseError>
+where
+    IdType: Display,
+    Type: Serialize,
+    Table: Iden + 'static,
+{
+    let (sql, values) = Query::update()
+        .table(table)
+        .values([
+            (KVIden::Id, id.to_string().into()),
+            (KVIden::Value, to_json_value(db, obj)?),
         ])
+        .and_where(Expr::col(KVIden::Id).eq(id.to_string()))
         .build_any_sqlx(db.builder().as_ref());
 
     sqlx::query_with(&sql, values).execute(&db.pool).await?;
@@ -54,7 +76,10 @@ where
     Table: Iden + 'static,
 {
     let (sql, values) = Query::select()
-        .column(KVIden::Value)
+        .expr_as(
+            Expr::col(KVIden::Value).cast_as(Alias::new("TEXT")),
+            KVIden::ValueText,
+        )
         .from(table)
         .and_where(Expr::col(KVIden::Id).eq(id.to_string()))
         .build_any_sqlx(db.builder().as_ref());
@@ -63,7 +88,7 @@ where
 
     match result {
         | Ok(r) => {
-            let j = r.get::<String, _>(KVIden::Value.to_string().as_str());
+            let j = r.get::<String, _>(KVIden::ValueText.to_string().as_str());
             Ok(Some(serde_json::from_str::<Type>(&j)?))
         }
         | Err(sqlx::Error::RowNotFound) => Ok(None),
@@ -74,11 +99,10 @@ where
 pub async fn paginated_query<'a, Table, IdType, Type>(
     db: &'a Database,
     table: Table,
-    filter_key: &'static str,
-    filter_value: &'a str,
+    filter: SimpleExpr,
     before: &'a Option<IdType>,
     after: &'a Option<IdType>,
-    limit: usize,
+    limit: Option<usize>,
 ) -> Result<Vec<Type>, DatabaseError>
 where
     IdType: Display + ShardedId,
@@ -86,13 +110,13 @@ where
     Table: Iden + 'static,
 {
     let (sql, values) = Query::select()
-        .columns([KVIden::Id, KVIden::Value])
-        .from(table)
-        .and_where(
-            Expr::col(KVIden::Value)
-                .cast_json_field(filter_key, db.pool.any_kind())
-                .eq(filter_value),
+        .column(KVIden::Id)
+        .expr_as(
+            Expr::col(KVIden::Value).cast_as(Alias::new("TEXT")),
+            KVIden::ValueText,
         )
+        .from(table)
+        .and_where(filter)
         .conditions(
             before.is_some(),
             |q| {
@@ -112,7 +136,13 @@ where
             |_| {},
         )
         .order_by(KVIden::Id, Order::Desc)
-        .limit(limit.try_into().unwrap())
+        .conditions(
+            limit.is_some(),
+            |q| {
+                q.limit(limit.unwrap().try_into().unwrap());
+            },
+            |_| {},
+        )
         .build_any_sqlx(db.builder().as_ref());
 
     let results = sqlx::query_with(&sql, values)
@@ -120,7 +150,7 @@ where
         .await?
         .into_iter()
         .map(|r| {
-            let j = r.get::<String, _>(KVIden::Value.to_string().as_str());
+            let j = r.get::<String, _>(KVIden::ValueText.to_string().as_str());
             serde_json::from_str::<Type>(&j)
         })
         .collect::<Result<Vec<_>, _>>();
@@ -173,6 +203,42 @@ impl JsonField for Expr {
                 self.binary(SqliteBinOper::CastJsonField, right)
             }
         }
+    }
+}
+
+fn to_json_value(
+    db: &Database,
+    obj: impl Serialize,
+) -> Result<SimpleExpr, DatabaseError> {
+    let json_str = serde_json::to_string(&obj)?;
+
+    Ok(match db.pool.any_kind() {
+        | AnyKind::Postgres => Expr::val(json_str).cast_as(Alias::new("json")),
+        | AnyKind::Sqlite => json_str.into(),
+    })
+}
+
+// Revisit the need for this if https://github.com/SeaQL/sea-query/issues/632
+// gets implemented.
+pub trait GeneratedJsonField {
+    fn generate_from_json_field(
+        &mut self,
+        column: impl Iden,
+        field: &str,
+    ) -> &mut Self;
+}
+
+impl GeneratedJsonField for ColumnDef {
+    fn generate_from_json_field(
+        &mut self,
+        column: impl Iden,
+        field: &str,
+    ) -> &mut Self {
+        // The syntax is the same between sqlite and postgres
+        self.extra(format!(
+            "GENERATED ALWAYS AS ({} ->> '{field}') STORED",
+            column.to_string()
+        ))
     }
 }
 
