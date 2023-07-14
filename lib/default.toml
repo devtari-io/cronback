@@ -16,6 +16,8 @@ address = "0.0.0.0"
 port = 8888
 database_uri = "sqlite://database.sqlite?mode=rwc"
 admin_api_keys = []
+log_request_body = true
+log_response_body = true
 
 [dispatcher]
 cell_id = 0

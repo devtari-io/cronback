@@ -60,6 +60,8 @@ pub struct ApiConfig {
     pub port: u16,
     pub database_uri: String,
     pub admin_api_keys: HashSet<String>,
+    pub log_request_body: bool,
+    pub log_response_body: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]

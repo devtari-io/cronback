@@ -16,6 +16,8 @@ use crate::auth_store::AuthStore;
 use crate::errors::ApiError;
 use crate::model::CreateAPIkeyRequest;
 
+pub static API_KEY_PREFIX: &str = "sk_";
+
 #[derive(Error, Debug)]
 pub enum AuthError {
     #[error("database error: {0}")]
@@ -166,8 +168,8 @@ impl FromStr for SecretApiKey {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let Some(s) = s.strip_prefix("sk_") else {
-            return Err("API key doesn't start with sk_".to_string())
+        let Some(s) = s.strip_prefix(API_KEY_PREFIX) else {
+            return Err(format!("API key doesn't start with {}", API_KEY_PREFIX))
         };
 
         match s.split_once('_') {
@@ -210,7 +212,7 @@ impl SecretApiKey {
     }
 
     pub fn unsafe_to_string(&self) -> String {
-        format!("sk_{}_{}", self.key_id, self.plain_secret)
+        format!("{}{}_{}", API_KEY_PREFIX, self.key_id, self.plain_secret)
     }
 }
 

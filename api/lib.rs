@@ -4,6 +4,7 @@ pub(crate) mod auth_store;
 pub mod errors;
 pub(crate) mod extractors;
 mod handlers;
+mod logging;
 mod model;
 mod paginated;
 
@@ -30,10 +31,11 @@ use metrics::{histogram, increment_counter};
 use thiserror::Error;
 use tokio::select;
 use tower_http::cors::{AllowOrigin, CorsLayer};
-use tower_http::trace::{MakeSpan, TraceLayer};
-use tracing::{error, error_span, info, warn};
+use tower_http::trace::TraceLayer;
+use tracing::{error, info, warn};
 
 use crate::auth_store::SqlAuthStore;
+use crate::logging::{trace_request_response, ApiMakeSpan};
 
 #[derive(Debug, Error)]
 pub enum AppStateError {
@@ -86,6 +88,10 @@ pub async fn start_api_server(
         // `GET /` goes to `root`
         .route("/", get(root))
         .nest("/v1", handlers::routes(shared_state.clone()))
+        .layer(middleware::from_fn_with_state(
+            Arc::new(config.clone()),
+            trace_request_response,
+        ))
         .layer(
             CorsLayer::new()
                 .allow_origin(AllowOrigin::any())
@@ -134,36 +140,6 @@ pub async fn start_api_server(
 // basic handler that responds with a static string
 async fn root() -> &'static str {
     "Hey, better visit https://cronback.me"
-}
-
-#[derive(Clone, Debug)]
-struct ApiMakeSpan {
-    service_name: String,
-}
-
-impl ApiMakeSpan {
-    fn new(service_name: String) -> Self {
-        Self { service_name }
-    }
-}
-
-impl<B> MakeSpan<B> for ApiMakeSpan {
-    fn make_span(&mut self, request: &Request<B>) -> tracing::Span {
-        // We get the request_id from extensions
-        let request_id = request
-            .extensions()
-            .get::<RequestId>()
-            .map(ToString::to_string);
-        error_span!(
-            "http_request",
-             // Then we put request_id into the span
-             service = %self.service_name,
-             request_id = %request_id.unwrap_or_default(),
-             method = %request.method(),
-             uri = %request.uri(),
-             version = ?request.version(),
-        )
-    }
 }
 
 async fn inject_request_id<B>(

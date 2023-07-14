@@ -103,8 +103,9 @@ clap = { version = "4", features = ["color", "derive"] }
 colored = "2.0"
 metrics-exporter-prometheus = { version = "0.12", features = ["async-runtime"] }
 metrics-util = "0.15.0"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "registry"] }
 dotenvy = "0.15"
+tracing-appender = "0.2"
 
 [dev-dependencies]
 proto = { path = "proto" }

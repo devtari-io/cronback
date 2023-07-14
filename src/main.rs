@@ -16,30 +16,60 @@ use metrics_exporter_prometheus::PrometheusBuilder;
 use metrics_util::MetricKindMask;
 use tokio::task::JoinSet;
 use tokio::{select, time};
-use tracing::{debug, error, info, trace, warn, Subscriber};
-use tracing_subscriber::FmtSubscriber;
+use tracing::{debug, error, info, trace, warn};
+use tracing_subscriber::prelude::*;
+use tracing_subscriber::{EnvFilter, Layer};
 
 fn setup_logging_subscriber(
     f: &LogFormat,
-) -> Box<dyn Subscriber + Send + Sync> {
-    let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| {
-            "cronbackd=debug,scheduler=debug,api=debug,dispatcher=debug,\
-             tower_http=debug,lib=debug"
-                .into()
-        });
+    api_tracing_dir: &str,
+) -> tracing_appender::non_blocking::WorkerGuard {
+    // The default stdout logging
+    let stdout_layer = {
+        let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
+            .unwrap_or_else(|_| {
+                "cronbackd=debug,scheduler=debug,api=debug,dispatcher=debug,\
+                 tower_http=debug,lib=debug,request_response_tracing=off,\
+                 request_response_tracing_metadata=info"
+                    .into()
+            });
 
-    let sub = FmtSubscriber::builder()
-        .with_thread_names(true)
-        // TODO: Configure logging from command line
-        .with_max_level(tracing::Level::INFO)
-        .with_env_filter(env_filter);
+        let stdout_layer =
+            tracing_subscriber::fmt::layer().with_thread_names(true);
+        let stdout_layer: Box<dyn Layer<_> + Send + Sync> = match f {
+            | cli::LogFormat::Pretty => stdout_layer.pretty().boxed(),
+            | cli::LogFormat::Compact => stdout_layer.compact().boxed(),
+            | cli::LogFormat::Json => stdout_layer.json().boxed(),
+        };
+        stdout_layer.with_filter(env_filter)
+    };
 
-    match f {
-        | cli::LogFormat::Pretty => Box::new(sub.pretty().finish()),
-        | cli::LogFormat::Compact => Box::new(sub.compact().finish()),
-        | cli::LogFormat::Json => Box::new(sub.json().finish()),
-    }
+    // A special subscriber to separate the request/response tracing to a
+    // separate log
+    let (request_tracing_layer, file_guard) = {
+        let file_appender = tracing_appender::rolling::daily(
+            api_tracing_dir,
+            "cronback_requests.log",
+        );
+        let (non_blocking, guard) =
+            tracing_appender::non_blocking(file_appender);
+        (
+            tracing_subscriber::fmt::layer()
+                .json()
+                .with_writer(non_blocking)
+                .with_filter(EnvFilter::new(
+                    "off,request_response_tracing=info,\
+                     request_response_tracing_metadata=info",
+                )),
+            guard,
+        )
+    };
+    tracing_subscriber::registry()
+        .with(stdout_layer)
+        .with(request_tracing_layer)
+        .init();
+
+    file_guard
 }
 
 #[tokio::main(flavor = "multi_thread")]
@@ -56,9 +86,8 @@ async fn main() -> Result<()> {
     let opts = cli::CliOpts::parse();
     let mut shutdown = Shutdown::default();
 
-    tracing::subscriber::set_global_default(setup_logging_subscriber(
-        &opts.log_format,
-    ))?;
+    let _tracing_file_guard =
+        setup_logging_subscriber(&opts.log_format, &opts.api_tracing_dir);
 
     debug!("** {} **", "CronBack.me".magenta());
     trace!(config = opts.config, "Loading configuration");

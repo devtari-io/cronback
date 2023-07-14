@@ -45,3 +45,4 @@ serde_path_to_error = "0.1.11"
 sha2 = "0.10.6"
 uuid = { version = "1.2.2", features = ["v4"] }
 validator = { version = "0.16.0", features = ["derive"] }
+hyper = "0.14.26"

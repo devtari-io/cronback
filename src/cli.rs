@@ -20,4 +20,8 @@ pub struct CliOpts {
 
     #[arg(short, long, default_value = "pretty")]
     pub log_format: LogFormat,
+
+    /// The directory where the api tracing logs will be written to
+    #[arg(short, long, default_value = "/tmp", value_name = "FILE")]
+    pub api_tracing_dir: String,
 }
