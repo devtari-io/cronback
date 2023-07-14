@@ -1,0 +1,46 @@
+[package]
+name = "cronback"
+description = """\
+  Cronback provides developers a reliable and flexible solution to schedule \
+  one-time, recurring cron, and on-demand webhooks.
+  """
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+license.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+repository.workspace = true
+include = ["../LICENSE"]
+default-run = "cronbackd"
+
+[[bin]]
+name = "cronbackd"
+path = "main.rs"
+
+[dependencies]
+# Internal Dependencies
+api = { workspace = true }
+scheduler = { workspace = true }
+dispatcher = { workspace = true }
+lib = { workspace = true }
+
+# Dependencies from workspace
+anyhow = { workspace = true }
+metrics = { workspace = true }
+tokio = { workspace = true, features = ["signal", "macros"]}
+tracing = { workspace = true }
+
+# Unique Dependencies
+clap = { version = "4", features = ["color", "derive"] }
+colored = "2.0"
+metrics-exporter-prometheus = { version = "0.12", features = ["async-runtime"] }
+metrics-util = "0.15.0"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "registry"] }
+dotenvy = "0.15"
+tracing-appender = "0.2"
+
+[dev-dependencies]
+tonic = { workspace = true }
+

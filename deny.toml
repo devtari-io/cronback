@@ -109,6 +109,7 @@ allow = [
     "BSD-2-Clause-Patent",
     "MIT",
     "MPL-2.0",
+    "EPL-2.0",
     "Unicode-DFS-2016",
     "Unlicense",
 ]

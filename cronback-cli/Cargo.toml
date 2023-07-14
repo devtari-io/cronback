@@ -1,0 +1,58 @@
+[package]
+name = "cronback-cli"
+description = "Cronback CLI"
+version = "0.1.0"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+repository.workspace = true
+categories = ["command-line-utilities"]
+keywords = ["cli"]
+
+[package.metadata.workspaces]
+# We maintain the CLI and rust-client versions independently from the workspace.
+independent = true
+
+[[bin]]
+name = "cronback"
+path = "src/main.rs"
+
+[features]
+default = []
+admin = ["cronback-client/admin", "cronback-api-model/admin"]
+
+[dependencies]
+cronback-client = { workspace = true }
+cronback-api-model = { workspace = true, features = ["client", "clap"] }
+
+anyhow = { version = "1.0.71" }
+async-trait = { workspace = true }
+chrono = { workspace = true }
+clap = { version = "4", features = ["env", "derive", "wrap_help"] }
+clap-stdin = { version = "0.2.0" }
+clap-verbosity-flag = { version = "2.0.1" }
+colored = { version = "2.0" }
+colored_json = { version = "3.2.0" }
+dotenvy = "0.15"
+env_logger = "0.10.0"
+etcetera = { version = "0.8.0" }
+http = "0.2.9"
+once_cell = { version = "1.17.1" }
+prettytable-rs = { version = "0.10.0" }
+reqwest = { workspace = true }
+rprompt = "2.0"
+serde = { workspace = true }
+serde_json = { workspace = true }
+spinners = "4.1"
+tokio = { workspace = true, features = [
+  "io-std",
+  "io-util",
+  "signal",
+  "rt-multi-thread",
+  "macros",
+] }
+tracing = { workspace = true }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+url = { workspace = true }

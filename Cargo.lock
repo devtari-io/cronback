@@ -137,40 +137,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c7d0618f0e0b7e8ff11427422b64564d5fb0be1940354bfe2e0529b18a9d9b8"
 
 [[package]]
-name = "api"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "axum",
- "axum-extra",
- "base64 0.21.2",
- "chrono",
- "cronback-api-model",
- "dto",
- "hyper",
- "lib",
- "metrics",
- "names",
- "proto",
- "rand",
- "sea-orm",
- "serde",
- "serde_json",
- "serde_path_to_error",
- "serde_with",
- "sha2",
- "thiserror",
- "tokio",
- "tonic",
- "tower-http",
- "tracing",
- "ulid",
- "uuid",
- "validator",
-]
-
-[[package]]
 name = "arrayvec"
 version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -888,19 +854,22 @@ dependencies = [
 name = "cronback"
 version = "0.1.0"
 dependencies = [
- "async-trait",
- "chrono",
- "cronback-api-model",
- "http",
- "monostate",
- "once_cell",
- "reqwest",
- "serde",
- "serde_json",
- "serde_with",
- "thiserror",
+ "anyhow",
+ "clap 4.3.11",
+ "colored",
+ "cronback-api-srv",
+ "cronback-dispatcher-srv",
+ "cronback-lib",
+ "cronback-scheduler-srv",
+ "dotenvy",
+ "metrics",
+ "metrics-exporter-prometheus",
+ "metrics-util",
+ "tokio",
+ "tonic",
  "tracing",
- "url",
+ "tracing-appender",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -912,18 +881,52 @@ dependencies = [
  "chrono-tz",
  "clap 4.3.11",
  "cron",
+ "cronback-dto",
+ "cronback-lib",
+ "cronback-proto",
  "derive_more",
- "dto",
  "ipext",
- "lib",
  "monostate",
- "proto",
  "serde",
  "serde_json",
  "serde_with",
  "strum 0.25.0",
  "thiserror",
  "url",
+ "validator",
+]
+
+[[package]]
+name = "cronback-api-srv"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "axum",
+ "axum-extra",
+ "base64 0.21.2",
+ "chrono",
+ "cronback-api-model",
+ "cronback-dto",
+ "cronback-lib",
+ "cronback-proto",
+ "hyper",
+ "metrics",
+ "names",
+ "rand",
+ "sea-orm",
+ "serde",
+ "serde_json",
+ "serde_path_to_error",
+ "serde_with",
+ "sha2",
+ "thiserror",
+ "tokio",
+ "tonic",
+ "tower-http",
+ "tracing",
+ "ulid",
+ "uuid",
  "validator",
 ]
 
@@ -939,8 +942,8 @@ dependencies = [
  "clap-verbosity-flag",
  "colored",
  "colored_json",
- "cronback",
  "cronback-api-model",
+ "cronback-client",
  "dotenvy",
  "env_logger",
  "etcetera",
@@ -959,25 +962,177 @@ dependencies = [
 ]
 
 [[package]]
-name = "cronbackd"
-version = "0.2.0"
+name = "cronback-client"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "cronback-api-model",
+ "http",
+ "monostate",
+ "once_cell",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "thiserror",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "cronback-dispatcher-srv"
+version = "0.1.0"
 dependencies = [
  "anyhow",
- "api",
- "clap 4.3.11",
- "colored",
- "dispatcher",
- "dotenvy",
- "lib",
+ "async-trait",
+ "chrono",
+ "chrono-tz",
+ "cronback-lib",
+ "cronback-proto",
+ "futures",
  "metrics",
- "metrics-exporter-prometheus",
- "metrics-util",
- "scheduler",
+ "prost",
+ "rand",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "thiserror",
  "tokio",
  "tonic",
+ "tower",
  "tracing",
- "tracing-appender",
+ "validator",
+]
+
+[[package]]
+name = "cronback-dto"
+version = "0.1.0"
+dependencies = [
+ "cronback-dto-core",
+ "cronback-dto-derive",
+ "once_cell",
+ "trybuild",
+]
+
+[[package]]
+name = "cronback-dto-core"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "darling",
+ "pretty_assertions",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.25",
+]
+
+[[package]]
+name = "cronback-dto-derive"
+version = "0.1.0"
+dependencies = [
+ "cronback-dto-core",
+ "proc-macro2",
+ "syn 2.0.25",
+]
+
+[[package]]
+name = "cronback-lib"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "chrono-tz",
+ "config",
+ "cron",
+ "cronback-dto",
+ "cronback-migration",
+ "cronback-proto",
+ "derive_more",
+ "futures",
+ "hyper",
+ "ipext",
+ "iso8601-duration",
+ "metrics",
+ "rand",
+ "sea-orm",
+ "sea-query",
+ "sea-query-binder",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "sqlx",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "tonic",
+ "tonic-reflection",
+ "tower",
+ "tower-http",
+ "tracing",
+ "tracing-core",
  "tracing-subscriber",
+ "ulid",
+ "url",
+ "validator",
+]
+
+[[package]]
+name = "cronback-migration"
+version = "0.1.0"
+dependencies = [
+ "async-std",
+ "sea-orm-migration",
+]
+
+[[package]]
+name = "cronback-proto"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "cronback-dto",
+ "pbjson",
+ "pbjson-build",
+ "pbjson-types",
+ "prost",
+ "serde",
+ "tonic",
+ "tonic-build",
+ "ulid",
+]
+
+[[package]]
+name = "cronback-scheduler-srv"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-recursion",
+ "async-trait",
+ "chrono",
+ "chrono-tz",
+ "cron",
+ "cronback-dto",
+ "cronback-lib",
+ "cronback-proto",
+ "metrics",
+ "prost",
+ "sea-orm",
+ "sea-query",
+ "sea-query-binder",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "tonic",
+ "tower",
+ "tracing",
+ "tracing-test",
 ]
 
 [[package]]
@@ -1160,32 +1315,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dispatcher"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "chrono",
- "chrono-tz",
- "futures",
- "lib",
- "metrics",
- "prost",
- "proto",
- "rand",
- "reqwest",
- "serde",
- "serde_json",
- "sqlx",
- "thiserror",
- "tokio",
- "tonic",
- "tower",
- "tracing",
- "validator",
-]
-
-[[package]]
 name = "dissimilar"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1196,37 +1325,6 @@ name = "dotenvy"
 version = "0.15.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1aaf95b3e5c8f23aa320147307562d361db0ae0d51242340f558153b4eb2439b"
-
-[[package]]
-name = "dto"
-version = "0.1.0"
-dependencies = [
- "dto-core",
- "dto-derive",
- "once_cell",
- "trybuild",
-]
-
-[[package]]
-name = "dto-core"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "darling",
- "pretty_assertions",
- "proc-macro2",
- "quote",
- "syn 2.0.25",
-]
-
-[[package]]
-name = "dto-derive"
-version = "0.1.0"
-dependencies = [
- "dto-core",
- "proc-macro2",
- "syn 2.0.25",
-]
 
 [[package]]
 name = "either"
@@ -1900,49 +1998,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
-name = "lib"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "chrono",
- "chrono-tz",
- "config",
- "cron",
- "derive_more",
- "dto",
- "futures",
- "hyper",
- "ipext",
- "iso8601-duration",
- "metrics",
- "migration",
- "proto",
- "rand",
- "sea-orm",
- "sea-query",
- "sea-query-binder",
- "serde",
- "serde_json",
- "serde_with",
- "sqlx",
- "tempfile",
- "thiserror",
- "tokio",
- "tokio-stream",
- "tonic",
- "tonic-reflection",
- "tower",
- "tower-http",
- "tracing",
- "tracing-core",
- "tracing-subscriber",
- "ulid",
- "url",
- "validator",
-]
-
-[[package]]
 name = "libc"
 version = "0.2.147"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2101,14 +2156,6 @@ dependencies = [
  "quanta",
  "radix_trie",
  "sketches-ddsketch",
-]
-
-[[package]]
-name = "migration"
-version = "0.2.0"
-dependencies = [
- "async-std",
- "sea-orm-migration",
 ]
 
 [[package]]
@@ -2709,22 +2756,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "proto"
-version = "0.2.0"
-dependencies = [
- "chrono",
- "dto",
- "pbjson",
- "pbjson-build",
- "pbjson-types",
- "prost",
- "serde",
- "tonic",
- "tonic-build",
- "ulid",
-]
-
-[[package]]
 name = "ptr_meta"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3070,37 +3101,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c3733bf4cf7ea0880754e19cb5a462007c4a8c1914bff372ccc95b464f1df88"
 dependencies = [
  "windows-sys",
-]
-
-[[package]]
-name = "scheduler"
-version = "0.2.0"
-dependencies = [
- "anyhow",
- "async-recursion",
- "async-trait",
- "chrono",
- "chrono-tz",
- "cron",
- "dto",
- "lib",
- "metrics",
- "prost",
- "proto",
- "sea-orm",
- "sea-query",
- "sea-query-binder",
- "serde",
- "serde_json",
- "sqlx",
- "tempfile",
- "thiserror",
- "tokio",
- "tokio-stream",
- "tonic",
- "tower",
- "tracing",
- "tracing-test",
 ]
 
 [[package]]

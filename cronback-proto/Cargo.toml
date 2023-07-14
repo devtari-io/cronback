@@ -1,0 +1,31 @@
+[package]
+name = "cronback-proto"
+description = "Protobuf and gRPC definitions for services"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+license.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+repository.workspace = true
+
+[lib]
+name = "proto"
+path = "lib.rs"
+
+[dependencies]
+# Internal dependencies
+dto = { workspace = true }
+
+chrono = { workspace = true }
+tonic = { workspace = true }
+prost = { workspace = true }
+ulid = { workspace = true }
+serde = { workspace = true }
+pbjson = { version = "0.5.1" }
+pbjson-types = { version = "0.5.1" }
+
+[build-dependencies]
+tonic-build = "0.9"
+pbjson-build = "0.5.1"

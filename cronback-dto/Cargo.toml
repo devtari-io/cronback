@@ -1,0 +1,29 @@
+[package]
+name = "cronback-dto"
+version = "0.1.0"
+description = "Data transfer object library for Cronback"
+edition.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+license.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+repository.workspace = true
+
+[package.metadata.workspaces]
+# We maintain version independently from the workspace.
+independent = true
+
+[[test]]
+name = "tests"
+path = "tests/tests.rs"
+
+[dependencies]
+# Internal dependencies
+dto-core = { path = "../cronback-dto-core", package = "cronback-dto-core", version = "0.1.0" }
+dto-derive = { path = "../cronback-dto-derive", package = "cronback-dto-derive", version = "0.1.0" }
+
+once_cell = { workspace = true }
+
+[dev-dependencies]
+trybuild = { version = "1.0", features = ["diff"] }

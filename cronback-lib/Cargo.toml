@@ -1,0 +1,58 @@
+[package]
+name = "cronback-lib"
+description = "Common utilities for all cronback services"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+license.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+repository.workspace = true
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+# Internal Dependencies
+proto = { workspace = true }
+dto = { workspace = true }
+migration = { workspace = true }
+
+# Dependencies from workspace
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+chrono = { workspace = true }
+chrono-tz = { workspace = true }
+cron = { workspace = true }
+derive_more = { workspace = true }
+futures = { workspace = true }
+iso8601-duration = { workspace = true }
+metrics = { workspace = true }
+rand = { workspace = true }
+sea-orm = { workspace = true }
+sea-query = { workspace = true }
+sea-query-binder = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_with = { workspace = true, features = ["chrono_0_4", "json"] }
+sqlx = { workspace = true }
+tempfile = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tokio-stream = { workspace = true }
+tonic = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true }
+tracing = { workspace = true }
+ulid = { workspace = true }
+validator = { workspace = true }
+
+# Unique Dependencies
+config = { version = "0.13", default-features = false, features = ["toml"] }
+hyper = "0.14.24"
+tonic-reflection = "0.9.0"
+url = { workspace = true, features = ["serde"] }
+tracing-subscriber = { version = "0.3", features = ["fmt", "registry"] }
+tracing-core = { version = "0.1.31" }
+ipext = { workspace = true }

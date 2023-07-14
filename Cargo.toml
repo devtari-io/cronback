@@ -1,41 +1,28 @@
 [workspace]
-members = [
-  ".",
-  "api",
-  "api-model",
-  "lib",
-  "proto",
-  "scheduler",
-  "dispatcher",
-  "dto",
-  "dto-core",
-  "dto-derive",
-  "migration",
-  "clients/rust",
-  "clients/cli",
-]
+members = ["clients/rust", "cronback", "cronback-*", "services/*"]
 
 [workspace.package]
 license = "BSD-2-Clause-Patent"
-version = "0.2.0"
+version = "0.1.0"
 edition = "2021"
 authors = ["Ahmed Farghal <me@asoli.dev>", "Mohamed Bassem <me@mbassem.com>"]
-description = "Cronback Backend"
 documentation = "https://docs.cronback.me"
+repository = "https://github.com/devtari-io/cronback"
+homepage = "https://cronback.me"
 rust-version = "1.68.0"
-publish = false
 
 [workspace.dependencies]
-# Internal Dependencies
-cronback-api-model = { path = "api-model", version = "0.1.0" }
-dto = { path = "dto", version = "0.1.0" }
-lib = { path = "lib", version = "0.2.0" }
-migration = { path = "migration", version = "0.2.0" }
-proto = { path = "proto", version = "0.2.0" }
-# Internal Services
-api = { path = "api", version = "0.2.0" }
-scheduler = { path = "scheduler", version = "0.2.0" }
-dispatcher = { path = "dispatcher", version = "0.2.0" }
+# Services
+api = { path = "services/cronback-api-srv", package = "cronback-api-srv", version = "0.1.0" }
+dispatcher = { path = "services/cronback-dispatcher-srv", package = "cronback-dispatcher-srv", version = "0.1.0" }
+scheduler = { path = "services/cronback-scheduler-srv", package = "cronback-scheduler-srv", version = "0.1.0" }
+# Internal Dependences
+cronback-api-model = { path = "cronback-api-model", version = "0.1.0" }
+cronback-client = { path = "clients/rust", package = "cronback-client", version = "0.1.0" }
+dto = { path = "cronback-dto", package = "cronback-dto", version = "0.1.0" }
+lib = { path = "cronback-lib", package = "cronback-lib", version = "0.1.0" }
+migration = { path = "cronback-migration", package = "cronback-migration", version = "0.1.0" }
+proto = { path = "cronback-proto", package = "cronback-proto", version = "0.1.0" }
 
 anyhow = "1.0.69"
 async-trait = "0.1.68"
@@ -62,29 +49,39 @@ sea-query-binder = { version = "0", features = [
   "runtime-tokio-native-tls",
   "with-json",
 ] }
-sea-orm = { version = "0.11.3", features = ["chrono", "sqlx-sqlite", "macros", "debug-print"] }
+sea-orm = { version = "0.11.3", features = [
+  "chrono",
+  "sqlx-sqlite",
+  "macros",
+  "debug-print",
+] }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1.0.93" }
-serde_with = { version = "3.0.0", features = ["chrono_0_4", "json"] }
+serde_with = { version = "3.0.0"}
 sha2 = "0.10.6"
 sqlx = { version = "0.6.3", features = ["runtime-tokio-native-tls", "any"] }
 tempfile = "3.5"
 thiserror = "1"
-tokio = { version = "1", default-features = false, features = ["rt-multi-thread"] }
+tokio = { version = "1", default-features = false, features = [
+  "rt-multi-thread",
+] }
 tokio-stream = { version = "0.1", features = ["net"] }
 tonic = "0.9"
-tower = { version = "0.4"}
+tower = { version = "0.4" }
 tower-http = { version = "0.4.0", features = ["trace"] }
 tracing = { version = "0.1", features = ["log"] }
 tracing-test = { version = "0.2.4", features = ["no-env-filter"] }
 ulid = { version = "1.0" }
 validator = { version = "0.16.0", features = ["derive"] }
+once_cell = "1.17"
+reqwest = "0.11"
 # A crate that re-exposes the unstable IP features that got introduced in
 # https://github.com/rust-lang/rust/issues/27709.
 # Given that this is an untrusted repo, we're pinning it to a particular
 # revision after reviewing the code at this revision.
 ipext = { git = "https://github.com/jedisct1/rust-ipext", rev = "0ebeb115bd67", version = "0.1.0" }
-
+url = { version = "2.3.1" }
+monostate = { version = "0.1.7" }
 
 [profile.release]
 lto = "thin"
@@ -93,38 +90,3 @@ strip = "debuginfo"
 [profile.release-lto]
 inherits = "release"
 lto = true
-
-[package]
-name = "cronbackd"
-authors.workspace = true
-description.workspace = true
-edition.workspace = true
-publish.workspace = true
-rust-version.workspace = true
-version.workspace = true
-include = ["LICENSE"]
-
-[dependencies]
-# Internal Dependencies
-api = { workspace = true }
-scheduler = { workspace = true }
-dispatcher = { workspace = true }
-lib = { workspace = true }
-
-# Dependencies from workspace
-anyhow = { workspace = true }
-metrics = { workspace = true }
-tokio = { workspace = true, features = ["signal", "macros"]}
-tracing = { workspace = true }
-
-# Unique Dependencies
-clap = { version = "4", features = ["color", "derive"] }
-colored = "2.0"
-metrics-exporter-prometheus = { version = "0.12", features = ["async-runtime"] }
-metrics-util = "0.15.0"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "registry"] }
-dotenvy = "0.15"
-tracing-appender = "0.2"
-
-[dev-dependencies]
-tonic = { workspace = true }
