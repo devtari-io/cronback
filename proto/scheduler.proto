@@ -1,7 +1,8 @@
 syntax = "proto3";
 
-import "trigger.proto";
+import "common.proto";
 import "run.proto";
+import "trigger.proto";
 
 package scheduler_proto;
 
@@ -94,12 +95,11 @@ message ListTriggersFilter {
 }
 
 message ListTriggersRequest {
-  uint64 limit = 2;
-  optional string before = 3;
-  optional string after = 4;
+  common.PaginationIn pagination = 1;
   ListTriggersFilter filter = 5;
 }
 
 message ListTriggersResponse {
-  repeated trigger_proto.Trigger triggers = 1;
+  common.PaginationOut pagination = 1;
+  repeated trigger_proto.Trigger triggers = 2;
 }

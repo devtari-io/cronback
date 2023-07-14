@@ -3,9 +3,9 @@
 use chrono::{DateTime, Utc};
 use dto::{FromProto, IntoProto};
 use sea_orm::entity::prelude::*;
-use serde::{Deserialize, Serialize};
 
 use super::triggers::{Action, Payload};
+use crate::database::pagination::PaginatedEntity;
 use crate::model::ValidShardedId;
 use crate::types::{ProjectId, RunId, TriggerId};
 
@@ -25,8 +25,6 @@ impl EntityName for Entity {
     FromProto,
     PartialEq,
     DeriveModel,
-    Serialize,
-    Deserialize,
     DeriveActiveModel,
     Eq,
 )]
@@ -44,6 +42,12 @@ pub struct Model {
     #[proto(required)]
     pub action: Action,
     pub status: RunStatus,
+}
+
+impl PaginatedEntity for Entity {
+    fn cursor_column() -> Self::Column {
+        Column::Id
+    }
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
@@ -103,14 +107,11 @@ impl ActiveModelBehavior for ActiveModel {}
     Clone,
     FromProto,
     IntoProto,
-    Serialize,
-    Deserialize,
     PartialEq,
     Eq,
     EnumIter,
     DeriveActiveEnum,
 )]
-#[serde(rename_all = "snake_case")]
 #[sea_orm(rs_type = "String", db_type = "String(None)")]
 #[proto(target = "proto::run_proto::RunStatus")]
 pub enum RunStatus {

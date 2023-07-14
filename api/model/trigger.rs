@@ -10,6 +10,14 @@ use validator::Validate;
 
 use super::{Action, Payload, Schedule};
 
+#[derive(Debug, IntoProto, Deserialize, Default, Validate)]
+#[proto(target = "proto::scheduler_proto::ListTriggersFilter")]
+pub(crate) struct ListFilters {
+    #[serde(default)]
+    #[proto(name = "statuses")]
+    pub status: Vec<TriggerStatus>,
+}
+
 #[derive(
     Debug, IntoProto, FromProto, Clone, Serialize, Deserialize, PartialEq,
 )]
@@ -43,6 +51,7 @@ impl UpsertTriggerRequest {
     }
 }
 
+#[skip_serializing_none]
 #[derive(
     Debug,
     FromProto,
@@ -53,7 +62,6 @@ impl UpsertTriggerRequest {
     PartialEq,
     Validate,
 )]
-#[skip_serializing_none]
 #[serde(deny_unknown_fields)]
 #[proto(target = "proto::trigger_proto::Trigger")]
 pub(crate) struct Trigger {
@@ -80,7 +88,6 @@ pub(crate) struct Trigger {
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Validate)]
 #[serde_as]
-#[skip_serializing_none]
 pub(crate) struct UpsertTriggerResponse {
     #[serde(flatten)]
     pub trigger: Trigger,

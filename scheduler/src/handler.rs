@@ -130,18 +130,21 @@ impl Scheduler for SchedulerAPIHandler {
         let request = request.into_inner();
 
         let statuses = list_filter_into_parts(request.filter);
-        let manifests = self
+        let paginated_result = self
             .scheduler
             .list_triggers(
                 ctx,
                 statuses,
-                request.limit as usize,
-                request.before.map(Into::into),
-                request.after.map(Into::into),
+                request.pagination.unwrap_or_default(),
             )
             .await?;
         Ok(Response::new(ListTriggersResponse {
-            triggers: manifests.into_iter().map(Into::into).collect(),
+            triggers: paginated_result
+                .data
+                .into_iter()
+                .map(Into::into)
+                .collect(),
+            pagination: Some(paginated_result.pagination),
         }))
     }
 }

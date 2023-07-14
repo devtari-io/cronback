@@ -21,6 +21,7 @@ pub(crate) enum Schedule {
     RunAt(RunAt),
 }
 
+#[skip_serializing_none]
 #[derive(
     IntoProto,
     FromProto,
@@ -32,7 +33,6 @@ pub(crate) enum Schedule {
     Validate,
 )]
 #[proto(target = "proto::trigger_proto::Recurring")]
-#[skip_serializing_none]
 #[serde(deny_unknown_fields)]
 #[serde(rename_all = "snake_case")]
 pub struct Recurring {
@@ -48,6 +48,7 @@ pub struct Recurring {
     pub remaining: Option<u64>,
 }
 
+#[skip_serializing_none]
 #[derive(
     IntoProto,
     FromProto,
@@ -60,7 +61,6 @@ pub struct Recurring {
 )]
 #[proto(target = "proto::trigger_proto::RunAt")]
 #[serde(deny_unknown_fields)]
-#[skip_serializing_none]
 #[serde(rename_all = "snake_case")]
 pub(crate) struct RunAt {
     #[validate(

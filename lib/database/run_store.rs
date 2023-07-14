@@ -1,15 +1,10 @@
 use async_trait::async_trait;
-use sea_orm::{
-    ActiveModelTrait,
-    ColumnTrait,
-    EntityTrait,
-    QueryFilter,
-    QueryOrder,
-    QuerySelect,
-};
+use proto::common::PaginationIn;
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter};
 
 use super::errors::DatabaseError;
-use super::models::runs::{self};
+use super::models::runs;
+use super::pagination::{PaginatedResponse, PaginatedSelect};
 use crate::database::models::prelude::Runs;
 use crate::database::Database;
 use crate::model::ModelId;
@@ -33,18 +28,14 @@ pub trait RunStore {
         &self,
         project: &ProjectId,
         trigger_id: &TriggerId,
-        before: Option<RunId>,
-        after: Option<RunId>,
-        limit: usize,
-    ) -> Result<Vec<Run>, RunStoreError>;
+        pagination: PaginationIn,
+    ) -> Result<PaginatedResponse<Run>, RunStoreError>;
 
     async fn get_runs_by_project(
         &self,
         project: &ProjectId,
-        before: Option<RunId>,
-        after: Option<RunId>,
-        limit: usize,
-    ) -> Result<Vec<Run>, RunStoreError>;
+        pagination: PaginationIn,
+    ) -> Result<PaginatedResponse<Run>, RunStoreError>;
 }
 
 pub struct SqlRunStore {
@@ -92,50 +83,29 @@ impl RunStore for SqlRunStore {
         &self,
         project: &ProjectId,
         trigger_id: &TriggerId,
-        before: Option<RunId>,
-        after: Option<RunId>,
-        limit: usize,
-    ) -> Result<Vec<Run>, RunStoreError> {
-        let mut query = Runs::find()
+        pagination: PaginationIn,
+    ) -> Result<PaginatedResponse<Run>, RunStoreError> {
+        let query = Runs::find()
             .filter(runs::Column::TriggerId.eq(trigger_id.value()))
             .filter(runs::Column::ProjectId.eq(project.value()))
-            .order_by_desc(runs::Column::Id)
-            .limit(Some(limit as u64));
-        if let Some(before) = before {
-            query = query.filter(runs::Column::Id.gt(before.value()));
-        }
-
-        if let Some(after) = after {
-            query = query.filter(runs::Column::Id.lt(after.value()));
-        }
+            .with_pagination(&pagination);
 
         let res = query.all(&self.db.orm).await?;
-
-        Ok(res)
+        Ok(PaginatedResponse::paginate(res, &pagination))
     }
 
     async fn get_runs_by_project(
         &self,
         project: &ProjectId,
-        before: Option<RunId>,
-        after: Option<RunId>,
-        limit: usize,
-    ) -> Result<Vec<Run>, RunStoreError> {
-        let mut query = Runs::find()
+        pagination: PaginationIn,
+    ) -> Result<PaginatedResponse<Run>, RunStoreError> {
+        let query = Runs::find()
             .filter(runs::Column::ProjectId.eq(project.value()))
-            .order_by_desc(runs::Column::Id)
-            .limit(Some(limit as u64));
-        if let Some(before) = before {
-            query = query.filter(runs::Column::Id.gt(before.value()));
-        }
-
-        if let Some(after) = after {
-            query = query.filter(runs::Column::Id.lt(after.value()));
-        }
+            .with_pagination(&pagination);
 
         let res = query.all(&self.db.orm).await?;
 
-        Ok(res)
+        Ok(PaginatedResponse::paginate(res, &pagination))
     }
 }
 
@@ -144,6 +114,7 @@ mod tests {
     use std::time::Duration;
 
     use chrono::{Timelike, Utc};
+    use proto::common::PaginationIn;
     use sea_orm::DbErr;
 
     use super::{RunStore, SqlRunStore};
@@ -221,27 +192,28 @@ mod tests {
 
         // Test get runs by trigger
         let mut results = store
-            .get_runs_by_trigger(&project1, &t1, None, None, 100)
+            .get_runs_by_trigger(&project1, &t1, PaginationIn::default())
             .await?;
         let mut expected = vec![i1.clone(), i3.clone()];
         expected.sort_by(|a, b| a.id.cmp(&b.id));
-        results.sort_by(|a, b| a.id.cmp(&b.id));
-        assert_eq!(results, expected);
+        results.data.sort_by(|a, b| a.id.cmp(&b.id));
+        assert_eq!(results.data, expected);
 
         // Test get run by trigger with wrong project
         assert_eq!(
             store
-                .get_runs_by_trigger(&project2, &t1, None, None, 100)
-                .await?,
+                .get_runs_by_trigger(&project2, &t1, PaginationIn::default())
+                .await?
+                .data,
             vec![]
         );
 
         // Test get runs by owner
         let results = store
-            .get_runs_by_project(&project2, None, None, 100)
+            .get_runs_by_project(&project2, PaginationIn::default())
             .await?;
         let expected = vec![i2.clone()];
-        assert_eq!(results, expected);
+        assert_eq!(results.data, expected);
 
         i1.status = RunStatus::Failed;
 

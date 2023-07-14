@@ -4,6 +4,7 @@ pub mod errors;
 pub(crate) mod extractors;
 mod handlers;
 mod model;
+mod paginated;
 
 use std::sync::Arc;
 use std::time::Instant;

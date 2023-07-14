@@ -6,11 +6,13 @@ use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
 use lib::model::ValidShardedId;
 use lib::types::{ProjectId, RunId};
+use proto::common::PaginationIn;
 use validator::Validate;
 
 use crate::errors::ApiError;
 use crate::extractors::ValidatedId;
-use crate::model::{paginate, Pagination};
+use crate::model::Run;
+use crate::paginated::{Paginated, Pagination};
 use crate::{AppState, AppStateError};
 
 #[tracing::instrument(skip(state))]
@@ -31,33 +33,42 @@ pub(crate) async fn get(
             return Err(ApiError::NotFound(id.to_string()));
     };
 
-    Ok((StatusCode::OK, Json(run)).into_response())
+    // Fake conversion to proto then back to API model until this moves to
+    // dispatcher/scheduler.
+    let run: proto::run_proto::Run = run.into();
+    let run: Run = run.into();
+
+    Ok((StatusCode::OK, Json(run)))
 }
 
 #[tracing::instrument(skip(state))]
 #[debug_handler]
 pub(crate) async fn list(
-    pagination: Option<Query<Pagination<RunId>>>,
+    Query(pagination): Query<Pagination>,
     state: State<Arc<AppState>>,
     Extension(project): Extension<ValidShardedId<ProjectId>>,
-) -> Result<impl IntoResponse, ApiError> {
-    let Query(pagination) = pagination.unwrap_or_default();
+) -> Result<Paginated<Run>, ApiError> {
     pagination.validate()?;
 
-    // Trick. We want to know if there is a next page, so we ask for one more
-    let limit = pagination.limit() + 1;
+    // Fake conversion to proto.
+    let pagination: PaginationIn = pagination.into();
 
     let runs = state
         .db
         .run_store
-        .get_runs_by_project(
-            &project,
-            pagination.before.clone(),
-            pagination.after.clone(),
-            limit,
-        )
+        .get_runs_by_project(&project, pagination)
         .await
         .map_err(|e| AppStateError::DatabaseError(e.to_string()))?;
 
-    Ok((StatusCode::OK, Json(paginate(runs, pagination))))
+    let paginated_out = runs.pagination;
+
+    // Fake conversion to proto then back to API model until this moves to
+    // dispatcher/scheduler.
+    let runs: Vec<proto::run_proto::Run> =
+        runs.data.into_iter().map(Into::into).collect();
+
+    let runs: Vec<Run> = runs.into_iter().map(Into::into).collect();
+
+    let runs = Paginated::from(runs, paginated_out);
+    Ok(runs)
 }

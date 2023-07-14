@@ -5,12 +5,14 @@ use std::time::Duration;
 use async_recursion::async_recursion;
 use chrono::Utc;
 use lib::clients::dispatcher_client::ScopedDispatcherClient;
+use lib::database::pagination::PaginatedResponse;
 use lib::database::trigger_store::{TriggerStore, TriggerStoreError};
 use lib::grpc_client_provider::GrpcClientProvider;
 use lib::model::ValidShardedId;
 use lib::prelude::*;
 use lib::service::ServiceContext;
 use lib::types::{ProjectId, Run, Status, Trigger, TriggerId};
+use proto::common::PaginationIn;
 use proto::scheduler_proto::{UpsertTriggerRequest, UpsertTriggerResponse};
 use tracing::{debug, error, info, trace, warn};
 
@@ -475,25 +477,19 @@ impl EventScheduler {
         &self,
         context: RequestContext,
         statuses: Option<Vec<Status>>,
-        limit: usize,
-        before: Option<TriggerId>,
-        after: Option<TriggerId>,
-    ) -> Result<Vec<Trigger>, TriggerError> {
+        pagination: PaginationIn,
+    ) -> Result<PaginatedResponse<Trigger>, TriggerError> {
         // Hopefully in the future we will be able to get the compact version
         // directly from database instead of fetching the entire trigger.
-        let triggers = self
+        let paginated_triggers = self
             .store
-            .get_triggers_by_project(
-                &context.project_id,
-                statuses,
-                before,
-                after,
-                limit,
-            )
+            .get_triggers_by_project(&context.project_id, pagination, statuses)
             .await?;
 
+        let PaginatedResponse { data, pagination } = paginated_triggers;
+
         let (alive, dead): (Vec<_>, Vec<_>) =
-            triggers.into_iter().partition(Trigger::alive);
+            data.into_iter().partition(Trigger::alive);
 
         // Swap live triggers with ones from the scheduler in-memory state.
         let active_trigger_map = self.triggers.clone();
@@ -502,7 +498,9 @@ impl EventScheduler {
                 let r = active_trigger_map.read().unwrap();
                 alive
                     .into_iter()
-                    .filter_map(|t| r.get(&t.id).cloned())
+                    // If we can't find it in scheduler in-memory state, just
+                    // return what we got from the database.
+                    .map(|t| r.get(&t.id).cloned().unwrap_or(t))
                     .collect()
             })
             .await?;
@@ -513,9 +511,9 @@ impl EventScheduler {
         // merge live and dead
         results.extend(dead.into_iter());
         results.extend(alive_triggers);
-        // reverse sort the list by created_at (newer first)
-        results.sort_by(|a, b| b.created_at.cmp(&a.created_at));
-        Ok(results)
+        // reverse sort the list by trigger id (newer first)
+        results.sort_by(|a, b| b.id.cmp(&a.id));
+        Ok(PaginatedResponse::from(results, pagination))
     }
 
     #[tracing::instrument(skip_all, fields(trigger_name = %name, project_id = %context.project_id))]

@@ -7,6 +7,7 @@ use sea_orm::entity::prelude::*;
 use sea_orm::{DeriveActiveEnum, EnumIter, FromJsonQueryResult};
 use serde::{Deserialize, Serialize};
 
+use crate::database::pagination::PaginatedEntity;
 use crate::model::ValidShardedId;
 use crate::types::{AttemptLogId, ProjectId, RunId, TriggerId};
 
@@ -19,6 +20,7 @@ impl EntityName for Entity {
     }
 }
 
+// TODO: Remove serde and implement an API model instead.
 #[derive(
     Clone, Debug, Serialize, PartialEq, DeriveModel, DeriveActiveModel, Eq,
 )]
@@ -30,6 +32,12 @@ pub struct Model {
     pub status: AttemptStatus,
     pub details: AttemptDetails,
     pub created_at: DateTime<Utc>,
+}
+
+impl PaginatedEntity for Entity {
+    fn cursor_column() -> Self::Column {
+        Column::Id
+    }
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]

@@ -26,6 +26,23 @@ pub mod common {
             chrono::DateTime::parse_from_rfc3339(&value.rfc3339).unwrap()
         }
     }
+
+    impl PaginationIn {
+        // We add this because proto3 doesn't support default values. In tests,
+        // we construct the protobuf object directly and we can't rely
+        // solely on the default populated in API deserialization.
+        pub fn limit(&self) -> usize {
+            if self.limit == 0 {
+                20
+            } else {
+                self.limit as usize
+            }
+        }
+
+        pub fn paginated_query_limit(&self) -> u64 {
+            (self.limit() + 1) as u64
+        }
+    }
 }
 
 pub mod webhook_proto {

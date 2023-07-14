@@ -22,6 +22,7 @@ pub enum HttpMethod {
 }
 
 #[serde_as]
+#[skip_serializing_none]
 #[derive(
     IntoProto,
     FromProto,
@@ -34,7 +35,6 @@ pub enum HttpMethod {
 )]
 #[proto(target = "proto::webhook_proto::Webhook")]
 #[serde(default)]
-#[skip_serializing_none]
 #[serde(deny_unknown_fields)]
 pub struct Webhook {
     // allows an optional "type" field to be passed in. This enables other
@@ -69,6 +69,7 @@ impl Default for Webhook {
     }
 }
 
+#[skip_serializing_none]
 #[derive(
     IntoProto, FromProto, Debug, Clone, Serialize, Deserialize, PartialEq,
 )]
@@ -84,6 +85,7 @@ pub enum RetryConfig {
 }
 
 #[serde_as]
+#[skip_serializing_none]
 #[derive(
     IntoProto,
     FromProto,
@@ -97,7 +99,6 @@ pub enum RetryConfig {
 #[proto(target = "proto::webhook_proto::SimpleRetry")]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
-#[skip_serializing_none]
 pub struct SimpleRetry {
     #[serde(rename = "type")]
     _kind: MustBe!("simple"),
@@ -122,6 +123,7 @@ impl Default for SimpleRetry {
 }
 
 #[serde_as]
+#[skip_serializing_none]
 #[derive(
     IntoProto,
     FromProto,
@@ -134,7 +136,6 @@ impl Default for SimpleRetry {
 )]
 #[proto(target = "proto::webhook_proto::ExponentialBackoffRetry")]
 #[serde(deny_unknown_fields)]
-#[skip_serializing_none]
 pub struct ExponentialBackoffRetry {
     #[serde(rename = "type")]
     _kind: MustBe!("exponential_backoff"),

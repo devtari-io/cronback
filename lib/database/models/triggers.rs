@@ -8,6 +8,7 @@ use sea_orm::entity::prelude::*;
 use sea_orm::{DeriveActiveEnum, EnumIter, FromJsonQueryResult};
 use serde::{Deserialize, Serialize};
 
+use crate::database::pagination::PaginatedEntity;
 use crate::model::ValidShardedId;
 use crate::types::{ProjectId, TriggerId, Webhook};
 
@@ -42,6 +43,12 @@ pub struct Model {
     #[proto(required)]
     pub status: Status,
     pub last_ran_at: Option<DateTime<Utc>>,
+}
+
+impl PaginatedEntity for Entity {
+    fn cursor_column() -> Self::Column {
+        Column::Id
+    }
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]

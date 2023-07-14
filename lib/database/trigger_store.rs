@@ -1,15 +1,16 @@
 use async_trait::async_trait;
+use proto::common::PaginationIn;
 use sea_orm::{
     ActiveModelTrait,
     ColumnTrait,
     EntityTrait,
     QueryFilter,
-    QueryOrder,
     QuerySelect,
 };
 
 use super::errors::DatabaseError;
 use super::models::triggers::{self, Status};
+use super::pagination::{PaginatedResponse, PaginatedSelect};
 use crate::database::models::prelude::Triggers;
 use crate::database::Database;
 use crate::model::ModelId;
@@ -54,11 +55,9 @@ pub trait TriggerStore {
     async fn get_triggers_by_project(
         &self,
         project: &ProjectId,
+        pagination: PaginationIn,
         statuses: Option<Vec<Status>>,
-        before: Option<TriggerId>,
-        after: Option<TriggerId>,
-        limit: usize,
-    ) -> Result<Vec<Trigger>, TriggerStoreError>;
+    ) -> Result<PaginatedResponse<Trigger>, TriggerStoreError>;
 }
 
 pub struct SqlTriggerStore {
@@ -113,31 +112,20 @@ impl TriggerStore for SqlTriggerStore {
     async fn get_triggers_by_project(
         &self,
         project: &ProjectId,
+        pagination: PaginationIn,
         statuses: Option<Vec<Status>>,
-        before: Option<TriggerId>,
-        after: Option<TriggerId>,
-        limit: usize,
-    ) -> Result<Vec<Trigger>, TriggerStoreError> {
+    ) -> Result<PaginatedResponse<Trigger>, TriggerStoreError> {
         let mut query = Triggers::find()
             .filter(triggers::Column::ProjectId.eq(project.value()))
-            .order_by_desc(triggers::Column::Id)
-            .limit(Some(limit as u64));
+            .with_pagination(&pagination);
 
         if let Some(statuses) = statuses {
             query = query.filter(triggers::Column::Status.is_in(statuses));
         }
 
-        if let Some(before) = before {
-            query = query.filter(triggers::Column::Id.gt(before.value()));
-        }
-
-        if let Some(after) = after {
-            query = query.filter(triggers::Column::Id.lt(after.value()));
-        }
-
         let res = query.all(&self.db.orm).await?;
 
-        Ok(res)
+        Ok(PaginatedResponse::paginate(res, &pagination))
     }
 
     async fn get_trigger_by_name(
@@ -189,6 +177,7 @@ mod tests {
     use std::time::Duration;
 
     use chrono::{Timelike, Utc};
+    use proto::common::PaginationIn;
 
     use super::{SqlTriggerStore, TriggerStore};
     use crate::database::errors::DatabaseError;
@@ -289,12 +278,12 @@ mod tests {
 
         // Test get by owner
         let mut results = store
-            .get_triggers_by_project(&project1, None, None, None, 100)
+            .get_triggers_by_project(&project1, PaginationIn::default(), None)
             .await?;
         let mut expected = vec![t1.clone(), t2.clone()];
         expected.sort_by(|a, b| a.id.cmp(&b.id));
-        results.sort_by(|a, b| a.id.cmp(&b.id));
-        assert_eq!(results, expected);
+        results.data.sort_by(|a, b| a.id.cmp(&b.id));
+        assert_eq!(results.data, expected);
 
         // Test Get Status
         assert_eq!(
@@ -310,13 +299,11 @@ mod tests {
         let results = store
             .get_triggers_by_project(
                 &project1,
+                PaginationIn::default(),
                 Some(vec![Status::Paused]),
-                None,
-                None,
-                100,
             )
             .await?;
-        assert_eq!(results, vec![t2.clone()]);
+        assert_eq!(results.data, vec![t2.clone()]);
 
         // Test update trigger
         let mut new_t1 = t1.clone();

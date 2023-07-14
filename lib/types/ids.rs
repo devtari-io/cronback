@@ -17,7 +17,7 @@ define_model_id! {
 }
 
 define_model_id! {
-    @prefix = "inv",
+    @prefix = "run",
     @proto = proto::common::RunId,
     pub struct RunId;
 }

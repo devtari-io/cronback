@@ -2,10 +2,14 @@ syntax = "proto3";
 
 package common;
 
-message Pagination {
-  optional uint64 limit = 1;
-  optional string before = 2;
-  optional string after = 3;
+message PaginationIn {
+  int32 limit = 1;
+  optional string cursor = 2;
+}
+
+message PaginationOut {
+  optional string next_cursor = 1;
+  bool has_more = 2;
 }
 
 message DateTime {

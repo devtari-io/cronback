@@ -6,6 +6,7 @@ use serde_with::{serde_as, skip_serializing_none};
 use validator::Validate;
 
 #[serde_as]
+#[skip_serializing_none]
 #[derive(
     IntoProto,
     FromProto,
@@ -18,7 +19,6 @@ use validator::Validate;
     PartialEq,
 )]
 #[proto(target = "proto::trigger_proto::Payload")]
-#[skip_serializing_none]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct Payload {

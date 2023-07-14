@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use dto::{FromProto, IntoProto};
-use lib::types::{ProjectId, RunId, TriggerId};
+use lib::types::RunId;
 use proto::scheduler_proto;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none};
@@ -25,9 +25,9 @@ pub enum RunStatus {
     Failed,
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-#[skip_serializing_none]
 #[serde(default)]
 pub(crate) struct RunTrigger {
     pub mode: RunMode,
@@ -41,10 +41,6 @@ pub(crate) struct RunTrigger {
 pub struct Run {
     #[proto(required)]
     pub id: RunId,
-    #[proto(required, name = "trigger_id")]
-    pub trigger: TriggerId,
-    #[proto(required, name = "project_id")]
-    pub project: ProjectId,
     #[proto(required)]
     pub created_at: DateTime<Utc>,
     pub payload: Option<Payload>,

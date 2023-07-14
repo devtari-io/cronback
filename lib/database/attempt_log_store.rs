@@ -1,15 +1,10 @@
 use async_trait::async_trait;
-use sea_orm::{
-    ActiveModelTrait,
-    ColumnTrait,
-    EntityTrait,
-    QueryFilter,
-    QueryOrder,
-    QuerySelect,
-};
+use proto::common::PaginationIn;
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter};
 
 use super::errors::DatabaseError;
 use super::models::attempts;
+use super::pagination::{PaginatedResponse, PaginatedSelect};
 use crate::database::models::prelude::Attempts;
 use crate::database::Database;
 use crate::model::ModelId;
@@ -28,10 +23,8 @@ pub trait AttemptLogStore {
         &self,
         project: &ProjectId,
         id: &RunId,
-        before: Option<AttemptLogId>,
-        after: Option<AttemptLogId>,
-        limit: usize,
-    ) -> Result<Vec<ActionAttemptLog>, AttemptLogStoreError>;
+        pagination: PaginationIn,
+    ) -> Result<PaginatedResponse<ActionAttemptLog>, AttemptLogStoreError>;
 
     async fn get_attempt(
         &self,
@@ -65,26 +58,16 @@ impl AttemptLogStore for SqlAttemptLogStore {
         &self,
         project: &ProjectId,
         id: &RunId,
-        before: Option<AttemptLogId>,
-        after: Option<AttemptLogId>,
-        limit: usize,
-    ) -> Result<Vec<ActionAttemptLog>, AttemptLogStoreError> {
-        let mut query = Attempts::find()
+        pagination: PaginationIn,
+    ) -> Result<PaginatedResponse<ActionAttemptLog>, AttemptLogStoreError> {
+        let query = Attempts::find()
             .filter(attempts::Column::RunId.eq(id.value()))
             .filter(attempts::Column::ProjectId.eq(project.value()))
-            .order_by_desc(attempts::Column::Id)
-            .limit(Some(limit as u64));
-        if let Some(before) = before {
-            query = query.filter(attempts::Column::Id.gt(before.value()));
-        }
-
-        if let Some(after) = after {
-            query = query.filter(attempts::Column::Id.lt(after.value()));
-        }
+            .with_pagination(&pagination);
 
         let res = query.all(&self.db.orm).await?;
 
-        Ok(res)
+        Ok(PaginatedResponse::paginate(res, &pagination))
     }
 
     async fn get_attempt(
@@ -105,6 +88,7 @@ mod tests {
     use std::time::Duration;
 
     use chrono::{Timelike, Utc};
+    use proto::common::PaginationIn;
 
     use super::{AttemptLogStore, SqlAttemptLogStore};
     use crate::database::Database;
@@ -194,19 +178,20 @@ mod tests {
 
         // Test get all attempts for a certain run
         let mut results = store
-            .get_attempts_for_run(&project, &inv1, None, None, 100)
+            .get_attempts_for_run(&project, &inv1, PaginationIn::default())
             .await?;
         let mut expected = vec![a1, a3];
         expected.sort_by(|a, b| a.id.cmp(&b.id));
-        results.sort_by(|a, b| a.id.cmp(&b.id));
+        results.data.sort_by(|a, b| a.id.cmp(&b.id));
 
-        assert_eq!(results, expected);
+        assert_eq!(results.data, expected);
 
         // Test get all attempts for a certain run with a wrong project
         assert_eq!(
             store
-                .get_attempts_for_run(&project2, &inv1, None, None, 100)
-                .await?,
+                .get_attempts_for_run(&project2, &inv1, PaginationIn::default())
+                .await?
+                .data,
             vec![]
         );
 
