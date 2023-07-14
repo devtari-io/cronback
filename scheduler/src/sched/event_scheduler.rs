@@ -258,11 +258,10 @@ impl EventScheduler {
         Ok(reply)
     }
 
-    #[tracing::instrument(skip_all)]
     pub async fn install_trigger(
         &self,
         project: ValidShardedId<ProjectId>,
-        install_trigger: InstallTriggerRequest,
+        mut install_trigger: InstallTriggerRequest,
     ) -> Result<InstallTriggerResponse, TriggerError> {
         // If we have an Id already, we must allow updates.
         if install_trigger.id.is_some() && install_trigger.fail_if_exists {
@@ -270,6 +269,30 @@ impl EventScheduler {
                 install_trigger.id.unwrap().into(),
             ));
         }
+
+        // Reset remaining if it was set.
+        // TODO: When updating, allow the user to express their intent to
+        // whether they want to reset the remaining or not.
+        if let Some(schedule) = install_trigger.schedule.as_mut() {
+            // the inner .schedule must be set at this point.
+            // The spinner will update `remaining` to the accurate value as soon
+            // as it runs.
+            let schedule = schedule.schedule.as_mut().unwrap();
+            match schedule {
+                | proto::trigger_proto::schedule::Schedule::Recurring(r)
+                    if r.limit.is_some() =>
+                {
+                    r.remaining = r.limit;
+                }
+                | proto::trigger_proto::schedule::Schedule::Recurring(r) => {
+                    r.remaining = None;
+                }
+                | proto::trigger_proto::schedule::Schedule::RunAt(r) => {
+                    r.remaining = Some(r.timepoints.len() as u64);
+                }
+            };
+        }
+
         // ** Are we installing new or updating an existing trigger? **
         //
         // find the existing trigger by id

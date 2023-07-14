@@ -361,11 +361,7 @@ impl TriggerFutureTicks {
                 } else {
                     cron_schedule.upcoming_owned(tz).peekable()
                 };
-                let remaining = if cron.limit > 0 {
-                    Some(cron.remaining)
-                } else {
-                    None
-                };
+                let remaining = cron.remaining.or(cron.limit);
                 Ok(TriggerFutureTicks::CronPattern {
                     next_ticks,
                     remaining,
@@ -499,10 +495,10 @@ impl ActiveTrigger {
         let schedule = self.inner.schedule.as_mut().unwrap();
         match schedule {
             | Schedule::Recurring(cron) => {
-                cron.remaining = self.ticks.remaining().unwrap_or(0);
+                cron.remaining = self.ticks.remaining();
             }
             | Schedule::RunAt(run_at) => {
-                run_at.remaining = self.ticks.remaining().unwrap_or(0);
+                run_at.remaining = self.ticks.remaining();
             }
         };
         res
@@ -529,8 +525,8 @@ mod tests {
 
     use lib::timeutil::parse_iso8601;
     use lib::types::{
-        Cron,
         ProjectId,
+        Recurring,
         RunAt,
         Schedule,
         Status,
@@ -540,21 +536,22 @@ mod tests {
 
     use super::*;
 
-    fn create_cron_schedule(pattern: &str, cron_events_limit: u64) -> Schedule {
-        Schedule::Recurring(Cron {
+    fn create_cron_schedule(
+        pattern: &str,
+        cron_events_limit: Option<u64>,
+    ) -> Schedule {
+        Schedule::Recurring(Recurring {
             cron: Some(pattern.into()),
             timezone: "Europe/London".into(),
             limit: cron_events_limit,
-            remaining: cron_events_limit,
+            remaining: None,
         })
     }
 
     fn create_run_at(timepoints: Vec<DateTime<Tz>>) -> Schedule {
-        let remaining = timepoints.len() as u64;
-
         Schedule::RunAt(RunAt {
             timepoints,
-            remaining,
+            remaining: None,
         })
     }
 
@@ -580,7 +577,7 @@ mod tests {
     #[test]
     fn future_ticks_parsing_cron() -> Result<(), TriggerError> {
         let cron_pattern = "0 5 * * * *"; // fifth minute of every hour
-        let schedule = create_cron_schedule(cron_pattern, 0);
+        let schedule = create_cron_schedule(cron_pattern, None);
 
         let mut result = TriggerFutureTicks::from_schedule(&schedule, None)?;
         assert!(matches!(result, TriggerFutureTicks::CronPattern { .. }));
@@ -606,7 +603,7 @@ mod tests {
         // point. FIXME: This will fail soon, see https://github.com/zslayton/cron/issues/97
 
         let cron_pattern = "0 5 4 2 6 * 2040"; // fifth minute of every hour
-        let schedule = create_cron_schedule(cron_pattern, 4);
+        let schedule = create_cron_schedule(cron_pattern, Some(4));
 
         let mut result = TriggerFutureTicks::from_schedule(&schedule, None)?;
         assert!(matches!(result, TriggerFutureTicks::CronPattern { .. }));
@@ -659,7 +656,7 @@ mod tests {
 
     #[test]
     fn temporal_state_advance() -> Result<(), TriggerError> {
-        let cron = create_cron_schedule("* * * * * *", 0);
+        let cron = create_cron_schedule("* * * * * *", None);
         let trigger = create_trigger(cron);
         let trigger_id = trigger.id.clone();
         let mut map = ActiveTriggerMap::default();

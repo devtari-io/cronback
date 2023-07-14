@@ -3,13 +3,13 @@ use proto::{attempt_proto, invocation_proto, trigger_proto, webhook_proto};
 use super::{
     AttemptDetails,
     AttemptStatus,
-    Cron,
     Emit,
     EmitAttemptLog,
     HttpMethod,
     Invocation,
     InvocationStatus,
     Payload,
+    Recurring,
     RetryConfig,
     RunAt,
     Schedule,
@@ -36,8 +36,6 @@ impl From<Trigger> for trigger_proto::Trigger {
             schedule: value.schedule.map(|s| s.into()),
             emit: value.emit.into_iter().map(|e| e.into()).collect(),
             status: value.status.into(),
-            on_success: None,
-            on_failure: None,
         }
     }
 }
@@ -73,8 +71,8 @@ impl From<Payload> for trigger_proto::Payload {
 impl From<Schedule> for trigger_proto::Schedule {
     fn from(value: Schedule) -> Self {
         let schedule = match value {
-            | Schedule::Recurring(cron) => {
-                trigger_proto::schedule::Schedule::Cron(cron.into())
+            | Schedule::Recurring(recurring) => {
+                trigger_proto::schedule::Schedule::Recurring(recurring.into())
             }
             | Schedule::RunAt(run_at) => {
                 trigger_proto::schedule::Schedule::RunAt(run_at.into())
@@ -86,8 +84,8 @@ impl From<Schedule> for trigger_proto::Schedule {
     }
 }
 
-impl From<Cron> for trigger_proto::Cron {
-    fn from(value: Cron) -> Self {
+impl From<Recurring> for trigger_proto::Recurring {
+    fn from(value: Recurring) -> Self {
         Self {
             cron: value.cron.unwrap(),
             timezone: value.timezone,
@@ -100,7 +98,7 @@ impl From<Cron> for trigger_proto::Cron {
 impl From<RunAt> for trigger_proto::RunAt {
     fn from(value: RunAt) -> Self {
         Self {
-            run_at: value
+            timepoints: value
                 .timepoints
                 .into_iter()
                 .map(|d| to_iso8601(&d))

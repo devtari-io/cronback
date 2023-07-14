@@ -18,30 +18,20 @@ enum TriggerStatus {
   CANCELLED = 5;
 }
 
-message Cron {
+message Recurring {
   string cron = 1;
   string timezone = 2;
   // The number of times this trigger should run. A value of 0, means that it never expires
-  uint64 limit = 3;
-  uint64 remaining = 4;
+  // output only
+  optional uint64 limit = 3;
+  // output only
+  optional uint64 remaining = 4;
 }
 
 enum RetryPolicy {
   RetryPolicy_UNKNOWN = 0;
   SIMPLE = 1;
   EXPONENTIAL = 2;
-}
-
-enum NotificationType {
-  Notifications_UNKNOWN = 0;
-  SLACK = 1;
-}
-
-message OnStatusHandler {
-  // TODO: Needs revision
-  repeated NotificationType notifications = 1;
-  // A value of zero means that it doesn't get auto cancelled
-  int32 auto_cancel_after = 2;
 }
 
 message Payload {
@@ -58,12 +48,13 @@ message Emit {
 }
 
 message RunAt {
-  repeated string run_at = 1;
-  uint64 remaining = 2;
+  repeated string timepoints = 1;
+  // output only
+  optional uint64 remaining = 2;
 }
 message Schedule {
   oneof schedule {
-    Cron cron = 1;
+    Recurring recurring = 1;
     // timepoint defined in iso 8601 format
     RunAt run_at = 2;
   }
@@ -77,13 +68,12 @@ message Trigger {
   string name = 4;
   optional string description = 5;
   string created_at = 6;
+  // output only
   optional string updated_at = 7;
   repeated Emit emit = 8;
   Payload payload = 9;
   Schedule schedule = 10;
   TriggerStatus status = 11;
-  OnStatusHandler on_success = 12;
-  OnStatusHandler on_failure = 13;
 }
 
 message TriggerManifest {

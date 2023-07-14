@@ -162,7 +162,7 @@ impl Display for Status {
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]
 pub enum Schedule {
-    Recurring(Cron),
+    Recurring(Recurring),
     RunAt(RunAt),
 }
 
@@ -185,8 +185,8 @@ pub struct RunAt {
     )]
     #[serde(with = "iso8601_dateformat_vec_serde")]
     pub timepoints: Vec<DateTime<Tz>>,
-    // TODO: Reject if set through the API.
-    pub remaining: u64,
+    // Ignored if set through the API.
+    pub remaining: Option<u64>,
 }
 
 #[skip_serializing_none]
@@ -194,24 +194,25 @@ pub struct RunAt {
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, PartialEq)]
 #[serde(default)]
 #[serde(deny_unknown_fields)]
-pub struct Cron {
+pub struct Recurring {
     #[validate(custom = "validate_cron", required)]
     pub cron: Option<String>,
 
     #[validate(custom = "validate_timezone")]
     pub timezone: String,
-    pub limit: u64,
-    // TODO: Reject if set through the API.
-    pub remaining: u64,
+    #[validate(range(min = 1))]
+    pub limit: Option<u64>,
+    // Ignored if set through the API.
+    pub remaining: Option<u64>,
 }
 
-impl Default for Cron {
+impl Default for Recurring {
     fn default() -> Self {
         Self {
             cron: None,
             timezone: "Etc/UTC".to_owned(),
-            limit: 0,
-            remaining: 0,
+            limit: None,
+            remaining: None,
         }
     }
 }

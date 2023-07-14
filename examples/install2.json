@@ -5,7 +5,7 @@
   },
   "emit": {
       "url": "http://localhost:3000/emit",
-      "timeout_s": 400,
+      "timeout_s": 20,
       "retry": {
         "delay_s": 100
       }

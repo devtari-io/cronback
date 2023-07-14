@@ -109,8 +109,8 @@ impl From<trigger_proto::Emit> for Emit {
 impl From<trigger_proto::Schedule> for Schedule {
     fn from(value: trigger_proto::Schedule) -> Self {
         match value.schedule.unwrap() {
-            | trigger_proto::schedule::Schedule::Cron(cron) => {
-                Self::Recurring(cron.into())
+            | trigger_proto::schedule::Schedule::Recurring(recurring) => {
+                Self::Recurring(recurring.into())
             }
             | trigger_proto::schedule::Schedule::RunAt(run_at) => {
                 Self::RunAt(run_at.into())
@@ -119,8 +119,8 @@ impl From<trigger_proto::Schedule> for Schedule {
     }
 }
 
-impl From<trigger_proto::Cron> for super::Cron {
-    fn from(value: trigger_proto::Cron) -> Self {
+impl From<trigger_proto::Recurring> for super::Recurring {
+    fn from(value: trigger_proto::Recurring) -> Self {
         Self {
             cron: Some(value.cron),
             timezone: value.timezone,
@@ -134,7 +134,7 @@ impl From<trigger_proto::RunAt> for super::RunAt {
     fn from(value: trigger_proto::RunAt) -> Self {
         Self {
             timepoints: value
-                .run_at
+                .timepoints
                 .into_iter()
                 .map(|d| parse_iso8601(&d).unwrap())
                 .collect(),

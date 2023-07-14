@@ -6,12 +6,7 @@ use lib::service::ServiceContext;
 use lib::shutdown::Shutdown;
 use lib::types::*;
 use proto::scheduler_proto::{GetTriggerRequest, InstallTriggerRequest};
-use proto::trigger_proto::{
-    Cron,
-    Schedule,
-    TriggerStatus,
-    {self},
-};
+use proto::trigger_proto::{self, Schedule, TriggerStatus};
 use scheduler::test_helpers;
 use tonic::Request;
 
@@ -41,12 +36,14 @@ async fn install_trigger_valid_test() {
             body: "Hello World".into(),
         }),
         schedule: Some(Schedule {
-            schedule: Some(trigger_proto::schedule::Schedule::Cron(Cron {
-                cron: "0 * * * * *".to_owned(),
-                timezone: "Europe/London".into(),
-                limit: 4,
-                remaining: 0, // will be overridden by the server.
-            })),
+            schedule: Some(trigger_proto::schedule::Schedule::Recurring(
+                trigger_proto::Recurring {
+                    cron: "0 * * * * *".to_owned(),
+                    timezone: "Europe/London".into(),
+                    limit: Some(4),
+                    remaining: None,
+                },
+            )),
         }),
     };
     let request_future = async {
@@ -108,12 +105,14 @@ async fn install_trigger_reference_test() {
             body: "Hello World".into(),
         }),
         schedule: Some(Schedule {
-            schedule: Some(trigger_proto::schedule::Schedule::Cron(Cron {
-                cron: "0 * * * * *".to_owned(),
-                timezone: "Europe/London".into(),
-                limit: 4,
-                remaining: 0, // will be overridden by the server.
-            })),
+            schedule: Some(trigger_proto::schedule::Schedule::Recurring(
+                trigger_proto::Recurring {
+                    cron: "0 * * * * *".to_owned(),
+                    timezone: "Europe/London".into(),
+                    limit: Some(4),
+                    remaining: None,
+                },
+            )),
         }),
     };
     let request_future = async {
@@ -144,12 +143,14 @@ async fn install_trigger_reference_test() {
                 body: "Hello World".into(),
             }),
             schedule: Some(Schedule {
-                schedule: Some(trigger_proto::schedule::Schedule::Cron(Cron {
-                    cron: "0 * * * * *".to_owned(),
-                    timezone: "Europe/London".into(),
-                    limit: 4,
-                    remaining: 0, // will be overridden by the server.
-                })),
+                schedule: Some(trigger_proto::schedule::Schedule::Recurring(
+                    trigger_proto::Recurring {
+                        cron: "0 * * * * *".to_owned(),
+                        timezone: "Europe/London".into(),
+                        limit: Some(4),
+                        remaining: None,
+                    },
+                )),
             }),
         };
 
