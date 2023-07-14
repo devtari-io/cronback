@@ -39,7 +39,7 @@ message InstallTriggerRequest {
   /// [Future] User supplied identifier, unique per owner account
   optional string reference = 5;
   optional string description = 6;
-  trigger_proto.Emit emit = 7;
+  trigger_proto.Action action = 7;
   optional trigger_proto.Payload payload = 8;
   trigger_proto.Schedule schedule = 9;
 }

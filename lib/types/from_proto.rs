@@ -4,10 +4,10 @@ use chrono::{DateTime, Utc};
 use proto::{attempt_proto, invocation_proto, trigger_proto, webhook_proto};
 
 use super::{
+    Action,
+    ActionAttemptLog,
     AttemptDetails,
     AttemptStatus,
-    Emit,
-    EmitAttemptLog,
     ExponentialBackoffRetry,
     HttpMethod,
     Invocation,
@@ -43,7 +43,7 @@ impl From<trigger_proto::Trigger> for Trigger {
             reference: value.reference,
             payload: value.payload.map(|p| p.into()),
             schedule: value.schedule.map(|s| s.into()),
-            emit: value.emit.unwrap().into(),
+            action: value.action.unwrap().into(),
             status: value.status.into(),
             // We are not supposed to send this to other services, it is
             // internal.
@@ -67,7 +67,7 @@ impl From<trigger_proto::TriggerManifest> for TriggerManifest {
                     .unwrap()
                     .with_timezone(&Utc)
             }),
-            emit: value.emit.unwrap().into(),
+            action: value.action.unwrap().into(),
             reference: value.reference,
             schedule: value.schedule.map(|s| s.into()),
             status: value.status.into(),
@@ -94,10 +94,10 @@ impl From<webhook_proto::Webhook> for Webhook {
     }
 }
 
-impl From<trigger_proto::Emit> for Emit {
-    fn from(value: trigger_proto::Emit) -> Self {
-        match value.emit.unwrap() {
-            | trigger_proto::emit::Emit::Webhook(webhook) => {
+impl From<trigger_proto::Action> for Action {
+    fn from(value: trigger_proto::Action) -> Self {
+        match value.action.unwrap() {
+            | trigger_proto::action::Action::Webhook(webhook) => {
                 Self::Webhook(webhook.into())
             }
         }
@@ -235,8 +235,8 @@ impl From<i32> for AttemptStatus {
     }
 }
 
-impl From<attempt_proto::EmitAttemptLog> for EmitAttemptLog {
-    fn from(value: attempt_proto::EmitAttemptLog) -> Self {
+impl From<attempt_proto::ActionAttemptLog> for ActionAttemptLog {
+    fn from(value: attempt_proto::ActionAttemptLog) -> Self {
         Self {
             id: value.id.into(),
             invocation: value.invocation_id.into(),
@@ -279,7 +279,7 @@ impl From<invocation_proto::Invocation> for Invocation {
             project: ValidShardedId::from_string_unsafe(value.project_id),
             created_at: parse_iso8601(&value.created_at).unwrap(),
             payload: value.payload.map(|p| p.into()),
-            emit: value.emit.unwrap().into(),
+            action: value.action.unwrap().into(),
             status: value.status.into(),
         }
     }

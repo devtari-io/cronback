@@ -252,7 +252,14 @@ mod tests {
     use crate::database::trigger_store::TriggerStoreError;
     use crate::database::Database;
     use crate::model::ValidShardedId;
-    use crate::types::{Emit, ProjectId, Status, Trigger, TriggerId, Webhook};
+    use crate::types::{
+        Action,
+        ProjectId,
+        Status,
+        Trigger,
+        TriggerId,
+        Webhook,
+    };
 
     fn build_trigger(
         name: &str,
@@ -273,7 +280,7 @@ mod tests {
             updated_at: None,
             payload: None,
             schedule: None,
-            emit: Emit::Webhook(Webhook {
+            action: Action::Webhook(Webhook {
                 _kind: Default::default(),
                 url: Some("http://test".to_string()),
                 http_method: crate::types::HttpMethod::Get,

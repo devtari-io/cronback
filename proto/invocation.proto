@@ -11,7 +11,7 @@ message Invocation {
   string project_id = 3;
   string created_at = 4;
   trigger_proto.Payload payload = 5;
-  trigger_proto.Emit emit = 6;
+  trigger_proto.Action action = 6;
   InvocationStatus status = 7;
 }
 

@@ -11,7 +11,7 @@ use super::helpers::{
 };
 use crate::database::Database;
 use crate::model::ModelId;
-use crate::types::{AttemptLogId, EmitAttemptLog, InvocationId, ProjectId};
+use crate::types::{ActionAttemptLog, AttemptLogId, InvocationId, ProjectId};
 
 #[derive(Iden)]
 enum AttemptsIden {
@@ -25,7 +25,7 @@ pub type AttemptLogStoreError = DatabaseError;
 pub trait AttemptLogStore {
     async fn log_attempt(
         &self,
-        attempt: &EmitAttemptLog,
+        attempt: &ActionAttemptLog,
     ) -> Result<(), AttemptLogStoreError>;
 
     async fn get_attempts_for_invocation(
@@ -35,13 +35,13 @@ pub trait AttemptLogStore {
         before: Option<AttemptLogId>,
         after: Option<AttemptLogId>,
         limit: usize,
-    ) -> Result<Vec<EmitAttemptLog>, AttemptLogStoreError>;
+    ) -> Result<Vec<ActionAttemptLog>, AttemptLogStoreError>;
 
     async fn get_attempt(
         &self,
         project: &ProjectId,
         id: &AttemptLogId,
-    ) -> Result<Option<EmitAttemptLog>, AttemptLogStoreError>;
+    ) -> Result<Option<ActionAttemptLog>, AttemptLogStoreError>;
 }
 
 pub struct SqlAttemptLogStore {
@@ -96,7 +96,7 @@ impl SqlAttemptLogStore {
 impl AttemptLogStore for SqlAttemptLogStore {
     async fn log_attempt(
         &self,
-        attempt: &EmitAttemptLog,
+        attempt: &ActionAttemptLog,
     ) -> Result<(), AttemptLogStoreError> {
         insert_query(&self.db, AttemptsIden::Attempts, &attempt.id, attempt)
             .await
@@ -109,7 +109,7 @@ impl AttemptLogStore for SqlAttemptLogStore {
         before: Option<AttemptLogId>,
         after: Option<AttemptLogId>,
         limit: usize,
-    ) -> Result<Vec<EmitAttemptLog>, AttemptLogStoreError> {
+    ) -> Result<Vec<ActionAttemptLog>, AttemptLogStoreError> {
         paginated_query(
             &self.db,
             AttemptsIden::Attempts,
@@ -127,7 +127,7 @@ impl AttemptLogStore for SqlAttemptLogStore {
         &self,
         project_id: &ProjectId,
         id: &AttemptLogId,
-    ) -> Result<Option<EmitAttemptLog>, AttemptLogStoreError> {
+    ) -> Result<Option<ActionAttemptLog>, AttemptLogStoreError> {
         get_by_id_query(&self.db, AttemptsIden::Attempts, project_id, id).await
     }
 }
@@ -143,8 +143,8 @@ mod tests {
     use crate::database::Database;
     use crate::model::ValidShardedId;
     use crate::types::{
+        ActionAttemptLog,
         AttemptLogId,
-        EmitAttemptLog,
         InvocationId,
         ProjectId,
         TriggerId,
@@ -154,12 +154,12 @@ mod tests {
     fn build_attempt(
         project: &ValidShardedId<ProjectId>,
         invocation_id: &InvocationId,
-    ) -> EmitAttemptLog {
+    ) -> ActionAttemptLog {
         // Serialization drops nanoseconds, so to let's zero it here for easier
         // equality comparisons
         let now = Utc::now().with_timezone(&UTC).with_nanosecond(0).unwrap();
 
-        EmitAttemptLog {
+        ActionAttemptLog {
             id: AttemptLogId::generate(project).into(),
             invocation: invocation_id.clone(),
             trigger: TriggerId::generate(project).into(),

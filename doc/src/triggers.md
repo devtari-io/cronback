@@ -2,7 +2,6 @@
 
 Endpoint: GET `/v1/triggers/:id`
 
-
 ```javascript
 {
   "id": "trg_2345923hbdhbfiqwerbwer",
@@ -10,9 +9,9 @@ Endpoint: GET `/v1/triggers/:id`
   "reference_id": "user-supplied-id",
   // optional
   "name": "Remind user to finish sign-up",
-  "description": "Something something something", 
+  "description": "Something something something",
   "created_at": "1997-07-16T19:20:30.45Z",
-  "emit": [
+  "action": [
       {
         "webhook": {
           "url": "https://google.com/something",
@@ -39,7 +38,7 @@ Endpoint: GET `/v1/triggers/:id`
       "cron": "0 * * * *", // mut. exl. with run_at
       "cron_timezone": "Europe/London",
       // [optional, no limit by default or if set to 0]
-      "cron_events_limit": "1", 
+      "cron_events_limit": "1",
     },
     // OR
     "run_at": [
@@ -62,8 +61,8 @@ Endpoint: GET `/v1/triggers/:id`
 /**
  *  curl https://api.cronback.dev/v1/triggers \
  *  -H "Authorization: Bearer <token>"\
- *  -d name="something something" 
- *  -d endpoint="https://example.com:9000/myendpoint" 
+ *  -d name="something something"
+ *  -d endpoint="https://example.com:9000/myendpoint"
  *  -d payload="{\"key\": \"value\"}"
  *  -d content_type="application/json; charset=utf8"
  *  -d cron="*/2 * * * *" # every 2 minutes
@@ -86,4 +85,3 @@ Endpoint: GET `/v1/triggers/:id`
   "status": "active"
 }
 ```
-

@@ -3,7 +3,7 @@ use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none};
 
-use super::{Emit, InvocationId, Payload, ProjectId, TriggerId};
+use super::{Action, InvocationId, Payload, ProjectId, TriggerId};
 use crate::model::ValidShardedId;
 use crate::timeutil::iso8601_dateformat_serde;
 
@@ -17,7 +17,7 @@ pub struct Invocation {
     #[serde(with = "iso8601_dateformat_serde")]
     pub created_at: DateTime<Tz>,
     pub payload: Option<Payload>,
-    pub emit: Emit,
+    pub action: Action,
     pub status: InvocationStatus,
 }
 

@@ -207,7 +207,7 @@ impl EventScheduler {
                 install_cloned.reference,
                 install_cloned.payload.map(Into::into),
                 install_cloned.schedule.map(Into::into),
-                install_cloned.emit.unwrap().into(),
+                install_cloned.action.unwrap().into(),
             );
             if updated_trigger.schedule.is_some() {
                 Some(w.add_or_update(
@@ -238,7 +238,7 @@ impl EventScheduler {
                 install_trigger.reference,
                 install_trigger.payload.map(|p| p.into()),
                 install_trigger.schedule.map(|s| s.into()),
-                install_trigger.emit.unwrap().into(),
+                install_trigger.action.unwrap().into(),
             );
             updated_trigger = Some(existing_trigger);
         }
@@ -321,7 +321,7 @@ impl EventScheduler {
             description: install_trigger.description,
             created_at: Utc::now(),
             updated_at: None,
-            emit: install_trigger.emit.unwrap().into(),
+            action: install_trigger.action.unwrap().into(),
             payload: install_trigger.payload.map(|p| p.into()),
             schedule: install_trigger.schedule.map(|s| s.into()),
             status: if is_scheduled {

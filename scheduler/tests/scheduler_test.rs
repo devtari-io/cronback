@@ -30,8 +30,8 @@ async fn install_trigger_valid_test() {
         reference: None,
         name: "sample-trigger".to_owned(),
         description: None,
-        emit: Some(trigger_proto::Emit {
-            emit: Some(trigger_proto::emit::Emit::Webhook(
+        action: Some(trigger_proto::Action {
+            action: Some(trigger_proto::action::Action::Webhook(
                 webhook_proto::Webhook {
                     url: "http://google.com".to_owned(),
                     http_method: webhook_proto::HttpMethod::Get.into(),
@@ -108,8 +108,8 @@ async fn install_trigger_reference_test() {
         reference: Some("some-meaningful-reference".to_owned()),
         name: "sample-trigger".to_owned(),
         description: None,
-        emit: Some(trigger_proto::Emit {
-            emit: Some(trigger_proto::emit::Emit::Webhook(
+        action: Some(trigger_proto::Action {
+            action: Some(trigger_proto::action::Action::Webhook(
                 webhook_proto::Webhook {
                     url: "http://google.com".to_owned(),
                     http_method: webhook_proto::HttpMethod::Get.into(),
@@ -155,8 +155,8 @@ async fn install_trigger_reference_test() {
             reference: Some("some-meaningful-reference".to_owned()),
             name: "sample-trigger".to_owned(),
             description: Some("new description is here".to_owned()),
-            emit: Some(trigger_proto::Emit {
-                emit: Some(trigger_proto::emit::Emit::Webhook(
+            action: Some(trigger_proto::Action {
+                action: Some(trigger_proto::action::Action::Webhook(
                     webhook_proto::Webhook {
                         url: "http://google.com".to_owned(),
                         http_method: webhook_proto::HttpMethod::Get.into(),
@@ -206,8 +206,8 @@ async fn install_trigger_reference_test() {
             reference: None,
             name: "sample-trigger".to_owned(),
             description: None,
-            emit: Some(trigger_proto::Emit {
-                emit: Some(trigger_proto::emit::Emit::Webhook(
+            action: Some(trigger_proto::Action {
+                action: Some(trigger_proto::action::Action::Webhook(
                     webhook_proto::Webhook {
                         url: "http://google.com".to_owned(),
                         http_method: webhook_proto::HttpMethod::Get.into(),

@@ -3,13 +3,13 @@ use std::sync::Arc;
 use dispatcher_proto::DispatchMode;
 use lib::database::attempt_log_store::AttemptLogStore;
 use lib::database::invocation_store::{InvocationStore, InvocationStoreError};
-use lib::types::{Emit, Invocation, InvocationStatus};
+use lib::types::{Action, Invocation, InvocationStatus};
 use metrics::{decrement_gauge, increment_gauge};
 use proto::dispatcher_proto;
 use thiserror::Error;
 use tracing::error;
 
-use crate::emits;
+use crate::actions;
 
 #[derive(Error, Debug)]
 pub enum DispatcherManagerError {
@@ -87,9 +87,9 @@ impl InvocationJob {
 
         assert_eq!(self.invocation.status, InvocationStatus::Attempting);
 
-        let result = match &self.invocation.emit {
-            | Emit::Webhook(web) => {
-                let e = emits::webhook::WebhookEmitJob {
+        let result = match &self.invocation.action {
+            | Action::Webhook(web) => {
+                let e = actions::webhook::WebhookActionJob {
                     webhook: web.clone(),
                     payload: self.invocation.payload.clone(),
                     invocation_id: self.invocation.id.clone(),
@@ -99,7 +99,7 @@ impl InvocationJob {
                 };
                 e.run().await
             }
-            | Emit::Event(_) => unimplemented!(),
+            | Action::Event(_) => unimplemented!(),
         };
         self.invocation.status = result;
         if let Err(e) = self
@@ -109,7 +109,7 @@ impl InvocationJob {
         {
             error!(
                 "Failed to persist invocation status for invocation {} for \
-                 emit : {}",
+                 action : {}",
                 self.invocation.id, e
             );
         }

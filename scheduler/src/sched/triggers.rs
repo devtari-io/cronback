@@ -525,7 +525,7 @@ mod tests {
 
     use lib::timeutil::parse_iso8601;
     use lib::types::{
-        Emit,
+        Action,
         HttpMethod,
         ProjectId,
         Recurring,
@@ -569,7 +569,7 @@ mod tests {
             description: None,
             created_at: Utc::now(),
             updated_at: None,
-            emit: Emit::Webhook(Webhook {
+            action: Action::Webhook(Webhook {
                 _kind: Default::default(),
                 url: Some("http://google.com".to_owned()),
                 http_method: HttpMethod::Get,

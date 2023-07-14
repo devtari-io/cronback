@@ -196,7 +196,7 @@ mod tests {
     use crate::database::Database;
     use crate::model::ValidShardedId;
     use crate::types::{
-        Emit,
+        Action,
         Invocation,
         InvocationId,
         InvocationStatus,
@@ -218,7 +218,7 @@ mod tests {
             trigger: trigger_id.into(),
             project,
             created_at: now,
-            emit: Emit::Webhook(Webhook {
+            action: Action::Webhook(Webhook {
                 _kind: Default::default(),
                 url: Some("http://test".to_string()),
                 http_method: crate::types::HttpMethod::Get,

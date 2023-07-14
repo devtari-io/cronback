@@ -44,8 +44,8 @@ message Payload {
   bytes body = 3;
 }
 
-message Emit {
-  oneof emit {
+message Action {
+  oneof action {
     webhook_proto.Webhook webhook = 1;
     //Tunnel tunnel = 2;
   }
@@ -74,7 +74,7 @@ message Trigger {
   string created_at = 6;
   // output only
   optional string updated_at = 7;
-  Emit emit = 8;
+  Action action = 8;
   Payload payload = 9;
   Schedule schedule = 10;
   TriggerStatus status = 11;
@@ -89,7 +89,7 @@ message TriggerManifest {
   optional string description = 5;
   string created_at = 6;
   optional string updated_at = 7;
-  Emit emit = 8;
+  Action action = 8;
   Schedule schedule = 9;
   TriggerStatus status = 10;
   optional string last_invoked_at = 11;

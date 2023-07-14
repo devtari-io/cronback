@@ -7,10 +7,10 @@ use futures::FutureExt;
 use lib::database::attempt_log_store::AttemptLogStore;
 use lib::model::ValidShardedId;
 use lib::types::{
+    ActionAttemptLog,
     AttemptDetails,
     AttemptLogId,
     AttemptStatus,
-    EmitAttemptLog,
     HttpMethod,
     InvocationId,
     InvocationStatus,
@@ -39,7 +39,7 @@ fn to_reqwest_http_method(method: &HttpMethod) -> reqwest::Method {
     }
 }
 
-pub struct WebhookEmitJob {
+pub struct WebhookActionJob {
     pub invocation_id: InvocationId,
     pub trigger_id: TriggerId,
     pub project: ValidShardedId<ProjectId>,
@@ -50,7 +50,7 @@ pub struct WebhookEmitJob {
     pub attempt_store: Arc<dyn AttemptLogStore + Send + Sync>,
 }
 
-impl WebhookEmitJob {
+impl WebhookActionJob {
     #[tracing::instrument(skip_all, fields(
             invocation_id = %self.invocation_id,
             trigger_id = %self.trigger_id,
@@ -86,7 +86,7 @@ impl WebhookEmitJob {
                         )
                         .await;
 
-                        let attempt_log = EmitAttemptLog {
+                        let attempt_log = ActionAttemptLog {
                             id: attempt_id.clone().into(),
                             invocation: self.invocation_id.clone(),
                             trigger: self.trigger_id.clone(),

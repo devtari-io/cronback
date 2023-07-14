@@ -29,7 +29,7 @@ pub enum HttpMethod {
 #[serde(deny_unknown_fields)]
 pub struct Webhook {
     // allows an optional "type" field to be passed in. This enables other
-    // variants of emit to be differentiated.
+    // variants of action to be differentiated.
     #[serde(rename = "type")]
     _kind: MustBe!("webhook"),
     #[validate(required)]

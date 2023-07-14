@@ -46,7 +46,7 @@ impl Dispatcher for DispatcherAPIHandler {
             project,
             created_at: Utc::now().with_timezone(&UTC),
             payload: request.payload.map(|p| p.into()),
-            emit: request.emit.unwrap().into(),
+            action: request.action.unwrap().into(),
             status: lib::types::InvocationStatus::Attempting,
         };
 

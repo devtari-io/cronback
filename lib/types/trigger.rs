@@ -25,7 +25,7 @@ pub struct Trigger {
     pub reference: Option<String>,
     pub payload: Option<Payload>,
     pub schedule: Option<Schedule>,
-    pub emit: Emit,
+    pub action: Action,
     pub status: Status,
     pub last_invoked_at: Option<DateTime<Utc>>,
 }
@@ -43,7 +43,7 @@ impl Trigger {
             description: self.description,
             created_at: self.created_at,
             updated_at: self.updated_at,
-            emit: self.emit,
+            action: self.action,
             reference: self.reference,
             schedule: self.schedule,
             status: self.status,
@@ -59,7 +59,7 @@ impl Trigger {
             description: self.description.clone(),
             created_at: self.created_at,
             updated_at: self.updated_at,
-            emit: self.emit.clone(),
+            action: self.action.clone(),
             reference: self.reference.clone(),
             schedule: self.schedule.clone(),
             status: self.status.clone(),
@@ -74,7 +74,7 @@ impl Trigger {
         new_reference: Option<String>,
         new_payload: Option<Payload>,
         new_schedule: Option<Schedule>,
-        new_emit: Emit,
+        new_action: Action,
     ) {
         self.updated_at = Some(Utc::now());
 
@@ -83,7 +83,7 @@ impl Trigger {
         self.reference = new_reference;
         self.payload = new_payload;
         self.schedule = new_schedule;
-        self.emit = new_emit;
+        self.action = new_action;
         self.status = if self.schedule.is_some() {
             Status::Scheduled
         } else {
@@ -103,7 +103,7 @@ pub struct TriggerManifest {
     pub description: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: Option<DateTime<Utc>>,
-    pub emit: Emit,
+    pub action: Action,
     pub reference: Option<String>,
     pub schedule: Option<Schedule>,
     pub status: Status,
@@ -194,7 +194,7 @@ impl Default for Recurring {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 //#[serde(rename_all = "snake_case")]
 #[serde(untagged)]
-pub enum Emit {
+pub enum Action {
     Event(Event),
     Webhook(Webhook),
 }

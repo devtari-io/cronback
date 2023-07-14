@@ -6,9 +6,9 @@
     },
     "body": "{ \"name\": \"asoli\"}"
   },
-  "emit": {
+  "action": {
     "type": "webhook",
-    "url": "http://localhost:3000/emit",
+    "url": "http://localhost:3000/action",
     "timeout_s": 2
   }
 }

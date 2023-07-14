@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none};
 use validator::Validate;
 
-use super::{Emit, Payload, Schedule};
+use super::{Action, Payload, Schedule};
 
 #[serde_as]
 #[derive(Debug, Clone, Deserialize, Validate)]
@@ -28,7 +28,7 @@ pub(crate) struct InstallTriggerRequest {
     #[validate]
     pub schedule: Option<Schedule>,
     #[validate]
-    pub emit: Emit,
+    pub action: Action,
 }
 
 impl InstallTriggerRequest {
@@ -47,7 +47,7 @@ impl InstallTriggerRequest {
             description: self.description,
             reference: self.reference,
             payload: self.payload.map(Into::into),
-            emit: Some(self.emit.into()),
+            action: Some(self.action.into()),
             schedule: self.schedule.map(Into::into),
         }
     }
@@ -92,8 +92,8 @@ mod tests {
               "cron": "*/3 * * * * *",
               "limit": 5
             },
-            "emit": {
-              "url": "http://localhost:3000/emit",
+            "action": {
+              "url": "http://localhost:3000/action",
               "timeout_s": 10,
               "retry": {
                 "delay_s": 100

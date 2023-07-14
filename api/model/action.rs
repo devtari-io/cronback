@@ -8,10 +8,10 @@ use super::Webhook;
 
 #[derive(IntoProto, Debug, Clone, Serialize, Deserialize, PartialEq)]
 /// non_exhaustive because proto doesn't have Event yet.
-#[into_proto(into = "proto::trigger_proto::Emit", non_exhaustive)]
+#[into_proto(into = "proto::trigger_proto::Action", non_exhaustive)]
 #[serde(rename_all = "snake_case")]
 #[serde(untagged)]
-pub enum Emit {
+pub enum Action {
     #[into_proto(skip)]
     Event(Event),
     Webhook(Webhook),
@@ -27,11 +27,11 @@ pub struct Event {
 }
 
 /// --- Validators ---
-impl Validate for Emit {
+impl Validate for Action {
     fn validate(&self) -> Result<(), validator::ValidationErrors> {
         match self {
-            | Emit::Webhook(webhook) => webhook.validate(),
-            | Emit::Event(_) => Ok(()),
+            | Action::Webhook(webhook) => webhook.validate(),
+            | Action::Event(_) => Ok(()),
         }
     }
 }

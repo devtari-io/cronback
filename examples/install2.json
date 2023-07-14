@@ -1,14 +1,13 @@
 {
   "schedule": {
-      "cron": "*/3 * * * * *",
-      "limit": 5
+    "cron": "*/3 * * * * *",
+    "limit": 5
   },
-  "emit": {
-      "url": "http://localhost:3000/emit",
-      "timeout_s": 20,
-      "retry": {
-        "delay_s": 100
-      }
-
+  "action": {
+    "url": "http://localhost:3000/action",
+    "timeout_s": 20,
+    "retry": {
+      "delay_s": 100
     }
+  }
 }

@@ -1,10 +1,10 @@
 use proto::{attempt_proto, invocation_proto, trigger_proto, webhook_proto};
 
 use super::{
+    Action,
+    ActionAttemptLog,
     AttemptDetails,
     AttemptStatus,
-    Emit,
-    EmitAttemptLog,
     HttpMethod,
     Invocation,
     InvocationStatus,
@@ -32,7 +32,7 @@ impl From<Trigger> for trigger_proto::Trigger {
             reference: value.reference,
             payload: value.payload.map(|p| p.into()),
             schedule: value.schedule.map(|s| s.into()),
-            emit: Some(value.emit.into()),
+            action: Some(value.action.into()),
             status: value.status.into(),
         }
     }
@@ -47,7 +47,7 @@ impl From<TriggerManifest> for trigger_proto::TriggerManifest {
             description: value.description,
             created_at: value.created_at.to_rfc3339(),
             updated_at: value.updated_at.map(|s| s.to_rfc3339()),
-            emit: Some(value.emit.into()),
+            action: Some(value.action.into()),
             reference: value.reference,
             schedule: value.schedule.map(|s| s.into()),
             status: value.status.into(),
@@ -106,15 +106,17 @@ impl From<RunAt> for trigger_proto::RunAt {
     }
 }
 
-impl From<Emit> for trigger_proto::Emit {
-    fn from(value: Emit) -> Self {
-        let emit = match value {
-            | Emit::Webhook(webhook) => {
-                trigger_proto::emit::Emit::Webhook(webhook.into())
+impl From<Action> for trigger_proto::Action {
+    fn from(value: Action) -> Self {
+        let action = match value {
+            | Action::Webhook(webhook) => {
+                trigger_proto::action::Action::Webhook(webhook.into())
             }
-            | Emit::Event(_) => unimplemented!(),
+            | Action::Event(_) => unimplemented!(),
         };
-        trigger_proto::Emit { emit: Some(emit) }
+        trigger_proto::Action {
+            action: Some(action),
+        }
     }
 }
 
@@ -208,7 +210,7 @@ impl From<Invocation> for invocation_proto::Invocation {
             project_id: value.project.into(),
             created_at: to_iso8601(&value.created_at),
             payload: value.payload.map(|p| p.into()),
-            emit: Some(value.emit.into()),
+            action: Some(value.action.into()),
             status: value.status.into(),
         }
     }
@@ -216,8 +218,8 @@ impl From<Invocation> for invocation_proto::Invocation {
 
 // AttemptLog
 
-impl From<EmitAttemptLog> for attempt_proto::EmitAttemptLog {
-    fn from(value: EmitAttemptLog) -> Self {
+impl From<ActionAttemptLog> for attempt_proto::ActionAttemptLog {
+    fn from(value: ActionAttemptLog) -> Self {
         Self {
             id: value.id.into(),
             invocation_id: value.invocation.into(),

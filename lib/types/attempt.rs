@@ -12,7 +12,7 @@ use crate::timeutil::iso8601_dateformat_serde;
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct EmitAttemptLog {
+pub struct ActionAttemptLog {
     pub id: AttemptLogId,
     pub invocation: InvocationId,
     pub trigger: TriggerId,
