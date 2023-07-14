@@ -1,30 +1,30 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use clap::Parser;
-use cronback::client::AdminApiExt;
 use prettytable::{row, Table};
 
+use crate::admin::{AdminOptions, RunAdminCommand};
 use crate::args::CommonOptions;
-use crate::{emitln, RunCommand};
+use crate::emitln;
 
 #[derive(Clone, Debug, Parser)]
 pub struct List {}
 
 #[async_trait]
-impl RunCommand for List {
+impl RunAdminCommand for List {
     async fn run<
         A: tokio::io::AsyncWrite + Send + Sync + Unpin,
         B: tokio::io::AsyncWrite + Send + Sync + Unpin,
     >(
         &self,
         out: &mut tokio::io::BufWriter<A>,
-        err: &mut tokio::io::BufWriter<B>,
+        _err: &mut tokio::io::BufWriter<B>,
         common_options: &CommonOptions,
+        admin_options: &AdminOptions,
     ) -> Result<()> {
-        let client = common_options.new_client()?;
+        let client = admin_options.new_admin_client(&common_options)?;
 
-        let response = client.list_api_keys().await?;
-        common_options.show_meta(&response, out, err).await?;
+        let response = cronback::api_keys::list(&client).await?;
 
         let response = response.into_inner()?;
         // Print Table

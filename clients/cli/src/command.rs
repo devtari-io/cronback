@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use crate::args::CommonOptions;
 
 #[async_trait]
-pub trait RunCommand {
+pub trait Command {
     async fn run<
         A: tokio::io::AsyncWrite + Send + Sync + Unpin,
         B: tokio::io::AsyncWrite + Send + Sync + Unpin,

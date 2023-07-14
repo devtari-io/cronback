@@ -1,11 +1,11 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use clap::Parser;
-use cronback::client::AdminApiExt;
 use cronback_api_model::admin::APIKeyMetaData;
 
+use crate::admin::{AdminOptions, RunAdminCommand};
 use crate::args::CommonOptions;
-use crate::{emitln, RunCommand};
+use crate::emitln;
 
 #[derive(Clone, Debug, Parser)]
 pub struct Create {
@@ -14,23 +14,26 @@ pub struct Create {
 }
 
 #[async_trait]
-impl RunCommand for Create {
+impl RunAdminCommand for Create {
     async fn run<
         A: tokio::io::AsyncWrite + Send + Sync + Unpin,
         B: tokio::io::AsyncWrite + Send + Sync + Unpin,
     >(
         &self,
         out: &mut tokio::io::BufWriter<A>,
-        err: &mut tokio::io::BufWriter<B>,
+        _err: &mut tokio::io::BufWriter<B>,
         common_options: &CommonOptions,
+        admin_options: &AdminOptions,
     ) -> Result<()> {
-        let client = common_options.new_client()?;
+        let client = admin_options.new_admin_client(&common_options)?;
 
-        let response = client
-            .gen_api_key(&self.name, APIKeyMetaData::default())
-            .await?;
+        let response = cronback::api_keys::gen(
+            &client,
+            &self.name,
+            APIKeyMetaData::default(),
+        )
+        .await?;
 
-        common_options.show_meta(&response, out, err).await?;
         let response = response.into_inner()?;
 
         emitln!(

@@ -5,7 +5,7 @@ use clap_stdin::FileOrStdin;
 use tokio::io::AsyncWriteExt;
 
 use crate::args::CommonOptions;
-use crate::{confirm_or_abort, emitln, RunCommand};
+use crate::{confirm_or_abort, emitln, Command};
 
 #[derive(Clone, Debug, Parser)]
 pub struct Create {
@@ -18,14 +18,14 @@ pub struct Create {
 // 2. Interactive (prompt) [future]
 // 3. Provide a file with the trigger definition [now]
 #[async_trait]
-impl RunCommand for Create {
+impl Command for Create {
     async fn run<
         A: tokio::io::AsyncWrite + Send + Sync + Unpin,
         B: tokio::io::AsyncWrite + Send + Sync + Unpin,
     >(
         &self,
         out: &mut tokio::io::BufWriter<A>,
-        err: &mut tokio::io::BufWriter<B>,
+        _err: &mut tokio::io::BufWriter<B>,
         common_options: &CommonOptions,
     ) -> Result<()> {
         let json_raw: serde_json::Value = serde_json::from_str(&self.file)
@@ -50,8 +50,8 @@ impl RunCommand for Create {
         );
 
         let client = common_options.new_client()?;
-        let response = client.create_trigger_from_json(json_raw).await?;
-        common_options.show_meta(&response, out, err).await?;
+        let response =
+            cronback::triggers::create_from_json(&client, json_raw).await?;
 
         let response = response.into_inner();
         match response {

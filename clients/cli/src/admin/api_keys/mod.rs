@@ -1,8 +1,9 @@
 use anyhow::Result;
+use async_trait::async_trait;
 use clap::clap_derive::Parser;
 
+use super::{AdminOptions, RunAdminCommand};
 use crate::args::CommonOptions;
-use crate::RunCommand;
 
 mod create;
 mod list;
@@ -10,17 +11,18 @@ mod revoke;
 
 #[derive(Parser, Debug, Clone)]
 pub enum ApiKeysCommand {
-    /// List api keys
+    /// List API keys
     #[command(visible_alias = "ls")]
     List(list::List),
-    /// Create a new api key
+    /// Create a new API key
     Create(create::Create),
     /// Revokes an API key
     Revoke(revoke::Revoke),
 }
 
-impl ApiKeysCommand {
-    pub async fn run<
+#[async_trait]
+impl RunAdminCommand for ApiKeysCommand {
+    async fn run<
         A: tokio::io::AsyncWrite + Send + Sync + Unpin,
         B: tokio::io::AsyncWrite + Send + Sync + Unpin,
     >(
@@ -28,14 +30,17 @@ impl ApiKeysCommand {
         out: &mut tokio::io::BufWriter<A>,
         err: &mut tokio::io::BufWriter<B>,
         common_options: &CommonOptions,
+        admin_options: &AdminOptions,
     ) -> Result<()> {
         match self {
-            | ApiKeysCommand::List(c) => c.run(out, err, common_options).await,
+            | ApiKeysCommand::List(c) => {
+                c.run(out, err, common_options, admin_options).await
+            }
             | ApiKeysCommand::Create(c) => {
-                c.run(out, err, common_options).await
+                c.run(out, err, common_options, admin_options).await
             }
             | ApiKeysCommand::Revoke(c) => {
-                c.run(out, err, common_options).await
+                c.run(out, err, common_options, admin_options).await
             }
         }
     }

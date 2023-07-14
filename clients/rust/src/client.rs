@@ -1,28 +1,13 @@
 use async_trait::async_trait;
-use cronback_api_model::admin::{
-    APIKeyMetaData,
-    ApiKey,
-    CreateAPIKeyResponse,
-    CreateAPIkeyRequest,
-};
-use cronback_api_model::{GetRunResponse, Run, RunMode, RunTrigger};
-use http::Method;
-use reqwest::IntoUrl;
+use http::header::{self, USER_AGENT};
+use reqwest::{IntoUrl, RequestBuilder};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use tracing::log::info;
 use url::Url;
 
 use crate::constants::{BASE_URL_ENV, DEFAULT_BASE_URL};
-use crate::{
-    Error,
-    Paginated,
-    Pagination,
-    Response,
-    Result,
-    Trigger,
-    TriggersFilter,
-};
+use crate::{Error, Response, Result};
+
 /// An asynchronous client for a cronback API service.
 ///
 /// The client has various configuration options, but has reasonable defaults
@@ -38,6 +23,67 @@ use crate::{
 pub struct Client {
     http_client: reqwest::Client,
     config: ClientConfig,
+}
+
+#[async_trait]
+pub trait RequestRunner: Sync + Send {
+    fn prepare_request(
+        &self,
+        method: http::Method,
+        path: Url,
+    ) -> Result<RequestBuilder>;
+
+    fn make_url(&self, path: &str) -> Result<Url>;
+
+    fn prepare_request_with_body<B>(
+        &self,
+        method: http::Method,
+        path: Url,
+        body: B,
+    ) -> Result<RequestBuilder>
+    where
+        B: Serialize + std::fmt::Debug,
+    {
+        Ok(self.prepare_request(method, path)?.json(&body))
+    }
+
+    async fn process_response<T>(
+        &self,
+        response: reqwest::Response,
+    ) -> Result<Response<T>>
+    where
+        T: DeserializeOwned + Send,
+    {
+        Response::from_raw_response(response).await
+    }
+
+    async fn run<T>(
+        &self,
+        method: http::Method,
+        path: Url,
+    ) -> Result<Response<T>>
+    where
+        T: DeserializeOwned + Send,
+    {
+        let request = self.prepare_request(method, path)?;
+        let resp = request.send().await?;
+        self.process_response(resp).await
+    }
+
+    async fn run_with_body<T, B>(
+        &self,
+        method: http::Method,
+        path: Url,
+        body: B,
+    ) -> Result<Response<T>>
+    where
+        T: DeserializeOwned + Send,
+        B: Serialize + std::fmt::Debug + Send,
+    {
+        let request = self.prepare_request_with_body(method, path, body)?;
+        let resp = request.send().await?;
+        self.process_response(resp).await
+    }
 }
 
 /// A `ClientBuilder` is what should be used to construct a `Client` with custom
@@ -74,23 +120,45 @@ impl ClientBuilder {
         self
     }
 
+    #[cfg(feature = "admin")]
     /// If the secret_token is an admin key, the client will act on behalf of
     /// the project passed here.
     /// This method is for cronback admin use only. For normal users, the
     /// project id is infered from the secret token and this value is just
     /// ignored.
-    pub fn on_behalf_of(mut self, project_id: Option<String>) -> Self {
-        self.config.on_behalf_of = project_id;
+    pub fn on_behalf_of(mut self, project_id: String) -> Self {
+        self.config.on_behalf_of = Some(project_id);
         self
     }
 
     /// Construct cronback client.
     pub fn build(self) -> Result<Client> {
+        let user_agent = format!(
+            "rust-{}-{}-{}",
+            env!("CARGO_PKG_VERSION"),
+            std::env::consts::OS,
+            std::env::consts::ARCH,
+        );
+
+        let mut headers = header::HeaderMap::new();
+        headers.insert(
+            USER_AGENT,
+            header::HeaderValue::from_str(&user_agent).expect("User-Agent"),
+        );
+
+        if let Some(prj) = &self.config.on_behalf_of {
+            headers.insert(
+                "X-On-Behalf-Of",
+                header::HeaderValue::from_str(&prj).expect("X-On-Behalf-Of"),
+            );
+        }
+
         let http_client = match self.config.reqwest_client {
             | Some(c) => c,
             | None => {
                 reqwest::ClientBuilder::new()
                     .redirect(reqwest::redirect::Policy::none())
+                    .default_headers(headers)
                     .build()?
             }
         };
@@ -115,7 +183,6 @@ impl ClientBuilder {
                     .config
                     .secret_token
                     .ok_or(Error::SecretTokenRequired)?,
-                on_behalf_of: self.config.on_behalf_of,
             },
         })
     }
@@ -150,202 +217,6 @@ impl Client {
     pub fn builder() -> ClientBuilder {
         ClientBuilder::new()
     }
-
-    /// Create a new trigger.
-    ///
-    /// We intentionally don't accept [`Trigger`] here since API is designed to
-    /// be more relaxed than the required fields in Trigger model. If we
-    /// accepted [`Trigger`] as input, the trigger defaults will be set on
-    /// the client side and not server side. To want to make it easy to
-    /// change those defaults on the server side without having to release a
-    /// new client version.
-    pub async fn create_trigger_from_json(
-        &self,
-        trigger_req: serde_json::Value,
-    ) -> Result<Response<Trigger>> {
-        let path = self.config.base_url.join("/v1/triggers")?;
-        self.execute_request_body(Method::POST, path, trigger_req)
-            .await
-    }
-
-    /// Retrieve a trigger by name.
-    pub async fn get_trigger<T>(&self, name: T) -> Result<Response<Trigger>>
-    where
-        T: AsRef<str>,
-    {
-        let path = format!("/v1/triggers/{}", name.as_ref());
-        let path = self.config.base_url.join(&path)?;
-
-        self.execute_request(Method::GET, path).await
-    }
-
-    /// Retrieve list of triggers for a project.
-    pub async fn list_triggers(
-        &self,
-        pagination: Option<Pagination>,
-        filter: Option<TriggersFilter>,
-    ) -> Result<Response<Paginated<Trigger>>> {
-        let mut path = self.config.base_url.join("/v1/triggers")?;
-        if let Some(pagination) = pagination {
-            if let Some(cursor) = pagination.cursor {
-                path.query_pairs_mut().append_pair("cursor", &cursor);
-            }
-            if let Some(limit) = pagination.limit {
-                path.query_pairs_mut()
-                    .append_pair("limit", &limit.to_string());
-            }
-        }
-
-        if let Some(filter) = filter {
-            for status in filter.status {
-                path.query_pairs_mut()
-                    .append_pair("status", &status.to_string());
-            }
-        }
-
-        self.execute_request(Method::GET, path).await
-    }
-
-    /// Cancel a `scheduled` trigger.
-    pub async fn cancel_trigger<T>(&self, name: T) -> Result<Response<Trigger>>
-    where
-        T: AsRef<str>,
-    {
-        let path = format!("/v1/triggers/{}/cancel", name.as_ref());
-        let path = self.config.base_url.join(&path)?;
-
-        self.execute_request(Method::POST, path).await
-    }
-
-    /// Pause a `scheduled` trigger.
-    pub async fn pause_trigger<T>(&self, name: T) -> Result<Response<Trigger>>
-    where
-        T: AsRef<str>,
-    {
-        let path = format!("/v1/triggers/{}/pause", name.as_ref());
-        let path = self.config.base_url.join(&path)?;
-
-        self.execute_request(Method::POST, path).await
-    }
-
-    /// Resume a `paused` trigger.
-    pub async fn resume_trigger<T>(&self, name: T) -> Result<Response<Trigger>>
-    where
-        T: AsRef<str>,
-    {
-        let path = format!("/v1/triggers/{}/resume", name.as_ref());
-        let path = self.config.base_url.join(&path)?;
-
-        self.execute_request(Method::POST, path).await
-    }
-
-    /// Run the trigger immediately
-    pub async fn run_trigger<T>(
-        &self,
-        name: T,
-        mode: RunMode,
-    ) -> Result<Response<Run>>
-    where
-        T: AsRef<str>,
-    {
-        let path = format!("/v1/triggers/{}/run", name.as_ref());
-        let path = self.config.base_url.join(&path)?;
-
-        let body = RunTrigger { mode };
-
-        self.execute_request_body(Method::POST, path, body).await
-    }
-
-    /// Permanently delete a trigger.
-    pub async fn delete_trigger<T>(&self, name: T) -> Result<Response<()>>
-    where
-        T: AsRef<str>,
-    {
-        let path = format!("/v1/triggers/{}", name.as_ref());
-        let path = self.config.base_url.join(&path)?;
-
-        self.execute_request(Method::DELETE, path).await
-    }
-
-    /// Retrieve list of runs for a given trigger.
-    pub async fn list_runs<T>(
-        &self,
-        pagination: Option<Pagination>,
-        name: T,
-    ) -> Result<Response<Paginated<Run>>>
-    where
-        T: AsRef<str>,
-    {
-        let path = format!("/v1/triggers/{}/runs", name.as_ref());
-        let mut path = self.config.base_url.join(&path)?;
-        if let Some(pagination) = pagination {
-            if let Some(cursor) = pagination.cursor {
-                path.query_pairs_mut().append_pair("cursor", &cursor);
-            }
-            if let Some(limit) = pagination.limit {
-                path.query_pairs_mut()
-                    .append_pair("limit", &limit.to_string());
-            }
-        }
-
-        self.execute_request(Method::GET, path).await
-    }
-
-    /// Retrieve a run by id.
-    pub async fn get_run<T>(&self, id: T) -> Result<Response<GetRunResponse>>
-    where
-        T: AsRef<str>,
-    {
-        let path = format!("/v1/triggers/-/runs/{}", id.as_ref());
-        let path = self.config.base_url.join(&path)?;
-
-        self.execute_request(Method::GET, path).await
-    }
-
-    async fn execute_request<T>(
-        &self,
-        method: http::Method,
-        url: Url,
-    ) -> Result<Response<T>>
-    where
-        T: DeserializeOwned,
-    {
-        info!("Sending a request '{} {}'", method, url);
-        let mut request = self
-            .http_client
-            .request(method, url)
-            .bearer_auth(&self.config.secret_token);
-
-        if let Some(prj) = &self.config.on_behalf_of {
-            request = request.header("X-On-Behalf-Of", prj);
-        }
-        let resp = request.send().await?;
-        Response::from_raw_response(resp).await
-    }
-
-    async fn execute_request_body<T, B>(
-        &self,
-        method: http::Method,
-        url: Url,
-        body: B,
-    ) -> Result<Response<T>>
-    where
-        T: DeserializeOwned,
-        B: Serialize + std::fmt::Debug,
-    {
-        info!("Sending a request '{} {}': {:?}", method, url, body);
-        let mut request = self
-            .http_client
-            .request(method, url)
-            .bearer_auth(&self.config.secret_token)
-            .json(&body);
-
-        if let Some(prj) = &self.config.on_behalf_of {
-            request = request.header("X-On-Behalf-Of", prj);
-        }
-        let resp = request.send().await?;
-        Response::from_raw_response(resp).await
-    }
 }
 
 impl Default for Client {
@@ -363,10 +234,9 @@ struct Config {
 }
 
 #[derive(Clone)]
-struct ClientConfig {
-    base_url: Url,
+pub(crate) struct ClientConfig {
+    pub base_url: Url,
     secret_token: String,
-    on_behalf_of: Option<String>,
 }
 
 // Ensure that Client is Send + Sync. Compiler will fail if it's not.
@@ -376,65 +246,22 @@ const _: () = {
 };
 
 #[async_trait]
-pub trait AdminApiExt {
-    async fn gen_api_key<T>(
-        &self,
-        key_name: T,
-        metadata: APIKeyMetaData,
-    ) -> Result<Response<CreateAPIKeyResponse>>
-    where
-        T: AsRef<str> + Send;
-    async fn list_api_keys(&self) -> Result<Response<Paginated<ApiKey>>>;
-    async fn revoke_api_key<T>(&self, name: T) -> Result<Response<()>>
-    where
-        T: AsRef<str> + Send;
-}
-
-#[async_trait]
-impl AdminApiExt for Client {
-    /// Generates a new API key
-    async fn gen_api_key<T>(
-        &self,
-        key_name: T,
-        metadata: APIKeyMetaData,
-    ) -> Result<Response<CreateAPIKeyResponse>>
-    where
-        T: AsRef<str> + Send,
-    {
-        let path = "/v1/admin/api_keys";
-        let path = self.config.base_url.join(path)?;
-
-        let body = CreateAPIkeyRequest {
-            key_name: key_name.as_ref().to_owned(),
-            metadata,
-        };
-
-        self.execute_request_body::<CreateAPIKeyResponse, _>(
-            Method::POST,
-            path,
-            body,
-        )
-        .await
+impl RequestRunner for Client {
+    fn make_url(&self, path: &str) -> Result<Url> {
+        Ok(self.config.base_url.join(path)?)
     }
 
-    /// Lists all api keys associated with this project
-    async fn list_api_keys(&self) -> Result<Response<Paginated<ApiKey>>> {
-        let path = "/v1/admin/api_keys";
-        let path = self.config.base_url.join(path)?;
+    fn prepare_request(
+        &self,
+        method: http::Method,
+        url: Url,
+    ) -> Result<RequestBuilder> {
+        let request = self
+            .http_client
+            .request(method, url)
+            .bearer_auth(&self.config.secret_token);
 
-        self.execute_request::<Paginated<ApiKey>>(Method::GET, path)
-            .await
-    }
-
-    /// Revokes an API key given its id
-    async fn revoke_api_key<T>(&self, key_id: T) -> Result<Response<()>>
-    where
-        T: AsRef<str> + Send,
-    {
-        let path = format!("/v1/admin/api_keys/{}", key_id.as_ref());
-        let path = self.config.base_url.join(&path)?;
-
-        self.execute_request::<()>(Method::DELETE, path).await
+        Ok(request)
     }
 }
 

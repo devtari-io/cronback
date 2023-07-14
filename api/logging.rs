@@ -6,6 +6,7 @@ use axum::extract::State;
 use axum::http::{Request, StatusCode};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
+use hyper::header::USER_AGENT;
 use lib::config::Config;
 use lib::types::RequestId;
 use tower_http::trace::MakeSpan;
@@ -26,6 +27,8 @@ impl ApiMakeSpan {
 
 impl<B> MakeSpan<B> for ApiMakeSpan {
     fn make_span(&mut self, request: &Request<B>) -> tracing::Span {
+        // Do we have a cronback user agent?
+        let user_agent = request.headers().get(USER_AGENT);
         // We get the request_id from extensions
         let request_id = request
             .extensions()
@@ -40,6 +43,7 @@ impl<B> MakeSpan<B> for ApiMakeSpan {
              method = %request.method(),
              uri = %request.uri(),
              version = ?request.version(),
+             user_agent = ?user_agent,
         )
     }
 }

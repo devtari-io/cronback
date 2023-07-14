@@ -14,7 +14,7 @@ use prettytable::{row, Table};
 
 use crate::args::CommonOptions;
 use crate::ui::FancyToString;
-use crate::{emitln, RunCommand};
+use crate::{emitln, Command};
 
 #[derive(Clone, Debug, Parser)]
 pub struct List {
@@ -35,7 +35,7 @@ pub struct List {
 }
 
 #[async_trait]
-impl RunCommand for List {
+impl Command for List {
     async fn run<
         A: tokio::io::AsyncWrite + Send + Sync + Unpin,
         B: tokio::io::AsyncWrite + Send + Sync + Unpin,
@@ -69,8 +69,8 @@ impl RunCommand for List {
             limit: self.limit,
         });
 
-        let response = client.list_triggers(pagination, filter).await?;
-        common_options.show_meta(&response, out, err).await?;
+        let response =
+            cronback::triggers::list(&client, pagination, filter).await?;
 
         let response = response.into_inner()?;
         // Print Table

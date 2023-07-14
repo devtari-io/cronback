@@ -83,3 +83,15 @@ impl FancyToString for AttemptStatus {
         }
     }
 }
+
+impl FancyToString for http::StatusCode {
+    fn fancy(&self) -> String {
+        if self.is_success() {
+            format!("{}", self.to_string().green())
+        } else if self.is_client_error() {
+            format!("{}", self.to_string().bright_magenta())
+        } else {
+            format!("{}", self.to_string().red())
+        }
+    }
+}

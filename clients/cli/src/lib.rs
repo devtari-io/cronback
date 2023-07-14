@@ -1,15 +1,17 @@
 #[cfg(feature = "admin")]
 mod admin;
 mod args;
+mod client;
 mod command;
 mod confirm;
+mod error;
 mod runs;
 mod triggers;
 mod ui;
 mod whoami;
 
 use anyhow::Result;
-pub use command::RunCommand;
+pub use command::Command;
 pub(crate) use confirm::confirm_or_abort;
 use tokio::io::AsyncWriteExt;
 use tracing::log::info;

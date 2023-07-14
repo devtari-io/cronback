@@ -13,12 +13,15 @@ keywords = ["cron", "webhooks", "scheduler", "job", "periodic"]
 repository = "https://github.com/devtari-io/cronback"
 homepage = "https://cronback.me"
 
+[features]
+default = []
+admin = ["cronback-api-model/admin"]
 # We maintain the CLI and rust-client versions independently from the workspace.
 [dependencies]
 cronback-api-model = { path = "../../api-model", version = "0.1.0", features = [
   "client",
 ] }
-reqwest = { version = "0.11.18", features = ["json"]}
+reqwest = { version = "0.11.18", features = ["json"] }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 url = { version = "2.3.1" }

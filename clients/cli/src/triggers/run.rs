@@ -5,7 +5,7 @@ use cronback_api_model::RunMode;
 use spinners::{Spinner, Spinners};
 
 use crate::args::CommonOptions;
-use crate::{confirm_or_abort, emitln, RunCommand};
+use crate::{confirm_or_abort, emitln, Command};
 
 #[derive(Clone, Debug, Parser)]
 pub struct RunArgs {
@@ -18,14 +18,14 @@ pub struct RunArgs {
 }
 
 #[async_trait]
-impl RunCommand for RunArgs {
+impl Command for RunArgs {
     async fn run<
         A: tokio::io::AsyncWrite + Send + Sync + Unpin,
         B: tokio::io::AsyncWrite + Send + Sync + Unpin,
     >(
         &self,
         out: &mut tokio::io::BufWriter<A>,
-        err: &mut tokio::io::BufWriter<B>,
+        _err: &mut tokio::io::BufWriter<B>,
         common_options: &CommonOptions,
     ) -> Result<()> {
         confirm_or_abort!(
@@ -50,12 +50,11 @@ impl RunCommand for RunArgs {
             None
         };
 
-        let response = client.run_trigger(&self.name, mode).await?;
+        let response =
+            cronback::triggers::run(&client, &self.name, mode).await?;
         if let Some(mut spinner) = spinner {
             spinner.stop_with_message("".to_string());
         }
-
-        common_options.show_meta(&response, out, err).await?;
 
         let response = response.into_inner();
         match response {

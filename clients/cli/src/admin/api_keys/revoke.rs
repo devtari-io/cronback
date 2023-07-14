@@ -1,15 +1,15 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use clap::Parser;
-use cronback::client::AdminApiExt;
 
+use crate::admin::{AdminOptions, RunAdminCommand};
 use crate::args::CommonOptions;
 use crate::confirm::confirm_or_abort;
-use crate::{emitln, RunCommand};
+use crate::emitln;
 
 #[derive(Clone, Debug, Parser)]
 pub struct Revoke {
-    /// The id of the key to be revoked
+    /// The Id of the key to be revoked
     id: String,
 
     /// Ignore the confirmation prompt and always answer "yes"
@@ -18,15 +18,16 @@ pub struct Revoke {
 }
 
 #[async_trait]
-impl RunCommand for Revoke {
+impl RunAdminCommand for Revoke {
     async fn run<
         A: tokio::io::AsyncWrite + Send + Sync + Unpin,
         B: tokio::io::AsyncWrite + Send + Sync + Unpin,
     >(
         &self,
         out: &mut tokio::io::BufWriter<A>,
-        err: &mut tokio::io::BufWriter<B>,
+        _err: &mut tokio::io::BufWriter<B>,
         common_options: &CommonOptions,
+        admin_options: &AdminOptions,
     ) -> Result<()> {
         confirm_or_abort!(
             self,
@@ -34,10 +35,9 @@ impl RunCommand for Revoke {
              this key will start failing.",
             self.id
         );
-        let client = common_options.new_client()?;
+        let client = admin_options.new_admin_client(&common_options)?;
 
-        let response = client.revoke_api_key(&self.id).await?;
-        common_options.show_meta(&response, out, err).await?;
+        let response = cronback::api_keys::revoke(&client, &self.id).await?;
 
         // Ensure that the request actually succeeded
         response.into_inner()?;

@@ -16,6 +16,7 @@ publish = true
 
 [features]
 default = []
+admin = []
 client = []
 dto = ["dep:proto", "dep:dto", "dep:lib"]
 validation = [

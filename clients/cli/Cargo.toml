@@ -15,7 +15,7 @@ path = "src/main.rs"
 
 [features]
 default = []
-admin = []
+admin = ["cronback/admin", "cronback-api-model/admin"]
 
 [dependencies]
 cronback = { path = "../rust", version = "0.1.0" }
@@ -23,14 +23,24 @@ cronback-api-model = { path = "../../api-model", version = "0.1.0", features = [
   "client",
   "clap",
 ] }
+anyhow = { version = "1.0.71" }
+async-trait = { workspace = true }
 clap = { version = "4", features = ["env", "derive", "wrap_help"] }
 clap-stdin = { version = "0.2.0" }
+clap-verbosity-flag = { version = "2.0.1" }
 colored = { version = "2.0" }
 colored_json = { version = "3.2.0" }
-serde_json = { workspace = true }
+dotenvy = "0.15"
+env_logger = "0.10.0"
 etcetera = { version = "0.8.0" }
-tracing = { workspace = true }
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+http = "0.2.9"
+once_cell = { version = "1.17.1" }
+prettytable-rs = { version = "0.10.0" }
+reqwest = { version = "0.11.18" }
+rprompt = "2.0"
+serde = { workspace = true }
+serde_json = { workspace = true }
+spinners = "4.1"
 tokio = { workspace = true, features = [
   "io-std",
   "io-util",
@@ -38,13 +48,6 @@ tokio = { workspace = true, features = [
   "rt-multi-thread",
   "macros",
 ] }
-anyhow = { version = "1.0.71" }
+tracing = { workspace = true }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 url = { version = "2.3.1" }
-clap-verbosity-flag = { version = "2.0.1" }
-env_logger = "0.10.0"
-once_cell = { version = "1.17.1" }
-dotenvy = "0.15"
-async-trait = { workspace = true }
-prettytable-rs = { version = "0.10.0" }
-rprompt = "2.0"
-spinners = "4.1"

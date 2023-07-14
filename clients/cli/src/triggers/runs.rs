@@ -5,9 +5,26 @@ use colored::Colorize;
 use cronback::Pagination;
 use prettytable::{row, Table};
 
-use crate::args::CommonOptions;
+use crate::args::{CommonOptions, RunsCommand};
 use crate::ui::FancyToString;
-use crate::{emitln, RunCommand};
+use crate::{emitln, Command};
+
+#[async_trait]
+impl Command for RunsCommand {
+    async fn run<
+        A: tokio::io::AsyncWrite + Send + Sync + Unpin,
+        B: tokio::io::AsyncWrite + Send + Sync + Unpin,
+    >(
+        &self,
+        out: &mut tokio::io::BufWriter<A>,
+        err: &mut tokio::io::BufWriter<B>,
+        common_options: &CommonOptions,
+    ) -> Result<()> {
+        match self {
+            | RunsCommand::View(c) => c.run(out, err, common_options).await,
+        }
+    }
+}
 
 #[derive(Clone, Debug, Parser)]
 pub struct ListRuns {
@@ -22,7 +39,7 @@ pub struct ListRuns {
 }
 
 #[async_trait]
-impl RunCommand for ListRuns {
+impl Command for ListRuns {
     async fn run<
         A: tokio::io::AsyncWrite + Send + Sync + Unpin,
         B: tokio::io::AsyncWrite + Send + Sync + Unpin,
@@ -38,8 +55,8 @@ impl RunCommand for ListRuns {
             limit: self.limit,
         });
 
-        let response = client.list_runs(pagination, &self.name).await?;
-        common_options.show_meta(&response, out, err).await?;
+        let response =
+            cronback::runs::list(&client, pagination, &self.name).await?;
 
         let response = response.into_inner()?;
 
