@@ -327,12 +327,16 @@ impl Client {
         B: Serialize + std::fmt::Debug,
     {
         info!("Sending a request '{} {}': {:?}", method, url, body);
-        let request = self.http_client.request(method, url);
-        let resp = request
+        let mut request = self
+            .http_client
+            .request(method, url)
             .bearer_auth(&self.config.secret_token)
-            .json(&body)
-            .send()
-            .await?;
+            .json(&body);
+
+        if let Some(prj) = &self.config.on_behalf_of {
+            request = request.header("X-On-Behalf-Of", prj);
+        }
+        let resp = request.send().await?;
         Response::from_raw_response(resp).await
     }
 }
