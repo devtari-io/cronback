@@ -194,6 +194,14 @@
             "in": "query",
             "name": "reference",
             "description": "Filter the returned triggers by `reference`"
+          },
+          {
+            "schema": {
+              "type": "array"
+            },
+            "in": "query",
+            "name": "status",
+            "description": "Filter the returned triggers by `status`"
           }
         ],
         "responses": {

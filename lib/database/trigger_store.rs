@@ -58,6 +58,7 @@ pub trait TriggerStore {
         &self,
         project: &ProjectId,
         reference: Option<String>,
+        statuses: Option<Vec<Status>>,
         before: Option<TriggerId>,
         after: Option<TriggerId>,
         limit: usize,
@@ -153,7 +154,10 @@ impl TriggerStore for SqlTriggerStore {
         paginated_query(
             &self.db,
             TriggersIden::Triggers,
-            Expr::col(TriggersIden::Status).is_in(["scheduled", "paused"]),
+            Expr::col(TriggersIden::Status).is_in([
+                json!(Status::Scheduled).as_str().unwrap(),
+                json!(Status::Paused).as_str().unwrap(),
+            ]),
             &Option::<TriggerId>::None,
             &Option::<TriggerId>::None,
             None,
@@ -165,6 +169,7 @@ impl TriggerStore for SqlTriggerStore {
         &self,
         project: &ProjectId,
         reference: Option<String>,
+        statuses: Option<Vec<Status>>,
         before: Option<TriggerId>,
         after: Option<TriggerId>,
         limit: usize,
@@ -173,6 +178,15 @@ impl TriggerStore for SqlTriggerStore {
         if let Some(reference) = reference {
             condition =
                 condition.and(Expr::col(TriggersIden::Reference).eq(reference));
+        }
+        if let Some(statuses) = statuses {
+            condition = condition.and(
+                Expr::col(TriggersIden::Status).is_in(
+                    statuses
+                        .into_iter()
+                        .map(|s| json!(s).as_str().unwrap().to_owned()),
+                ),
+            );
         }
         paginated_query(
             &self.db,
@@ -315,7 +329,7 @@ mod tests {
 
         // Test get by owner
         let mut results = store
-            .get_triggers_by_project(&owner1, None, None, None, 100)
+            .get_triggers_by_project(&owner1, None, None, None, None, 100)
             .await?;
         let mut expected = vec![t1.clone(), t2.clone()];
         expected.sort_by(|a, b| a.id.cmp(&b.id));
@@ -349,11 +363,24 @@ mod tests {
                 Some("Ref".to_string()),
                 None,
                 None,
+                None,
                 100,
             )
             .await?;
-
         assert_eq!(results, vec![t5.clone()]);
+
+        // Test get by status
+        let results = store
+            .get_triggers_by_project(
+                &owner1,
+                None,
+                Some(vec![Status::Paused]),
+                None,
+                None,
+                100,
+            )
+            .await?;
+        assert_eq!(results, vec![t2.clone()]);
 
         Ok(())
     }

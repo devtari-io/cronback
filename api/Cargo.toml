@@ -45,3 +45,4 @@ uuid = { version = "1.2.2", features = ["v4"] }
 validator = { version = "0.16.0", features = ["derive"] }
 names = { version = "0.14.0", default-features = false }
 serde_path_to_error = "0.1.11"
+axum-extra = { version="0.7", features=["query"] }

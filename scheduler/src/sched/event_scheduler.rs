@@ -328,6 +328,7 @@ impl EventScheduler {
                         .get_triggers_by_project(
                             &project.clone(),
                             copied_request.reference.clone(),
+                            /* statuses = */ None,
                             /* before = */ None,
                             /* after = */ None,
                             /* limit = */ 1,
@@ -400,6 +401,7 @@ impl EventScheduler {
         &self,
         project: ValidShardedId<ProjectId>,
         reference: Option<String>,
+        statuses: Option<Vec<Status>>,
         limit: usize,
         before: Option<TriggerId>,
         after: Option<TriggerId>,
@@ -408,7 +410,9 @@ impl EventScheduler {
         // from database instead of fetching the entire trigger.
         let triggers = self
             .store
-            .get_triggers_by_project(&project, reference, before, after, limit)
+            .get_triggers_by_project(
+                &project, reference, statuses, before, after, limit,
+            )
             .await?;
 
         let (alive, dead): (Vec<_>, Vec<_>) =

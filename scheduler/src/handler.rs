@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use lib::model::ModelId;
 use lib::service::ServiceContext;
-use lib::types::ProjectId;
+use lib::types::{trigger, ProjectId};
 use proto::scheduler_proto::scheduler_server::Scheduler;
 use proto::scheduler_proto::{
     CancelTriggerRequest,
@@ -15,6 +15,7 @@ use proto::scheduler_proto::{
     InstallTriggerResponse,
     InvokeTriggerRequest,
     InvokeTriggerResponse,
+    ListTriggersFilter,
     ListTriggersRequest,
     ListTriggersResponse,
     PauseTriggerRequest,
@@ -170,11 +171,14 @@ impl Scheduler for SchedulerAPIHandler {
         // requests.
         let project =
             ProjectId::from(request.project_id.clone()).validated()?;
+
+        let (reference, statuses) = list_filter_into_parts(request.filter);
         let manifests = self
             .scheduler
             .list_triggers(
                 project,
-                request.filter.and_then(|f| f.reference),
+                reference,
+                statuses,
                 request.limit as usize,
                 request.before.map(Into::into),
                 request.after.map(Into::into),
@@ -191,4 +195,30 @@ impl Scheduler for SchedulerAPIHandler {
     ) -> Result<Response<FindTriggersResponse>, Status> {
         todo!()
     }
+}
+
+fn list_filter_into_parts(
+    filter: Option<ListTriggersFilter>,
+) -> (Option<String>, Option<Vec<trigger::Status>>) {
+    let Some(filter) = filter else {
+        return (None, None);
+    };
+
+    let ListTriggersFilter {
+        reference,
+        statuses,
+    } = filter;
+
+    let statuses = if !statuses.is_empty() {
+        Some(
+            statuses
+                .into_iter()
+                .map(Into::into)
+                .collect::<Vec<trigger::Status>>(),
+        )
+    } else {
+        None
+    };
+
+    (reference, statuses)
 }

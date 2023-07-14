@@ -114,6 +114,7 @@ message FindTriggersResponse {
 // The returned triggers must match the "set" fields in this object
 message ListTriggersFilter {
   optional string reference = 1;
+  repeated trigger_proto.TriggerStatus statuses = 2;
 }
 
 message ListTriggersRequest {
@@ -121,7 +122,7 @@ message ListTriggersRequest {
   uint64 limit = 2;
   optional string before = 3;
   optional string after = 4;
-  optional ListTriggersFilter filter = 5;
+  ListTriggersFilter filter = 5;
 }
 
 message ListTriggersResponse {
