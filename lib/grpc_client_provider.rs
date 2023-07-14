@@ -136,7 +136,7 @@ impl<T: GrpcClientType> GrpcClientFactory for GrpcClientProvider<T> {
         // resolve shard -> cell
         let address = T::get_address(
             &self.service_context.get_config().main,
-            &project_id,
+            project_id,
         )?;
 
         let mut channel = None;

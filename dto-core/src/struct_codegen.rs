@@ -163,6 +163,10 @@ impl ProtoFieldInfo {
                 .unwrap_or(rhs_value_tok);
             // We need to .into()
             rhs_value_tok = quote! { #rhs_value_tok.into() };
+
+            if self.required && direction == Direction::IntoProto {
+                rhs_value_tok = quote! { Some(#rhs_value_tok) };
+            }
         };
 
         Ok(quote_spanned! { span =>
@@ -332,11 +336,11 @@ mod tests {
             })?;
 
             // We are not Option<T> but the target is likely is (hence
-            // `required`) We leverage `into()` to convert T ->
-            // Option<T>
+            // `required`) We need to explicitly wrap into Some() after `into()`
+            // to convert T -> Option<B>
             gen_tokens_test_helper_into(
                 field_info.clone(),
-                quote! { foo: value.foo.into(), },
+                quote! { foo: Some(value.foo.into()), },
             )?;
             // We unwrap only proto -> rust.
             gen_tokens_test_helper_from(
