@@ -137,7 +137,10 @@ fn get_auth_key(
     }
 }
 
-pub async fn admin_only_auth<B>(
+/// Ensures that the caller is authenticated with an admin key AND acting on
+/// behalf of a project. The `ProjectId` is then injected in the request
+/// extensions.
+pub async fn admin_only_auth_for_project<B>(
     State(state): State<Arc<AppState>>,
     mut req: Request<B>,
     next: Next<B>,
@@ -147,6 +150,23 @@ pub async fn admin_only_auth<B>(
     if admin_keys.contains(&auth_key) {
         let project = extract_project_from_request(&req)?;
         req.extensions_mut().insert(project.clone());
+        Ok(next.run(req).await)
+    } else {
+        Err(ApiError::Forbidden)
+    }
+}
+
+/// Ensures that the caller is authenticated with an admin key. No project is
+/// required. Handlers using this middleware shouldn't rely on a `ProjectId`
+/// being set in the request extensions.
+pub async fn admin_only_auth<B>(
+    State(state): State<Arc<AppState>>,
+    req: Request<B>,
+    next: Next<B>,
+) -> Result<impl IntoResponse, ApiError> {
+    let auth_key = get_auth_key(req.headers())?;
+    let admin_keys = &state.config.api.admin_api_keys;
+    if admin_keys.contains(&auth_key) {
         Ok(next.run(req).await)
     } else {
         Err(ApiError::Forbidden)
