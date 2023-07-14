@@ -27,8 +27,7 @@ pub(crate) async fn resume(
         .await?;
     let trigger = scheduler
         .resume_trigger(ResumeTriggerRequest {
-            project_id: project.into(),
-            id: id.into(),
+            id: Some(id.into()),
         })
         .await?
         .into_inner()

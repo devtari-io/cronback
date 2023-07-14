@@ -1,15 +1,16 @@
 syntax = "proto3";
 
+import "common.proto";
 import "webhook.proto";
 import "trigger.proto";
 
 package run_proto;
 
 message Run {
-  string id = 1;
-  string trigger_id = 2;
-  string project_id = 3;
-  string created_at = 4;
+  common.RunId id = 1;
+  common.TriggerId trigger_id = 2;
+  common.ProjectId project_id = 3;
+  common.DateTime created_at = 4;
   trigger_proto.Payload payload = 5;
   trigger_proto.Action action = 6;
   RunStatus status = 7;

@@ -79,18 +79,12 @@ impl InstallTriggerRequest {
 #[derive(Debug, FromProto, Clone, Serialize, Deserialize, PartialEq)]
 #[proto(target = "proto::trigger_proto::Trigger")]
 pub(crate) struct Trigger {
+    #[proto(required)]
     pub id: TriggerId,
     pub name: String,
     pub description: Option<String>,
-    #[proto(
-        map_from_proto = "lib::timeutil::parse_utc_from_rfc3339",
-        map_from_by_ref
-    )]
+    #[proto(required)]
     pub created_at: DateTime<Utc>,
-    #[proto(
-        map_from_proto = "lib::timeutil::parse_utc_from_rfc3339",
-        map_from_by_ref
-    )]
     pub updated_at: Option<DateTime<Utc>>,
     pub reference: Option<String>,
     pub payload: Option<Payload>,
@@ -98,10 +92,6 @@ pub(crate) struct Trigger {
     #[proto(required)]
     pub action: Action,
     pub status: TriggerStatus,
-    #[proto(
-        map_from_proto = "lib::timeutil::parse_utc_from_rfc3339",
-        map_from_by_ref
-    )]
     pub last_ran_at: Option<DateTime<Utc>>,
 }
 
@@ -115,25 +105,14 @@ pub(crate) struct TriggerManifest {
     pub project: ProjectId,
     pub name: String,
     pub description: Option<String>,
-    #[proto(
-        map_from_proto = "lib::timeutil::parse_utc_from_rfc3339",
-        map_from_by_ref
-    )]
+    #[proto(required)]
     pub created_at: DateTime<Utc>,
-    #[proto(
-        map_from_proto = "lib::timeutil::parse_utc_from_rfc3339",
-        map_from_by_ref
-    )]
     pub updated_at: Option<DateTime<Utc>>,
     #[proto(required)]
     pub action: Action,
     pub reference: Option<String>,
     pub schedule: Option<Schedule>,
     pub status: TriggerStatus,
-    #[proto(
-        map_from_proto = "lib::timeutil::parse_utc_from_rfc3339",
-        map_from_by_ref
-    )]
     pub last_ran_at: Option<DateTime<Utc>>,
 }
 

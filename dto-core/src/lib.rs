@@ -7,7 +7,6 @@ mod prost_ext;
 mod proto_conv;
 mod struct_codegen;
 pub mod traits;
-mod transformers;
 mod utils;
 
 use self::attributes::{Direction, ProstMessageInto, ProtoInfo};

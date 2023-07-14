@@ -24,7 +24,7 @@ pub trait AuthStore {
     async fn save_key(
         &self,
         key: ApiKey,
-        project: &ProjectId,
+        project: &ValidShardedId<ProjectId>,
         key_name: &str,
     ) -> Result<(), AuthStoreError>;
 
@@ -52,18 +52,18 @@ impl AuthStore for SqlAuthStore {
     async fn save_key(
         &self,
         key: ApiKey,
-        project: &ProjectId,
+        project_id: &ValidShardedId<ProjectId>,
         key_name: &str,
     ) -> Result<(), AuthStoreError> {
         let hashed = key.hash(HashVersion::default());
 
         let model = api_keys::ActiveModel {
-            key_id: sea_orm::ActiveValue::Set(hashed.key_id.into()),
-            hash: sea_orm::ActiveValue::Set(hashed.hash.into()),
+            key_id: sea_orm::ActiveValue::Set(hashed.key_id),
+            hash: sea_orm::ActiveValue::Set(hashed.hash),
             hash_version: sea_orm::ActiveValue::Set(
-                hashed.hash_version.to_string().into(),
+                hashed.hash_version.to_string(),
             ),
-            project: sea_orm::ActiveValue::Set(project.to_string().into()),
+            project_id: sea_orm::ActiveValue::Set(project_id.clone()),
             name: sea_orm::ActiveValue::Set(Some(key_name.to_string())),
         };
 
@@ -101,7 +101,7 @@ impl AuthStore for SqlAuthStore {
             ));
         }
 
-        Ok(ProjectId::from(result.project)
+        Ok(ProjectId::from(result.project_id)
             .validated()
             .expect("Invalid ProjectId persisted in database"))
     }

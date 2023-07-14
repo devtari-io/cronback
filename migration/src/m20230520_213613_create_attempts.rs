@@ -12,9 +12,13 @@ impl MigrationTrait for Migration {
                     .table(Attempts::Table)
                     .if_not_exists()
                     .col(ColumnDef::new(Attempts::Id).string().not_null())
-                    .col(ColumnDef::new(Attempts::Run).string().not_null())
-                    .col(ColumnDef::new(Attempts::Trigger).string().not_null())
-                    .col(ColumnDef::new(Attempts::Project).string().not_null())
+                    .col(ColumnDef::new(Attempts::RunId).string().not_null())
+                    .col(
+                        ColumnDef::new(Attempts::TriggerId).string().not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(Attempts::ProjectId).string().not_null(),
+                    )
                     .col(
                         ColumnDef::new(Attempts::Status)
                             .enumeration(
@@ -35,7 +39,7 @@ impl MigrationTrait for Migration {
                     .primary_key(
                         Index::create()
                             .col(Attempts::Id)
-                            .col(Attempts::Project),
+                            .col(Attempts::ProjectId),
                     )
                     .to_owned(),
             )
@@ -47,7 +51,7 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .name("IX_attempts_project")
                     .table(Attempts::Table)
-                    .col(Attempts::Project)
+                    .col(Attempts::ProjectId)
                     .to_owned(),
             )
             .await?;
@@ -58,7 +62,7 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .name("IX_attempts_runid")
                     .table(Attempts::Table)
-                    .col(Attempts::Run)
+                    .col(Attempts::RunId)
                     .to_owned(),
             )
             .await?;
@@ -78,9 +82,9 @@ impl MigrationTrait for Migration {
 enum Attempts {
     Table,
     Id,
-    Run,
-    Trigger,
-    Project,
+    RunId,
+    TriggerId,
+    ProjectId,
     Status,
     Details,
     CreatedAt,

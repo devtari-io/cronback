@@ -110,7 +110,6 @@ mod tests {
     #[test]
     fn simple_retry_policy_delays() {
         let config = RetryConfig::SimpleRetry(SimpleRetry {
-            _kind: Default::default(),
             max_num_attempts: 3,
             delay_s: Duration::from_secs(100),
         });
@@ -136,7 +135,6 @@ mod tests {
     fn exponential_retry_policy_delays() {
         let config =
             RetryConfig::ExponentialBackoffRetry(ExponentialBackoffRetry {
-                _kind: Default::default(),
                 max_num_attempts: 5,
                 delay_s: Duration::from_secs(10),
                 max_delay_s: Duration::from_secs(50),

@@ -1,7 +1,9 @@
 {
   "schedule": {
-    "cron": "*/3 * * * * *",
-    "limit": 5
+    "timepoints": [
+      "2023-05-22T16:58:02+02:00",
+      "2023-05-23T16:58:02+07:00"
+    ]
   },
   "action": {
     "url": "http://localhost:3000/action",

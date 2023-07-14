@@ -292,7 +292,8 @@ impl EventScheduler {
         //
         // find the existing trigger by id
         if let Some(trigger_id) = install_trigger.id.clone() {
-            let trigger_id = TriggerId::from(trigger_id);
+            let trigger_id = trigger_id.into();
+
             let existing_trigger = self
                 .store
                 .get_trigger(&context.project_id, &trigger_id)
@@ -312,7 +313,7 @@ impl EventScheduler {
         let is_scheduled = install_trigger.schedule.is_some();
         let trigger = Trigger {
             id: id.into(),
-            project: context.project_id.clone(),
+            project_id: context.project_id.clone(),
             reference: install_trigger.reference.clone(),
             name: install_trigger.name,
             description: install_trigger.description,
@@ -403,7 +404,7 @@ impl EventScheduler {
         .await?;
         // Get from the database if this is not an active trigger.
         match trigger_res {
-            | Ok(trigger) if trigger.project == context.project_id => {
+            | Ok(trigger) if trigger.project_id == context.project_id => {
                 Ok(trigger)
             }
             // The trigger was found but owned by a different user!

@@ -2,6 +2,9 @@
 
 use sea_orm::entity::prelude::*;
 
+use crate::model::ValidShardedId;
+use crate::types::ProjectId;
+
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "api_keys")]
 pub struct Model {
@@ -9,7 +12,7 @@ pub struct Model {
     pub key_id: String,
     pub hash: String,
     pub hash_version: String,
-    pub project: String,
+    pub project_id: ValidShardedId<ProjectId>,
     pub name: Option<String>,
 }
 

@@ -36,13 +36,13 @@ impl Dispatcher for DispatcherAPIHandler {
         let (_metadata, _extensions, request) = request.into_parts();
 
         let dispatch_mode = request.mode();
-        let project = ProjectId::from(request.project_id).validated()?;
-        let run_id = RunId::generate(&project);
+        let project_id = ProjectId::from(request.project_id).validated()?;
+        let run_id = RunId::generate(&project_id);
 
         let run = Run {
             id: run_id.into(),
-            trigger: request.trigger_id.into(),
-            project,
+            trigger_id: request.trigger_id.into(),
+            project_id,
             created_at: Utc::now(),
             payload: request.payload.map(|p| p.into()),
             action: request.action.unwrap().into(),

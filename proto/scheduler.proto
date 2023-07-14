@@ -1,5 +1,6 @@
 syntax = "proto3";
 
+import "common.proto";
 import "trigger.proto";
 import "run.proto";
 
@@ -30,7 +31,7 @@ enum RunMode {
 
 message InstallTriggerRequest {
   // Id is only set if we are updating an existing trigger and we know the id up front
-  optional string id = 1;
+  optional common.TriggerId id = 1;
   bool fail_if_exists = 2;
   string name = 4;
   /// [Future] User supplied identifier, unique per owner account
@@ -49,8 +50,7 @@ message InstallTriggerResponse {
 
 // PAUSE TRIGGER
 message PauseTriggerRequest {
-  string id = 1;
-  string project_id = 2;
+  common.TriggerId id = 1;
 }
 
 message PauseTriggerResponse {
@@ -59,8 +59,7 @@ message PauseTriggerResponse {
 
 // RESUME TRIGGER
 message ResumeTriggerRequest {
-  string id = 1;
-  string project_id = 2;
+  common.TriggerId id = 1;
 }
 
 message ResumeTriggerResponse {
@@ -69,8 +68,7 @@ message ResumeTriggerResponse {
 
 // CANCEL TRIGGER
 message CancelTriggerRequest {
-  string id = 1;
-  string project_id = 2;
+  common.TriggerId id = 1;
 }
 
 message CancelTriggerResponse {
@@ -80,9 +78,8 @@ message CancelTriggerResponse {
 
 // == EXECUTE TRIGGER MANUALLY ==
 message RunTriggerRequest {
-  string id = 1;
-  string project_id = 2;
-  RunMode mode = 3;
+  common.TriggerId id = 1;
+  RunMode mode = 2;
 
 }
 
@@ -92,8 +89,7 @@ message RunTriggerResponse {
 
 // == GET TRIGGER ==
 message GetTriggerRequest {
-  string id = 1;
-  string project_id = 2;
+  common.TriggerId id = 1;
 }
 
 message GetTriggerResponse {
@@ -113,7 +109,6 @@ message ListTriggersFilter {
 }
 
 message ListTriggersRequest {
-  string project_id = 1;
   uint64 limit = 2;
   optional string before = 3;
   optional string after = 4;

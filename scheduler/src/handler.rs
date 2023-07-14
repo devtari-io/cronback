@@ -3,6 +3,7 @@ use std::sync::Arc;
 use lib::database::models::triggers;
 use lib::prelude::*;
 use lib::service::ServiceContext;
+use lib::types::TriggerId;
 use proto::scheduler_proto::scheduler_server::Scheduler;
 use proto::scheduler_proto::{
     CancelTriggerRequest,
@@ -65,10 +66,9 @@ impl Scheduler for SchedulerAPIHandler {
         // scheduler
         //
         let request = request.into_inner();
-        let run = self
-            .scheduler
-            .run_trigger(ctx, request.id.clone().into(), request.mode().into())
-            .await?;
+        let trigger_id: TriggerId = request.id.unwrap().into();
+        let mode = request.mode.into();
+        let run = self.scheduler.run_trigger(ctx, trigger_id, mode).await?;
         Ok(Response::new(RunTriggerResponse {
             run: Some(run.into()),
         }))
@@ -80,13 +80,9 @@ impl Scheduler for SchedulerAPIHandler {
     ) -> Result<Response<GetTriggerResponse>, Status> {
         let ctx = request.context()?;
         let request = request.into_inner();
+        let trigger_id: TriggerId = request.id.unwrap().into();
 
-        // trigger must have an id set
-        if request.id.is_empty() {
-            return Err(Status::invalid_argument("Id must be set"));
-        }
-        let trigger =
-            self.scheduler.get_trigger(ctx, request.id.into()).await?;
+        let trigger = self.scheduler.get_trigger(ctx, trigger_id).await?;
         let reply = GetTriggerResponse {
             trigger: Some(trigger.into()),
         };
@@ -99,8 +95,8 @@ impl Scheduler for SchedulerAPIHandler {
     ) -> Result<Response<PauseTriggerResponse>, Status> {
         let ctx = request.context()?;
         let request = request.into_inner();
-        let trigger =
-            self.scheduler.pause_trigger(ctx, request.id.into()).await?;
+        let trigger_id: TriggerId = request.id.unwrap().into();
+        let trigger = self.scheduler.pause_trigger(ctx, trigger_id).await?;
         Ok(Response::new(PauseTriggerResponse {
             trigger: Some(trigger.into()),
         }))
@@ -112,10 +108,8 @@ impl Scheduler for SchedulerAPIHandler {
     ) -> Result<Response<ResumeTriggerResponse>, Status> {
         let ctx = request.context()?;
         let request = request.into_inner();
-        let trigger = self
-            .scheduler
-            .resume_trigger(ctx, request.id.into())
-            .await?;
+        let trigger_id: TriggerId = request.id.unwrap().into();
+        let trigger = self.scheduler.resume_trigger(ctx, trigger_id).await?;
         Ok(Response::new(ResumeTriggerResponse {
             trigger: Some(trigger.into()),
         }))
@@ -127,10 +121,8 @@ impl Scheduler for SchedulerAPIHandler {
     ) -> Result<Response<CancelTriggerResponse>, Status> {
         let ctx = request.context()?;
         let request = request.into_inner();
-        let trigger = self
-            .scheduler
-            .cancel_trigger(ctx, request.id.into())
-            .await?;
+        let trigger_id: TriggerId = request.id.unwrap().into();
+        let trigger = self.scheduler.cancel_trigger(ctx, trigger_id).await?;
         Ok(Response::new(CancelTriggerResponse {
             trigger: Some(trigger.into()),
         }))

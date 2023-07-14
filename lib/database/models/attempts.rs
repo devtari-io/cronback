@@ -6,7 +6,6 @@ use chrono::{DateTime, Utc};
 use sea_orm::entity::prelude::*;
 use sea_orm::{DeriveActiveEnum, EnumIter, FromJsonQueryResult};
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, skip_serializing_none, DurationSecondsWithFrac};
 
 use crate::model::ValidShardedId;
 use crate::types::{AttemptLogId, ProjectId, RunId, TriggerId};
@@ -21,13 +20,13 @@ impl EntityName for Entity {
 }
 
 #[derive(
-    Clone, Debug, PartialEq, Serialize, DeriveModel, DeriveActiveModel, Eq,
+    Clone, Debug, Serialize, PartialEq, DeriveModel, DeriveActiveModel, Eq,
 )]
 pub struct Model {
     pub id: AttemptLogId,
-    pub run: RunId,
-    pub trigger: TriggerId,
-    pub project: ValidShardedId<ProjectId>,
+    pub run_id: RunId,
+    pub trigger_id: TriggerId,
+    pub project_id: ValidShardedId<ProjectId>,
     pub status: AttemptStatus,
     pub details: AttemptDetails,
     pub created_at: DateTime<Utc>,
@@ -36,9 +35,9 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
     Id,
-    Run,
-    Trigger,
-    Project,
+    RunId,
+    TriggerId,
+    ProjectId,
     Status,
     Details,
     CreatedAt,
@@ -47,7 +46,7 @@ pub enum Column {
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
 pub enum PrimaryKey {
     Id,
-    Project,
+    ProjectId,
 }
 
 impl PrimaryKeyTrait for PrimaryKey {
@@ -67,9 +66,9 @@ impl ColumnTrait for Column {
     fn def(&self) -> ColumnDef {
         match self {
             | Self::Id => ColumnType::String(None).def(),
-            | Self::Run => ColumnType::String(None).def(),
-            | Self::Trigger => ColumnType::String(None).def(),
-            | Self::Project => ColumnType::String(None).def(),
+            | Self::RunId => ColumnType::String(None).def(),
+            | Self::TriggerId => ColumnType::String(None).def(),
+            | Self::ProjectId => ColumnType::String(None).def(),
             | Self::Status => ColumnType::String(None).def(),
             | Self::Details => ColumnType::Json.def(),
             | Self::CreatedAt => ColumnType::DateTime.def(),
@@ -85,12 +84,9 @@ impl RelationTrait for Relation {
 
 impl ActiveModelBehavior for ActiveModel {}
 
-#[serde_as]
-#[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WebhookAttemptDetails {
     pub response_code: Option<i32>,
-    #[serde_as(as = "DurationSecondsWithFrac")]
     pub response_latency_s: Duration,
     pub error_message: Option<String>,
 }
@@ -112,23 +108,13 @@ impl WebhookAttemptDetails {
 #[derive(
     Debug, Clone, Serialize, Deserialize, PartialEq, Eq, FromJsonQueryResult,
 )]
-#[serde(rename_all = "snake_case")]
-#[serde(untagged)]
 pub enum AttemptDetails {
     WebhookAttemptDetails(WebhookAttemptDetails),
 }
 
 #[derive(
-    Debug,
-    Clone,
-    Serialize,
-    Deserialize,
-    PartialEq,
-    Eq,
-    EnumIter,
-    DeriveActiveEnum,
+    Debug, Serialize, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum,
 )]
-#[serde(rename_all = "snake_case")]
 #[sea_orm(rs_type = "String", db_type = "String(None)")]
 pub enum AttemptStatus {
     #[sea_orm(string_value = "Succeeded")]

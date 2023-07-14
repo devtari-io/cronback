@@ -4,7 +4,11 @@ use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 
 use crate::attributes::{Direction, ProtoFieldInfo, Skip};
-use crate::utils::{extract_type_from_option, extract_type_from_vec};
+use crate::utils::{
+    extract_inner_type_from_container,
+    option_segment,
+    vec_segment,
+};
 
 impl ProtoFieldInfo {
     pub(crate) fn gen_tokens(
@@ -84,8 +88,9 @@ impl ProtoFieldInfo {
             return Ok(tok);
         }
 
-        let option_type = extract_type_from_option(&self.ty);
-        let vec_type = extract_type_from_vec(&self.ty);
+        let option_type =
+            extract_inner_type_from_container(&self.ty, option_segment);
+        let vec_type = extract_inner_type_from_container(&self.ty, vec_segment);
 
         // 1. Do we need to unwrap the input before processing? We do that if
         // the field is    `required` and our local type is not `Option<T>` when
@@ -159,13 +164,16 @@ impl ProtoFieldInfo {
         } else {
             // Bare type
             rhs_value_tok = self
-                .wrap_with_mapper(direction, quote! { #rhs_value_tok })
+                .wrap_with_mapper(
+                    direction,
+                    quote_spanned! { span => #rhs_value_tok },
+                )
                 .unwrap_or(rhs_value_tok);
             // We need to .into()
-            rhs_value_tok = quote! { #rhs_value_tok.into() };
+            rhs_value_tok = quote_spanned! { span => #rhs_value_tok.into() };
 
             if self.required && direction == Direction::IntoProto {
-                rhs_value_tok = quote! { Some(#rhs_value_tok) };
+                rhs_value_tok = quote_spanned! { span => Some(#rhs_value_tok) };
             }
         };
 
@@ -186,6 +194,7 @@ impl ProtoFieldInfo {
             mapper_path: &syn::Path,
             input: TokenStream,
         ) -> TokenStream {
+            // do we have a built-in mapper?
             let span = by_ref.span();
             let opt_ref = if *by_ref {
                 quote_spanned! { span => &}

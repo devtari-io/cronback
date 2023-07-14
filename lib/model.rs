@@ -124,12 +124,6 @@ impl<T: ModelId> std::ops::Deref for ValidShardedId<T> {
     }
 }
 
-impl<T: ModelId> From<ValidShardedId<T>> for String {
-    fn from(value: ValidShardedId<T>) -> Self {
-        value.to_string()
-    }
-}
-
 impl<T: ModelId> From<ValidShardedId<T>> for sea_query::Value {
     fn from(id: ValidShardedId<T>) -> ::sea_query::Value {
         ::sea_query::Value::String(Some(Box::new(id.value().to_owned())))
@@ -224,7 +218,8 @@ where
 #[rustfmt::skip]
 macro_rules! define_model_id_base {
     (
-        #[prefix = $prefix:literal]
+        @prefix = $prefix:literal,
+        $(@proto = $proto:ty,)?
         $(#[$m:meta])*
         $type_vis:vis struct $name:ident;
     ) => {
@@ -307,6 +302,46 @@ macro_rules! define_model_id_base {
             }
         }
 
+        $(
+            // Proto newtype conversions.
+            impl From<$crate::model::ValidShardedId<$name>> for $proto {
+                fn from(value: $crate::model::ValidShardedId<$name>) -> Self {
+                    Self {
+                        value: value.to_string(),
+                    }
+                }
+            }
+
+            impl From<$proto> for $crate::model::ValidShardedId<$name> {
+                fn from(value: $proto) -> Self {
+                    $crate::model::ValidShardedId::from_string_unsafe(
+                        value.value,
+                    )
+                }
+            }
+
+            impl From<$proto> for $name {
+                fn from(value: $proto) -> Self {
+                    Self(value.value)
+                }
+            }
+
+            impl From<$name> for $proto {
+                fn from(value: $name) -> Self {
+                    Self {
+                        value: value.to_string(),
+                    }
+                }
+            }
+        )?
+
+        // TODO: Remove after we migrate all proto id types from Strings to new types
+        impl From<$crate::model::ValidShardedId<$name>> for std::string::String {
+            fn from(value: $crate::model::ValidShardedId<$name>) -> Self {
+                value.to_string()
+            }
+        }
+
         // Unfortunately we can't implement this generically!
         impl From<$crate::model::ValidShardedId<$name>> for $name {
             fn from(value: $crate::model::ValidShardedId<$name>) -> Self {
@@ -320,14 +355,16 @@ macro_rules! define_model_id_base {
 #[rustfmt::skip]
 macro_rules! define_model_id {
     (
-        #[prefix = $prefix:literal]
-        #[no_owner]
+        @prefix = $prefix:literal,
+        @no_owner,
+        $(@proto = $proto:ty,)?
         $(#[$m:meta])*
         $type_vis:vis struct $name:ident;
     ) => {
 
         $crate::model::define_model_id_base!{
-            #[prefix = $prefix]
+            @prefix = $prefix,
+            $(@proto = $proto,)?
             $(#[$m])*
             $type_vis struct $name;
         }
@@ -343,12 +380,14 @@ macro_rules! define_model_id {
         }
     };
     (
-        #[prefix = $prefix:literal]
+        @prefix = $prefix:literal,
+        $(@proto = $proto:ty,)?
         $(#[$m:meta])*
         $type_vis:vis struct $name:ident;
     ) => {
         $crate::model::define_model_id_base!{
-            #[prefix = $prefix]
+            @prefix = $prefix,
+            $(@proto = $proto,)?
             $(#[$m])*
             $type_vis struct $name;
         }
@@ -376,8 +415,8 @@ mod tests {
     use super::*;
 
     define_model_id! {
-        #[prefix = "owner"]
-        #[no_owner]
+        @prefix = "owner",
+        @no_owner,
         pub struct OwnerId;
     }
     // test that Shard generate encoded string correctly
@@ -404,7 +443,7 @@ mod tests {
     #[test]
     fn test_mode_id_macro() -> Result<()> {
         define_model_id! {
-            #[prefix = "som"]
+            @prefix = "som",
             pub struct SomeId;
         }
 

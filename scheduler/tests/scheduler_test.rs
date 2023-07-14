@@ -71,7 +71,7 @@ async fn install_trigger_valid_test() {
     assert!(installed_trigger.trigger.is_some());
     assert!(!installed_trigger.already_existed);
     let created_trigger = installed_trigger.trigger.unwrap();
-    assert!(created_trigger.id.len() > 5);
+    assert!(created_trigger.id.clone().unwrap().value.len() > 5);
     let created_trigger: Trigger = created_trigger.into();
     // Validate that the cron pattern is what we have set.
     // No errors. Let's try and get it from server.
@@ -80,8 +80,7 @@ async fn install_trigger_valid_test() {
         .await
         .unwrap()
         .get_trigger(Request::new(GetTriggerRequest {
-            project_id: project.to_string(),
-            id: created_trigger.id.clone().into(),
+            id: Some(created_trigger.id.clone().into()),
         }))
         .await
         .unwrap()
@@ -205,7 +204,7 @@ async fn install_trigger_reference_test() {
 
     // let's switch this to on-demand
     let install_trigger = InstallTriggerRequest {
-        id: Some(updated_trigger.id),
+        id: updated_trigger.id,
         fail_if_exists: false,
         // Unset the reference.
         reference: None,

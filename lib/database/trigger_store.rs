@@ -81,12 +81,12 @@ impl TriggerStore for SqlTriggerStore {
         &self,
         trigger: Trigger,
     ) -> Result<(), TriggerStoreError> {
-        let project = trigger.project.clone();
+        let project = trigger.project_id.clone();
         let active_model: triggers::ActiveModel = trigger.into();
         // Mark all the fields as dirty
         let active_model = active_model.reset_all();
         Triggers::update(active_model)
-            .filter(triggers::Column::Project.eq(project))
+            .filter(triggers::Column::ProjectId.eq(project))
             .exec(&self.db.orm)
             .await?;
         Ok(())
@@ -115,7 +115,7 @@ impl TriggerStore for SqlTriggerStore {
         limit: usize,
     ) -> Result<Vec<Trigger>, TriggerStoreError> {
         let mut query = Triggers::find()
-            .filter(triggers::Column::Project.eq(project.value()))
+            .filter(triggers::Column::ProjectId.eq(project.value()))
             .order_by_desc(triggers::Column::Id)
             .limit(Some(limit as u64));
 
@@ -161,7 +161,7 @@ impl TriggerStore for SqlTriggerStore {
             .select_only()
             .column(triggers::Column::Status)
             .filter(triggers::Column::Id.eq(id.to_string()))
-            .filter(triggers::Column::Project.eq(project.to_string()))
+            .filter(triggers::Column::ProjectId.eq(project.to_string()))
             .into_tuple()
             .one(&self.db.orm)
             .await?;
@@ -202,7 +202,7 @@ mod tests {
         Trigger {
             id: TriggerId::generate(&project).into(),
 
-            project,
+            project_id: project,
             name: name.to_string(),
             description: Some(format!("Desc: {}", name)),
             created_at: now,
@@ -210,8 +210,7 @@ mod tests {
             payload: None,
             schedule: None,
             action: Action::Webhook(Webhook {
-                _kind: Default::default(),
-                url: Some("http://test".to_string()),
+                url: "http://test".to_string(),
                 http_method: crate::types::HttpMethod::Get,
                 timeout_s: Duration::from_secs(5),
                 retry: None,
@@ -347,7 +346,7 @@ mod tests {
 
         //
         let mut mismatch_project_t1 = new_t1.clone();
-        mismatch_project_t1.project = ProjectId::generate();
+        mismatch_project_t1.project_id = ProjectId::generate();
         mismatch_project_t1.status = Status::Scheduled;
         assert!(matches!(
             store.update_trigger(mismatch_project_t1.clone()).await,

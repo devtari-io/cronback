@@ -40,7 +40,7 @@ pub(crate) async fn create(
     state
         .db
         .auth_store
-        .save_key(key, &ProjectId::from(req.project), &req.key_name)
+        .save_key(key, &req.project, &req.key_name)
         .await
         .map_err(|e| AppStateError::DatabaseError(e.to_string()))?;
 

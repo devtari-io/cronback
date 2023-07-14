@@ -87,9 +87,9 @@ impl WebhookActionJob {
 
                         let attempt_log = ActionAttemptLog {
                             id: attempt_id.clone().into(),
-                            run: self.run_id.clone(),
-                            trigger: self.trigger_id.clone(),
-                            project: self.project.clone(),
+                            run_id: self.run_id.clone(),
+                            trigger_id: self.trigger_id.clone(),
+                            project_id: self.project.clone(),
                             status: if response.is_success() {
                                 AttemptStatus::Succeeded
                             } else {
@@ -197,7 +197,7 @@ async fn dispatch_webhook(
 
     let request_start_time = Instant::now();
     let mut request = http_client
-        .request(http_method, webhook.url.clone().unwrap())
+        .request(http_method, webhook.url.clone())
         .headers(http_headers)
         .timeout(webhook.timeout_s);
 

@@ -37,15 +37,13 @@ pub(crate) struct RunTrigger {
 #[derive(Debug, Clone, FromProto, Serialize, Deserialize, PartialEq)]
 #[proto(target = "proto::run_proto::Run")]
 pub struct Run {
+    #[proto(required)]
     pub id: RunId,
-    #[proto(name = "trigger_id")]
+    #[proto(required, name = "trigger_id")]
     pub trigger: TriggerId,
-    #[proto(name = "project_id")]
+    #[proto(required, name = "project_id")]
     pub project: ProjectId,
-    #[proto(
-        map_from_proto = "lib::timeutil::parse_utc_from_rfc3339",
-        map_from_by_ref
-    )]
+    #[proto(required)]
     pub created_at: DateTime<Utc>,
     pub payload: Option<Payload>,
     #[proto(required)]

@@ -1,23 +1,27 @@
 use crate::model::define_model_id;
 
 define_model_id! {
-    #[prefix = "prj"]
-    #[no_owner]
+    @prefix = "prj",
+    @no_owner,
+    @proto = proto::common::ProjectId,
     pub struct ProjectId;
 }
 
 define_model_id! {
-    #[prefix = "trig"]
+    @prefix = "trig",
+    @proto = proto::common::TriggerId,
     pub struct TriggerId;
 }
 
 define_model_id! {
-    #[prefix = "inv"]
+    @prefix = "inv",
+    @proto = proto::common::RunId,
     pub struct RunId;
 }
 
 define_model_id! {
-    #[prefix = "att"]
+    @prefix = "att",
+    @proto = proto::common::AttemptLogId,
     pub struct AttemptLogId;
 }
 

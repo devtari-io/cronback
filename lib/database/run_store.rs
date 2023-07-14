@@ -66,12 +66,12 @@ impl RunStore for SqlRunStore {
     }
 
     async fn update_run(&self, run: Run) -> Result<(), RunStoreError> {
-        let project = run.project.clone();
+        let project = run.project_id.clone();
         let active_model: runs::ActiveModel = run.into();
         // Mark all the fields as dirty
         let active_model = active_model.reset_all();
         Runs::update(active_model)
-            .filter(runs::Column::Project.eq(project))
+            .filter(runs::Column::ProjectId.eq(project))
             .exec(&self.db.orm)
             .await?;
         Ok(())
@@ -97,8 +97,8 @@ impl RunStore for SqlRunStore {
         limit: usize,
     ) -> Result<Vec<Run>, RunStoreError> {
         let mut query = Runs::find()
-            .filter(runs::Column::Trigger.eq(trigger_id.value()))
-            .filter(runs::Column::Project.eq(project.value()))
+            .filter(runs::Column::TriggerId.eq(trigger_id.value()))
+            .filter(runs::Column::ProjectId.eq(project.value()))
             .order_by_desc(runs::Column::Id)
             .limit(Some(limit as u64));
         if let Some(before) = before {
@@ -122,7 +122,7 @@ impl RunStore for SqlRunStore {
         limit: usize,
     ) -> Result<Vec<Run>, RunStoreError> {
         let mut query = Runs::find()
-            .filter(runs::Column::Project.eq(project.value()))
+            .filter(runs::Column::ProjectId.eq(project.value()))
             .order_by_desc(runs::Column::Id)
             .limit(Some(limit as u64));
         if let Some(before) = before {
@@ -170,12 +170,11 @@ mod tests {
 
         Run {
             id: RunId::generate(&project).into(),
-            trigger: trigger_id.into(),
-            project,
+            trigger_id: trigger_id.into(),
+            project_id: project,
             created_at: now,
             action: Action::Webhook(Webhook {
-                _kind: Default::default(),
-                url: Some("http://test".to_string()),
+                url: "http://test".to_string(),
                 http_method: crate::types::HttpMethod::Get,
                 timeout_s: Duration::from_secs(5),
                 retry: None,
@@ -252,7 +251,7 @@ mod tests {
 
         // Update should fail when using wrong project
         let mut mismatch_project_i1 = i1.clone();
-        mismatch_project_i1.project = ProjectId::generate();
+        mismatch_project_i1.project_id = ProjectId::generate();
         mismatch_project_i1.status = RunStatus::Succeeded;
         assert!(matches!(
             store.update_run(mismatch_project_i1.clone()).await,

@@ -70,8 +70,8 @@ impl AttemptLogStore for SqlAttemptLogStore {
         limit: usize,
     ) -> Result<Vec<ActionAttemptLog>, AttemptLogStoreError> {
         let mut query = Attempts::find()
-            .filter(attempts::Column::Run.eq(id.value()))
-            .filter(attempts::Column::Project.eq(project.value()))
+            .filter(attempts::Column::RunId.eq(id.value()))
+            .filter(attempts::Column::ProjectId.eq(project.value()))
             .order_by_desc(attempts::Column::Id)
             .limit(Some(limit as u64));
         if let Some(before) = before {
@@ -130,9 +130,9 @@ mod tests {
 
         ActionAttemptLog {
             id: AttemptLogId::generate(project).into(),
-            run: run_id.clone(),
-            trigger: TriggerId::generate(project).into(),
-            project: project.clone(),
+            run_id: run_id.clone(),
+            trigger_id: TriggerId::generate(project).into(),
+            project_id: project.clone(),
             status: AttemptStatus::Succeeded,
             details: AttemptDetails::WebhookAttemptDetails(
                 WebhookAttemptDetails {

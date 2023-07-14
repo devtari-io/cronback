@@ -18,7 +18,7 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(ApiKeys::Hash).text().not_null())
                     .col(ColumnDef::new(ApiKeys::HashVersion).text().not_null())
-                    .col(ColumnDef::new(ApiKeys::Project).text().not_null())
+                    .col(ColumnDef::new(ApiKeys::ProjectId).text().not_null())
                     .col(ColumnDef::new(ApiKeys::Name).text())
                     .to_owned(),
             )
@@ -39,6 +39,6 @@ enum ApiKeys {
     KeyId,
     Hash,
     HashVersion,
-    Project,
+    ProjectId,
     Name,
 }

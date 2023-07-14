@@ -12,7 +12,9 @@ impl MigrationTrait for Migration {
                     .table(Triggers::Table)
                     .if_not_exists()
                     .col(ColumnDef::new(Triggers::Id).string().not_null())
-                    .col(ColumnDef::new(Triggers::Project).string().not_null())
+                    .col(
+                        ColumnDef::new(Triggers::ProjectId).string().not_null(),
+                    )
                     .col(ColumnDef::new(Triggers::Name).string().not_null())
                     .col(ColumnDef::new(Triggers::Description).string())
                     .col(
@@ -30,7 +32,7 @@ impl MigrationTrait for Migration {
                     .primary_key(
                         Index::create()
                             .col(Triggers::Id)
-                            .col(Triggers::Project),
+                            .col(Triggers::ProjectId),
                     )
                     .to_owned(),
             )
@@ -42,7 +44,7 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .name("IX_triggers_project")
                     .table(Triggers::Table)
-                    .col(Triggers::Project)
+                    .col(Triggers::ProjectId)
                     .to_owned(),
             )
             .await?;
@@ -52,7 +54,7 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .name("UQ_triggers_project_reference")
                     .table(Triggers::Table)
-                    .col(Triggers::Project)
+                    .col(Triggers::ProjectId)
                     .col(Triggers::Reference)
                     .unique()
                     .to_owned(),
@@ -84,7 +86,7 @@ impl MigrationTrait for Migration {
 enum Triggers {
     Table,
     Id,
-    Project,
+    ProjectId,
     Name,
     Description,
     CreatedAt,

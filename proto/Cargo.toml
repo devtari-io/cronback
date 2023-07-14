@@ -10,6 +10,7 @@ name = "proto"
 path = "lib.rs"
 
 [dependencies]
+chrono = { workspace = true }
 tonic = { workspace = true }
 prost = { workspace = true }
 dto = { path = "../dto" }

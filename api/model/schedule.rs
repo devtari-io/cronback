@@ -1,11 +1,10 @@
 use std::collections::HashSet;
 use std::str::FromStr;
 
-use chrono::DateTime;
-use chrono_tz::Tz;
+use chrono::{DateTime, FixedOffset, Timelike};
 use cron::Schedule as CronSchedule;
 use dto::{FromProto, IntoProto};
-use lib::timeutil::{self, iso8601_dateformat_vec_serde};
+use lib::timeutil::{default_timezone, iso8601_dateformat_vec_serde};
 use lib::validation::{validate_timezone, validation_error};
 use serde::{Deserialize, Serialize};
 use validator::{Validate, ValidationError};
@@ -39,7 +38,7 @@ pub struct Recurring {
     #[proto(required)]
     pub cron: Option<String>,
     #[validate(custom = "validate_timezone")]
-    #[serde(default = "timeutil::default_timezone")]
+    #[serde(default = "default_timezone")]
     pub timezone: String,
     #[validate(range(min = 1))]
     pub limit: Option<u64>,
@@ -71,13 +70,7 @@ pub(crate) struct RunAt {
         custom = "validate_run_at"
     )]
     #[serde(with = "iso8601_dateformat_vec_serde")]
-    #[proto(
-        map_from_proto = "timeutil::parse_iso8601_unsafe",
-        map_from_by_ref,
-        map_into_proto = "timeutil::to_iso8601",
-        map_into_by_ref
-    )]
-    pub timepoints: Vec<DateTime<Tz>>,
+    pub timepoints: Vec<DateTime<FixedOffset>>,
     #[serde(skip_deserializing)]
     pub remaining: Option<u64>,
 }
@@ -101,17 +94,23 @@ fn validate_cron(cron_pattern: &String) -> Result<(), ValidationError> {
     Ok(())
 }
 // Validate that run_at has no duplicates.
-fn validate_run_at(run_at: &Vec<DateTime<Tz>>) -> Result<(), ValidationError> {
+fn validate_run_at(
+    run_at: &Vec<DateTime<FixedOffset>>,
+) -> Result<(), ValidationError> {
     let mut ts = HashSet::new();
     for timepoint in run_at {
-        if ts.contains(timepoint) {
+        let trimmed = timepoint.with_nanosecond(0).unwrap();
+        if ts.contains(&trimmed) {
             // Duplicate found!
             return Err(validation_error(
                 "duplicate_run_at_value",
-                format!("Duplicate value '{timepoint}'"),
+                format!(
+                    "'{timepoint}' conflicts with other timepoints on the \
+                     list. Note that the precision is limited to seconds."
+                ),
             ));
         } else {
-            ts.insert(timepoint);
+            ts.insert(trimmed);
         }
     }
     Ok(())
@@ -163,7 +162,7 @@ mod tests {
         assert!(maybe_validated
             .unwrap_err()
             .to_string()
-            .starts_with("timepoints: Duplicate value"));
+            .starts_with("timepoints: "));
         Ok(())
     }
 

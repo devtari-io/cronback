@@ -37,8 +37,7 @@ pub(crate) async fn get(
         .await?;
     let trigger = scheduler
         .get_trigger(GetTriggerRequest {
-            project_id: project.into(),
-            id: id.into(),
+            id: Some(id.into()),
         })
         .await?
         .into_inner()
@@ -79,7 +78,6 @@ pub(crate) async fn list(
         .await?;
     let triggers = scheduler
         .list_triggers(ListTriggersRequest {
-            project_id: project.into(),
             limit: limit as u64,
             before: pagination.before.clone().map(Into::into),
             after: pagination.after.clone().map(Into::into),

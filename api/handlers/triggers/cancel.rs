@@ -27,8 +27,7 @@ pub(crate) async fn cancel(
         .await?;
     let trigger = scheduler
         .cancel_trigger(CancelTriggerRequest {
-            project_id: project.into(),
-            id: id.into(),
+            id: Some(id.into()),
         })
         .await?
         .into_inner()

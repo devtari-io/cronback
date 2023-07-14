@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package common;
+
+message DateTime {
+  string rfc3339 = 1;
+}
+
+// Model Ids
+message ProjectId {
+  string value = 1;
+}
+
+message TriggerId {
+  string value = 1;
+}
+
+message RunId {
+  string value = 1;
+}
+
+message AttemptLogId {
+  string value = 1;
+}

@@ -12,8 +12,8 @@ impl MigrationTrait for Migration {
                     .table(Runs::Table)
                     .if_not_exists()
                     .col(ColumnDef::new(Runs::Id).string().not_null())
-                    .col(ColumnDef::new(Runs::Trigger).string().not_null())
-                    .col(ColumnDef::new(Runs::Project).string().not_null())
+                    .col(ColumnDef::new(Runs::TriggerId).string().not_null())
+                    .col(ColumnDef::new(Runs::ProjectId).string().not_null())
                     .col(ColumnDef::new(Runs::CreatedAt).date_time().not_null())
                     .col(ColumnDef::new(Runs::Payload).json())
                     .col(ColumnDef::new(Runs::Action).json().not_null())
@@ -30,7 +30,7 @@ impl MigrationTrait for Migration {
                             .not_null(),
                     )
                     .primary_key(
-                        Index::create().col(Runs::Id).col(Runs::Project),
+                        Index::create().col(Runs::Id).col(Runs::ProjectId),
                     )
                     .to_owned(),
             )
@@ -42,7 +42,7 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .name("IX_runs_project")
                     .table(Runs::Table)
-                    .col(Runs::Project)
+                    .col(Runs::ProjectId)
                     .to_owned(),
             )
             .await?;
@@ -53,7 +53,7 @@ impl MigrationTrait for Migration {
                     .if_not_exists()
                     .name("IX_runs_triggerid")
                     .table(Runs::Table)
-                    .col(Runs::Trigger)
+                    .col(Runs::TriggerId)
                     .to_owned(),
             )
             .await?;
@@ -72,8 +72,8 @@ impl MigrationTrait for Migration {
 enum Runs {
     Table,
     Id,
-    Trigger,
-    Project,
+    TriggerId,
+    ProjectId,
     CreatedAt,
     Payload,
     Action,

@@ -619,12 +619,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4e3c5919066adf22df73762e50cffcde3a758f2a848b113b586d1f86728b673b"
 dependencies = [
  "iana-time-zone",
- "js-sys",
  "num-integer",
  "num-traits",
  "serde",
- "time 0.1.43",
- "wasm-bindgen",
  "winapi",
 ]
 
@@ -1047,6 +1044,7 @@ dependencies = [
 name = "dto-core"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "darling",
  "pretty_assertions",
  "proc-macro2",
@@ -2576,6 +2574,7 @@ dependencies = [
 name = "proto"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "dto",
  "prost",
  "tonic",
@@ -2909,6 +2908,7 @@ dependencies = [
  "chrono",
  "chrono-tz",
  "cron",
+ "dto",
  "lib",
  "metrics 0.20.1",
  "prost",
@@ -2952,7 +2952,7 @@ dependencies = [
  "serde_json",
  "sqlx",
  "thiserror",
- "time 0.3.21",
+ "time",
  "tracing",
  "url",
  "uuid",
@@ -3015,7 +3015,7 @@ dependencies = [
  "rust_decimal",
  "sea-query-derive",
  "serde_json",
- "time 0.3.21",
+ "time",
  "uuid",
 ]
 
@@ -3031,7 +3031,7 @@ dependencies = [
  "sea-query",
  "serde_json",
  "sqlx",
- "time 0.3.21",
+ "time",
  "uuid",
 ]
 
@@ -3206,7 +3206,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with_macros 2.3.3",
- "time 0.3.21",
+ "time",
 ]
 
 [[package]]
@@ -3222,7 +3222,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with_macros 3.0.0",
- "time 0.3.21",
+ "time",
 ]
 
 [[package]]
@@ -3414,7 +3414,7 @@ dependencies = [
  "sqlx-rt",
  "stringprep",
  "thiserror",
- "time 0.3.21",
+ "time",
  "tokio-stream",
  "url",
  "uuid",
@@ -3565,16 +3565,6 @@ checksum = "3fdd6f064ccff2d6567adcb3873ca630700f00b5ad3f060c25b5dcfd9a4ce152"
 dependencies = [
  "cfg-if",
  "once_cell",
-]
-
-[[package]]
-name = "time"
-version = "0.1.43"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca8a50ef2360fbd1eeb0ecd46795a87a19024eb4b53c5dc916ca1fd95fe62438"
-dependencies = [
- "libc",
- "winapi",
 ]
 
 [[package]]

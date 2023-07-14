@@ -29,8 +29,7 @@ pub(crate) async fn run(
         .get_client(&request_id, &project)
         .await?;
     let run_request = RunTriggerRequest {
-        project_id: project.into(),
-        id: id.into(),
+        id: Some(id.into()),
         mode: request.mode.into(),
     };
     let run = scheduler

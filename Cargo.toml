@@ -25,7 +25,11 @@ anyhow = "1.0.69"
 async-trait = "0.1.68"
 axum = { version = "0.6.4", features = ["macros"] }
 base64 = "0.21.0"
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { version = "0.4", features = [
+  "serde",
+  "clock",
+  "std",
+], default-features = false }
 chrono-tz = "0.8"
 cron = "0.12"
 derive_more = { version = "0.99.17" }

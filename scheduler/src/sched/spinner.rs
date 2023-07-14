@@ -358,7 +358,7 @@ impl Spinner {
                         // We generate a new request Id as this is a
                         // system-generated request.
                         RequestId::new(),
-                        trigger.project.clone(),
+                        trigger.project_id.clone(),
                     ),
                     trigger,
                     provider,

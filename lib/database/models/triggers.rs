@@ -2,16 +2,13 @@
 
 use std::collections::HashMap;
 
-use chrono::{DateTime, Utc};
-use chrono_tz::Tz;
-use monostate::MustBe;
+use chrono::{DateTime, FixedOffset, Utc};
+use dto::{FromProto, IntoProto};
 use sea_orm::entity::prelude::*;
 use sea_orm::{DeriveActiveEnum, EnumIter, FromJsonQueryResult};
 use serde::{Deserialize, Serialize};
-use serde_with::{serde_as, skip_serializing_none};
 
 use crate::model::ValidShardedId;
-use crate::timeutil::iso8601_dateformat_vec_serde;
 use crate::types::{ProjectId, TriggerId, Webhook};
 
 #[derive(Copy, Clone, Default, Debug, DeriveEntity)]
@@ -23,17 +20,31 @@ impl EntityName for Entity {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, DeriveModel, DeriveActiveModel, Eq)]
+#[derive(
+    Clone,
+    IntoProto,
+    FromProto,
+    Debug,
+    PartialEq,
+    DeriveModel,
+    DeriveActiveModel,
+    Eq,
+)]
+#[proto(target = "proto::trigger_proto::Trigger")]
 pub struct Model {
+    #[proto(required)]
     pub id: TriggerId,
-    pub project: ValidShardedId<ProjectId>,
+    #[proto(required)]
+    pub project_id: ValidShardedId<ProjectId>,
     pub name: String,
     pub description: Option<String>,
+    #[proto(required)]
     pub created_at: DateTime<Utc>,
     pub updated_at: Option<DateTime<Utc>>,
     pub reference: Option<String>,
     pub payload: Option<Payload>,
     pub schedule: Option<Schedule>,
+    #[proto(required)]
     pub action: Action,
     pub status: Status,
     pub last_ran_at: Option<DateTime<Utc>>,
@@ -42,7 +53,7 @@ pub struct Model {
 #[derive(Copy, Clone, Debug, EnumIter, DeriveColumn)]
 pub enum Column {
     Id,
-    Project,
+    ProjectId,
     Name,
     Description,
     CreatedAt,
@@ -58,7 +69,7 @@ pub enum Column {
 #[derive(Copy, Clone, Debug, EnumIter, DerivePrimaryKey)]
 pub enum PrimaryKey {
     Id,
-    Project,
+    ProjectId,
 }
 
 impl PrimaryKeyTrait for PrimaryKey {
@@ -78,7 +89,7 @@ impl ColumnTrait for Column {
     fn def(&self) -> ColumnDef {
         match self {
             | Self::Id => ColumnType::String(None).def(),
-            | Self::Project => ColumnType::String(None).def(),
+            | Self::ProjectId => ColumnType::String(None).def(),
             | Self::Name => ColumnType::String(None).def().null(),
             | Self::Description => ColumnType::String(None).def().null(),
             | Self::CreatedAt => ColumnType::String(None).def(),
@@ -109,7 +120,7 @@ impl Model {
     pub fn into_manifest(self) -> TriggerManifest {
         TriggerManifest {
             id: self.id,
-            project: self.project,
+            project: self.project_id,
             name: self.name,
             description: self.description,
             created_at: self.created_at,
@@ -125,7 +136,7 @@ impl Model {
     pub fn get_manifest(&self) -> TriggerManifest {
         TriggerManifest {
             id: self.id.clone(),
-            project: self.project.clone(),
+            project: self.project_id.clone(),
             name: self.name.clone(),
             description: self.description.clone(),
             created_at: self.created_at,
@@ -164,16 +175,18 @@ impl Model {
     }
 }
 
-#[serde_as]
-#[skip_serializing_none]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, IntoProto, Clone, PartialEq)]
+#[proto(target = "proto::trigger_proto::TriggerManifest")]
 pub struct TriggerManifest {
     pub id: TriggerId,
+    #[proto(name = "project_id")]
     pub project: ValidShardedId<ProjectId>,
     pub name: String,
     pub description: Option<String>,
+    #[proto(required)]
     pub created_at: DateTime<Utc>,
     pub updated_at: Option<DateTime<Utc>>,
+    #[proto(required)]
     pub action: Action,
     pub reference: Option<String>,
     pub schedule: Option<Schedule>,
@@ -183,17 +196,17 @@ pub struct TriggerManifest {
 
 #[derive(
     Debug,
+    FromProto,
+    IntoProto,
     Default,
     Clone,
-    Serialize,
-    Deserialize,
     PartialEq,
     Eq,
     EnumIter,
     DeriveActiveEnum,
 )]
-#[serde(rename_all = "snake_case")]
 #[sea_orm(rs_type = "String", db_type = "String(None)")]
+#[proto(target = "proto::trigger_proto::TriggerStatus")]
 pub enum Status {
     #[default]
     #[sea_orm(string_value = "Scheduled")]
@@ -233,71 +246,92 @@ impl Status {
 }
 
 #[derive(
-    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, FromJsonQueryResult,
+    Debug,
+    Clone,
+    FromProto,
+    IntoProto,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    FromJsonQueryResult,
 )]
-#[serde(rename_all = "snake_case")]
-#[serde(untagged)]
+#[proto(target = "proto::trigger_proto::Schedule")]
 pub enum Schedule {
     Recurring(Recurring),
     RunAt(RunAt),
 }
 
-#[skip_serializing_none]
-#[serde_as]
-#[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(default)]
+#[derive(
+    Debug,
+    IntoProto,
+    FromProto,
+    Default,
+    Clone,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+)]
+#[proto(target = "proto::trigger_proto::RunAt")]
 pub struct RunAt {
-    #[serde(with = "iso8601_dateformat_vec_serde")]
-    pub timepoints: Vec<DateTime<Tz>>,
-    // Ignored if set through the API.
+    pub timepoints: Vec<DateTime<FixedOffset>>,
     pub remaining: Option<u64>,
 }
 
-#[skip_serializing_none]
-#[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(
+    Debug, IntoProto, FromProto, Clone, Serialize, Deserialize, PartialEq, Eq,
+)]
+#[proto(target = "proto::trigger_proto::Recurring")]
 pub struct Recurring {
-    pub cron: Option<String>,
+    pub cron: String,
     pub timezone: String,
     pub limit: Option<u64>,
     pub remaining: Option<u64>,
 }
 
-impl Default for Recurring {
-    fn default() -> Self {
-        Self {
-            cron: None,
-            timezone: "Etc/UTC".to_owned(),
-            limit: None,
-            remaining: None,
-        }
-    }
-}
-
 #[derive(
-    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, FromJsonQueryResult,
+    Debug,
+    IntoProto,
+    FromProto,
+    Clone,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    FromJsonQueryResult,
 )]
-//#[serde(rename_all = "snake_case")]
-#[serde(untagged)]
+#[proto(target = "proto::trigger_proto::Action", non_exhaustive)]
 pub enum Action {
+    #[proto(skip)]
     Event(Event),
     Webhook(Webhook),
 }
 
-#[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Event {
-    #[serde(rename = "type")]
-    pub _kind: MustBe!("event"),
     event: String,
 }
 
-#[serde_as]
 #[derive(
-    Debug, Clone, Serialize, Deserialize, PartialEq, Eq, FromJsonQueryResult,
+    Debug,
+    Clone,
+    FromProto,
+    IntoProto,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Eq,
+    FromJsonQueryResult,
 )]
+#[proto(target = "proto::trigger_proto::Payload")]
 pub struct Payload {
     pub headers: HashMap<String, String>,
     pub content_type: String,
+    #[proto(map_from_proto = "string_from_bytes")]
     pub body: String,
+}
+
+fn string_from_bytes(input: Vec<u8>) -> String {
+    String::from_utf8(input).unwrap()
 }

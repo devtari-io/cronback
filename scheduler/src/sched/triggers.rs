@@ -3,7 +3,7 @@ use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::iter::Peekable;
 use std::str::FromStr;
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, FixedOffset, Utc};
 use chrono_tz::{Tz, UTC};
 use cron::{OwnedScheduleIterator, Schedule as CronSchedule};
 use lib::database::trigger_store::TriggerStoreError;
@@ -300,6 +300,7 @@ impl ActiveTriggerMap {
 ///
 /// The spinner maintains a max-heap of those jobs to determine which Triggers
 /// need to be evaluated at each loop.
+#[derive(Debug)]
 pub(crate) struct TriggerTemporalState {
     #[allow(unused)]
     pub trigger_id: TriggerId,
@@ -336,7 +337,7 @@ pub(crate) enum TriggerFutureTicks {
         remaining: Option<u64>,
     },
     RunAt {
-        run_at: BinaryHeap<Reverse<DateTime<Tz>>>,
+        run_at: BinaryHeap<Reverse<DateTime<FixedOffset>>>,
         remaining: u64,
     },
 }
@@ -348,7 +349,7 @@ impl TriggerFutureTicks {
     ) -> Result<Self, TriggerError> {
         match schedule_raw {
             | Schedule::Recurring(cron) => {
-                let raw_pattern = cron.cron.clone().unwrap();
+                let raw_pattern = cron.cron.clone();
                 let cron_schedule = CronSchedule::from_str(&raw_pattern)?;
                 let tz: Tz = cron.timezone.parse().map_err(|_| {
                     TriggerError::InvalidTimezone(cron.timezone.clone())
@@ -432,13 +433,15 @@ impl TriggerFutureTicks {
                 }
             }
             | Self::RunAt { run_at, remaining } => {
-                if next {
+                let next_point = if next {
                     let res = run_at.pop().map(|f| f.0);
                     *remaining -= 1;
                     res
                 } else {
                     run_at.peek().map(|f| f.0)
-                }
+                };
+                // Internally, we convert everything to UTC.
+                next_point.map(|f| f.with_timezone(&UTC))
             }
         }
     }
@@ -541,14 +544,14 @@ mod tests {
         cron_events_limit: Option<u64>,
     ) -> Schedule {
         Schedule::Recurring(Recurring {
-            cron: Some(pattern.into()),
+            cron: pattern.to_string(),
             timezone: "Europe/London".into(),
             limit: cron_events_limit,
             remaining: None,
         })
     }
 
-    fn create_run_at(timepoints: Vec<DateTime<Tz>>) -> Schedule {
+    fn create_run_at(timepoints: Vec<DateTime<FixedOffset>>) -> Schedule {
         Schedule::RunAt(RunAt {
             timepoints,
             remaining: None,
@@ -560,15 +563,14 @@ mod tests {
         let id = TriggerId::generate(&project).into();
         Trigger {
             id,
-            project,
+            project_id: project,
             reference: None,
             name: "sample-trigger".to_owned(),
             description: None,
             created_at: Utc::now(),
             updated_at: None,
             action: Action::Webhook(Webhook {
-                _kind: Default::default(),
-                url: Some("http://google.com".to_owned()),
+                url: "http://google.com".to_owned(),
                 http_method: HttpMethod::Get,
                 timeout_s: Duration::from_secs(30),
                 retry: None,

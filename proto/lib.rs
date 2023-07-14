@@ -1,3 +1,33 @@
+pub mod common {
+    tonic::include_proto!("common");
+
+    impl<T> From<chrono::DateTime<T>> for DateTime
+    where
+        T: chrono::TimeZone,
+        <T as chrono::TimeZone>::Offset: std::fmt::Display,
+    {
+        fn from(value: chrono::DateTime<T>) -> Self {
+            Self {
+                rfc3339: value.to_rfc3339(),
+            }
+        }
+    }
+
+    impl From<DateTime> for chrono::DateTime<chrono::Utc> {
+        fn from(value: DateTime) -> Self {
+            chrono::DateTime::parse_from_rfc3339(&value.rfc3339)
+                .unwrap()
+                .with_timezone(&chrono::Utc)
+        }
+    }
+
+    impl From<DateTime> for chrono::DateTime<chrono::FixedOffset> {
+        fn from(value: DateTime) -> Self {
+            chrono::DateTime::parse_from_rfc3339(&value.rfc3339).unwrap()
+        }
+    }
+}
+
 pub mod webhook_proto {
     tonic::include_proto!("webhook_proto");
 }

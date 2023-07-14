@@ -93,8 +93,8 @@ impl RunJob {
                     webhook: web.clone(),
                     payload: self.run.payload.clone(),
                     run_id: self.run.id.clone(),
-                    trigger_id: self.run.trigger.clone(),
-                    project: self.run.project.clone(),
+                    trigger_id: self.run.trigger_id.clone(),
+                    project: self.run.project_id.clone(),
                     attempt_store: Arc::clone(&self.attempt_store),
                 };
                 e.run().await

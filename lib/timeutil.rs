@@ -1,7 +1,4 @@
-use std::fmt::Display;
-
-use chrono::{DateTime, TimeZone, Timelike, Utc};
-use chrono_tz::{Tz, UTC};
+use chrono::{DateTime, FixedOffset, TimeZone, Timelike, Utc};
 use iso8601_duration::Duration as IsoDuration;
 
 pub fn parse_utc_from_rfc3339(input: &str) -> DateTime<Utc> {
@@ -15,11 +12,11 @@ pub fn parse_utc_from_rfc3339(input: &str) -> DateTime<Utc> {
 // - Ensure that the same time is always returned, regardless of the nanosecond
 //   value
 // - Enforce per-second granularity
-
-#[deprecated]
-pub fn parse_iso8601_and_duration(input: &str) -> Option<DateTime<Tz>> {
-    let parsed_datetime = DateTime::parse_from_str(input, "%+")
-        .map(|t| t.with_nanosecond(0).unwrap().with_timezone(&UTC));
+pub fn parse_iso8601_and_duration(
+    input: &str,
+) -> Option<DateTime<FixedOffset>> {
+    let parsed_datetime = DateTime::parse_from_rfc3339(input)
+        .map(|t| t.with_nanosecond(0).unwrap());
 
     if parsed_datetime.is_ok() {
         return parsed_datetime.ok();
@@ -40,27 +37,27 @@ pub fn parse_iso8601_and_duration(input: &str) -> Option<DateTime<Tz>> {
             + duration.second)
             * 1000.) as i64,
     );
+    // convert Utc::now() into DateTime<FixedOffset>
+    let now = Utc::now().with_timezone(&FixedOffset::east_opt(0).unwrap());
     Some(
-        Utc::now()
-            .checked_add_signed(duration)
+        now.checked_add_signed(duration)
             .unwrap()
             .with_nanosecond(0)
-            .unwrap()
-            .with_timezone(&UTC),
+            .unwrap(),
     )
 }
 
 // Only use when the input is trusted to be correct ISO8601
-pub fn parse_iso8601_unsafe(input: &str) -> DateTime<Tz> {
+pub fn parse_iso8601_unsafe(input: &str) -> DateTime<FixedOffset> {
     parse_iso8601_and_duration(input).unwrap()
 }
 
-pub fn to_iso8601<T>(input: &DateTime<T>) -> String
+pub fn to_rfc3339<T>(input: &DateTime<T>) -> String
 where
     T: TimeZone,
-    <T as TimeZone>::Offset: Display,
+    <T as TimeZone>::Offset: std::fmt::Display,
 {
-    input.format("%+").to_string()
+    input.to_rfc3339_opts(chrono::SecondsFormat::Secs, /* use_z */ true)
 }
 
 pub fn default_timezone() -> String {
@@ -68,26 +65,24 @@ pub fn default_timezone() -> String {
 }
 
 pub mod iso8601_dateformat_serde {
-    use chrono::DateTime;
-    use chrono_tz::Tz;
+    use chrono::{DateTime, FixedOffset};
     use serde::{self, Deserialize, Deserializer, Serializer};
 
     use super::parse_iso8601_and_duration;
 
     pub fn serialize<S>(
-        input: &DateTime<Tz>,
+        input: &DateTime<FixedOffset>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let s = format!("{}", input.format("%+"));
-        serializer.serialize_str(&s)
+        serializer.serialize_str(&input.to_rfc3339())
     }
 
     pub fn deserialize<'de, D>(
         deserializer: D,
-    ) -> Result<DateTime<Tz>, D::Error>
+    ) -> Result<DateTime<FixedOffset>, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -102,14 +97,13 @@ pub mod iso8601_dateformat_serde {
 }
 
 pub mod iso8601_dateformat_vec_serde {
-    use chrono::DateTime;
-    use chrono_tz::Tz;
+    use chrono::{DateTime, FixedOffset};
     use serde::{self, Deserialize, Deserializer, Serializer};
 
-    use super::{parse_iso8601_and_duration, to_iso8601};
+    use super::{parse_iso8601_and_duration, to_rfc3339};
 
     pub fn serialize<S>(
-        timepoints: &Vec<DateTime<Tz>>,
+        timepoints: &Vec<DateTime<FixedOffset>>,
         serializer: S,
     ) -> Result<S::Ok, S::Error>
     where
@@ -118,20 +112,20 @@ pub mod iso8601_dateformat_vec_serde {
         use serde::ser::SerializeSeq;
         let mut seq = serializer.serialize_seq(Some(timepoints.len()))?;
         for t in timepoints {
-            seq.serialize_element(&to_iso8601(t))?;
+            seq.serialize_element(&to_rfc3339(t))?;
         }
         seq.end()
     }
 
     pub fn deserialize<'de, D>(
         deserializer: D,
-    ) -> Result<Vec<DateTime<Tz>>, D::Error>
+    ) -> Result<Vec<DateTime<FixedOffset>>, D::Error>
     where
         D: Deserializer<'de>,
     {
         // TODO Can be refactored to use the iso8601_dateformat_serde
         let vec_de = Vec::<String>::deserialize(deserializer)?;
-        let items: Result<Vec<DateTime<Tz>>, D::Error> = vec_de
+        let items: Result<Vec<DateTime<FixedOffset>>, D::Error> = vec_de
             .into_iter()
             .map(|x| {
                 parse_iso8601_and_duration(&x).ok_or_else(|| {
@@ -150,7 +144,8 @@ pub mod iso8601_dateformat_vec_serde {
 fn test_iso8601_duration_parsing() {
     let input1 = "PT5M";
     let result = parse_iso8601_and_duration(input1);
-    let now = Utc::now().with_nanosecond(0).unwrap().with_timezone(&UTC);
+    let now = Utc::now().with_timezone(&FixedOffset::east_opt(0).unwrap());
+    let now = now.with_nanosecond(0).unwrap();
     assert!(result.is_some());
     assert_eq!(5, (result.unwrap() - now).num_minutes());
 }
@@ -159,7 +154,8 @@ fn test_iso8601_duration_parsing() {
 fn test_iso8601_negative_duration_parsing() {
     let input = "PT-5M";
     let result = parse_iso8601_and_duration(input);
-    let now = Utc::now().with_nanosecond(0).unwrap().with_timezone(&UTC);
+    let now = Utc::now().with_timezone(&FixedOffset::east_opt(0).unwrap());
+    let now = now.with_nanosecond(0).unwrap();
     assert!(result.is_some());
     assert_eq!(-5, (result.unwrap() - now).num_minutes());
 }
@@ -170,8 +166,8 @@ fn test_iso8601_parsing() {
     let input1 = "2023-03-05T21:27:32Z";
     let result = parse_iso8601_and_duration(input1).unwrap();
 
-    let parsed_datetime = DateTime::parse_from_str(input1, "%+")
-        .map(|t| t.with_nanosecond(0).unwrap().with_timezone(&UTC))
+    let parsed_datetime = DateTime::parse_from_rfc3339(input1)
+        .map(|t| t.with_nanosecond(0).unwrap())
         .unwrap();
     assert_eq!(parsed_datetime, result);
     // with nanoseconds trimmed

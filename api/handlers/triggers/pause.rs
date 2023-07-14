@@ -27,8 +27,7 @@ pub(crate) async fn pause(
         .await?;
     let trigger = scheduler
         .pause_trigger(PauseTriggerRequest {
-            project_id: project.into(),
-            id: id.into(),
+            id: Some(id.into()),
         })
         .await?
         .into_inner()
