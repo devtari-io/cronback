@@ -33,6 +33,8 @@ thiserror = { workspace = true }
 tokio = { workspace = true }
 tonic = { workspace = true }
 tracing = { workspace = true }
+sea-query = {workspace = true}
+sea-query-binder = {workspace = true}
 
 # Unique Dependencies
 sha2 = "0.10.6"

@@ -246,7 +246,7 @@ impl EventScheduler {
         // from database instead of fetching the entire trigger.
         let triggers = self
             .store
-            .get_triggers_by_owner(&project, before, after, limit)
+            .get_triggers_by_project(&project, before, after, limit)
             .await?;
 
         let (alive, dead): (Vec<_>, Vec<_>) =

@@ -22,7 +22,7 @@ use lib::config::Config;
 use lib::database::attempt_log_store::{AttemptLogStore, SqlAttemptLogStore};
 use lib::database::invocation_store::{InvocationStore, SqlInvocationStore};
 use lib::database::trigger_store::{SqlTriggerStore, TriggerStore};
-use lib::database::SqliteDatabase;
+use lib::database::Database;
 use lib::types::{ProjectId, Shard, ShardedId};
 use lib::{netutils, service};
 use metrics::{histogram, increment_counter};
@@ -100,15 +100,18 @@ pub async fn start_api_server(
     let addr =
         netutils::parse_addr(&config.api.address, config.api.port).unwrap();
 
-    let db = SqliteDatabase::connect(&config.api.database_uri).await?;
+    let db = Database::connect(&config.api.database_uri).await?;
+
+    // Only the auth store needs to be prep-ed as it's owned by the API layer.
+    // The other stores will be prep-ed by their owner component.
+    let auth_store = SqlAuthStore::new(db.clone());
+    auth_store.prepare().await?;
 
     let stores = Db {
-        trigger_store: Box::new(SqlTriggerStore::create(db.clone()).await?),
-        invocation_store: Box::new(
-            SqlInvocationStore::create(db.clone()).await?,
-        ),
-        attempt_store: Box::new(SqlAttemptLogStore::create(db.clone()).await?),
-        auth_store: Box::new(SqlAuthStore::create(db.clone()).await?),
+        trigger_store: Box::new(SqlTriggerStore::new(db.clone())),
+        invocation_store: Box::new(SqlInvocationStore::new(db.clone())),
+        attempt_store: Box::new(SqlAttemptLogStore::new(db.clone())),
+        auth_store: Box::new(auth_store),
     };
 
     let shared_state = Arc::new(AppState {

@@ -1,9 +1,15 @@
 use async_trait::async_trait;
+use sea_query::{ColumnDef, Iden, Table};
 
 use super::errors::DatabaseError;
-use super::helpers::{get_by_id_query, insert_query, paginated_query};
-use crate::database::SqliteDatabase;
+use super::helpers::{get_by_id_query, insert_query, paginated_query, KVIden};
+use crate::database::Database;
 use crate::types::{Invocation, InvocationId, ProjectId, ShardedId, TriggerId};
+
+#[derive(Iden)]
+enum InvocationsIden {
+    Invocations,
+}
 
 pub type InvocationStoreError = DatabaseError;
 
@@ -37,29 +43,22 @@ pub trait InvocationStore {
 }
 
 pub struct SqlInvocationStore {
-    db: SqliteDatabase,
+    db: Database,
 }
 
 impl SqlInvocationStore {
-    pub async fn create(
-        db: SqliteDatabase,
-    ) -> Result<Self, InvocationStoreError> {
-        let s = Self { db };
-        s.prepare().await?;
-        Ok(s)
+    pub fn new(db: Database) -> Self {
+        Self { db }
     }
 
-    async fn prepare(&self) -> Result<(), InvocationStoreError> {
-        sqlx::query(
-            r#"
-            CREATE TABLE IF NOT EXISTS invocations (
-                id TEXT PRIMARY KEY,
-                value TEXT
-            )
-        "#,
-        )
-        .execute(&self.db.pool)
-        .await?;
+    pub async fn prepare(&self) -> Result<(), InvocationStoreError> {
+        let sql = Table::create()
+            .table(InvocationsIden::Invocations)
+            .if_not_exists()
+            .col(ColumnDef::new(KVIden::Id).text().primary_key())
+            .col(ColumnDef::new(KVIden::Value).json_binary())
+            .build_any(self.db.schema_builder().as_ref());
+        sqlx::query(&sql).execute(&self.db.pool).await?;
         Ok(())
     }
 }
@@ -70,15 +69,20 @@ impl InvocationStore for SqlInvocationStore {
         &self,
         invocation: &Invocation,
     ) -> Result<(), InvocationStoreError> {
-        insert_query(&self.db.pool, "invocations", &invocation.id, invocation)
-            .await
+        insert_query(
+            &self.db,
+            InvocationsIden::Invocations,
+            &invocation.id,
+            invocation,
+        )
+        .await
     }
 
     async fn get_invocation(
         &self,
         id: &InvocationId,
     ) -> Result<Option<Invocation>, InvocationStoreError> {
-        get_by_id_query(&self.db.pool, "invocations", id).await
+        get_by_id_query(&self.db, InvocationsIden::Invocations, id).await
     }
 
     async fn get_invocations_by_trigger(
@@ -89,8 +93,8 @@ impl InvocationStore for SqlInvocationStore {
         limit: usize,
     ) -> Result<Vec<Invocation>, InvocationStoreError> {
         paginated_query(
-            &self.db.pool,
-            "invocations",
+            &self.db,
+            InvocationsIden::Invocations,
             "trigger",
             trigger_id.value(),
             &before,
@@ -108,8 +112,8 @@ impl InvocationStore for SqlInvocationStore {
         limit: usize,
     ) -> Result<Vec<Invocation>, InvocationStoreError> {
         paginated_query(
-            &self.db.pool,
-            "invocations",
+            &self.db,
+            InvocationsIden::Invocations,
             "project",
             project.value(),
             &before,
@@ -128,7 +132,7 @@ mod tests {
     use chrono_tz::UTC;
 
     use super::{InvocationStore, SqlInvocationStore};
-    use crate::database::SqliteDatabase;
+    use crate::database::Database;
     use crate::types::{
         Invocation,
         InvocationId,
@@ -151,7 +155,7 @@ mod tests {
         Invocation {
             id: InvocationId::new(&project),
             trigger: trigger_id,
-            project: project,
+            project,
             created_at: now,
             status: vec![InvocationStatus::WebhookStatus(WebhookStatus {
                 webhook: Webhook {
@@ -169,8 +173,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_sql_invocation_store() -> anyhow::Result<()> {
-        let db = SqliteDatabase::in_memory().await?;
-        let store = SqlInvocationStore::create(db).await?;
+        let db = Database::in_memory().await?;
+        let store = SqlInvocationStore::new(db);
+        store.prepare().await?;
 
         let owner1 = ProjectId::new();
         let owner2 = ProjectId::new();

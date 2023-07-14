@@ -1,10 +1,22 @@
 use async_trait::async_trait;
-use lib::database::SqliteDatabase;
+use lib::database::Database;
 use lib::types::ProjectId;
+use sea_query::{ColumnDef, Expr, Iden, Query, Table};
+use sea_query_binder::SqlxBinder;
 use sqlx::Row;
 use thiserror::Error;
 
 use crate::auth::{ApiKey, HashVersion};
+
+#[derive(Iden)]
+enum ApiKeysIden {
+    ApiKeys,
+    KeyId,
+    Hash,
+    HashVersion,
+    Project,
+    Name,
+}
 
 #[derive(Error, Debug)]
 pub enum AuthStoreError {
@@ -35,30 +47,25 @@ pub trait AuthStore {
 }
 
 pub struct SqlAuthStore {
-    db: SqliteDatabase,
+    db: Database,
 }
 
 impl SqlAuthStore {
-    pub async fn create(db: SqliteDatabase) -> Result<Self, AuthStoreError> {
-        let s = Self { db };
-        s.prepare().await?;
-        Ok(s)
+    pub fn new(db: Database) -> Self {
+        Self { db }
     }
 
-    async fn prepare(&self) -> Result<(), AuthStoreError> {
-        sqlx::query(
-            r#"
-            CREATE TABLE IF NOT EXISTS api_keys (
-                key_id TEXT PRIMARY KEY,
-                hash TEXT,
-                hash_version TEXT,
-                project TEXT,
-                name TEXT
-            )
-        "#,
-        )
-        .execute(&self.db.pool)
-        .await?;
+    pub async fn prepare(&self) -> Result<(), AuthStoreError> {
+        let sql = Table::create()
+            .table(ApiKeysIden::ApiKeys)
+            .if_not_exists()
+            .col(ColumnDef::new(ApiKeysIden::KeyId).text().primary_key())
+            .col(ColumnDef::new(ApiKeysIden::Hash).text())
+            .col(ColumnDef::new(ApiKeysIden::HashVersion).text())
+            .col(ColumnDef::new(ApiKeysIden::Project).text())
+            .col(ColumnDef::new(ApiKeysIden::Name).text())
+            .build_any(self.db.schema_builder().as_ref());
+        sqlx::query(&sql).execute(&self.db.pool).await?;
         Ok(())
     }
 }
@@ -73,17 +80,27 @@ impl AuthStore for SqlAuthStore {
     ) -> Result<(), AuthStoreError> {
         let hashed = key.hash(HashVersion::default());
 
-        sqlx::query(
-            "INSERT INTO api_keys (key_id, hash, hash_version, project, name) \
-             VALUES (?,?,?,?,?)",
-        )
-        .bind(hashed.key_id)
-        .bind(hashed.hash)
-        .bind(hashed.hash_version.to_string())
-        .bind(project.to_string())
-        .bind(key_name)
-        .execute(&self.db.pool)
-        .await?;
+        let (sql, values) = Query::insert()
+            .into_table(ApiKeysIden::ApiKeys)
+            .columns([
+                ApiKeysIden::KeyId,
+                ApiKeysIden::Hash,
+                ApiKeysIden::HashVersion,
+                ApiKeysIden::Project,
+                ApiKeysIden::Name,
+            ])
+            .values_panic([
+                hashed.key_id.into(),
+                hashed.hash.into(),
+                hashed.hash_version.to_string().into(),
+                project.to_string().into(),
+                key_name.to_string().into(),
+            ])
+            .build_any_sqlx(self.db.builder().as_ref());
+
+        sqlx::query_with(&sql, values)
+            .execute(&self.db.pool)
+            .await?;
         Ok(())
     }
 
@@ -91,13 +108,21 @@ impl AuthStore for SqlAuthStore {
         &self,
         user_provided_key: &ApiKey,
     ) -> Result<ProjectId, AuthStoreError> {
-        let result = sqlx::query(
-            "SELECT key_id, hash, hash_version, project FROM api_keys where \
-             key_id = ?",
-        )
-        .bind(user_provided_key.key_id())
-        .fetch_one(&self.db.pool)
-        .await;
+        let (sql, values) = Query::select()
+            .columns([
+                ApiKeysIden::KeyId,
+                ApiKeysIden::Hash,
+                ApiKeysIden::HashVersion,
+                ApiKeysIden::Project,
+            ])
+            .from(ApiKeysIden::ApiKeys)
+            .and_where(
+                Expr::col(ApiKeysIden::KeyId).eq(user_provided_key.key_id()),
+            )
+            .build_any_sqlx(self.db.builder().as_ref());
+        let result = sqlx::query_with(&sql, values)
+            .fetch_one(&self.db.pool)
+            .await;
         let row = match result {
             | Ok(r) => r,
             | Err(sqlx::Error::RowNotFound) => {
@@ -108,7 +133,8 @@ impl AuthStore for SqlAuthStore {
             | Err(e) => return Err(e.into()),
         };
 
-        let hash_version = row.get::<String, _>("hash_version");
+        let hash_version =
+            row.get::<String, _>(ApiKeysIden::HashVersion.to_string().as_str());
         let hash_version: HashVersion = hash_version.parse().map_err(|_| {
             AuthStoreError::InternalError(format!(
                 "Unknown version: {hash_version}"
@@ -116,7 +142,8 @@ impl AuthStore for SqlAuthStore {
         })?;
 
         let user_provided_hash = user_provided_key.hash(hash_version);
-        let stored_hash = row.get::<String, _>("hash");
+        let stored_hash =
+            row.get::<String, _>(ApiKeysIden::Hash.to_string().as_str());
 
         if user_provided_hash.hash != stored_hash {
             return Err(AuthStoreError::AuthFailed(
@@ -124,12 +151,17 @@ impl AuthStore for SqlAuthStore {
             ));
         }
 
-        Ok(ProjectId::from(row.get::<String, _>("project")))
+        Ok(ProjectId::from(row.get::<String, _>(
+            ApiKeysIden::Project.to_string().as_str(),
+        )))
     }
 
     async fn revoke_key(&self, key: &ApiKey) -> Result<bool, AuthStoreError> {
-        let res = sqlx::query("DELETE FROM api_keys where key_id = ?")
-            .bind(key.key_id())
+        let (sql, values) = Query::delete()
+            .from_table(ApiKeysIden::ApiKeys)
+            .and_where(Expr::col(ApiKeysIden::KeyId).eq(key.key_id()))
+            .build_any_sqlx(self.db.builder().as_ref());
+        let res = sqlx::query_with(&sql, values)
             .execute(&self.db.pool)
             .await?;
         Ok(res.rows_affected() > 0)
@@ -140,7 +172,7 @@ impl AuthStore for SqlAuthStore {
 mod tests {
     use std::str::FromStr;
 
-    use lib::database::SqliteDatabase;
+    use lib::database::Database;
     use lib::types::ProjectId;
 
     use super::{AuthStore, AuthStoreError, SqlAuthStore};
@@ -148,8 +180,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_sql_auth_store() -> anyhow::Result<()> {
-        let db = SqliteDatabase::in_memory().await?;
-        let store = SqlAuthStore::create(db).await?;
+        let db = Database::in_memory().await?;
+        let store = SqlAuthStore::new(db);
+        store.prepare().await?;
 
         let owner1 = ProjectId::new();
         let owner2 = ProjectId::new();

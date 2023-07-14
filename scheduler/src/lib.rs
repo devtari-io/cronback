@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use handler::SchedulerAPIHandler;
 use lib::database::trigger_store::SqlTriggerStore;
-use lib::database::SqliteDatabase;
+use lib::database::Database;
 use lib::grpc_client_provider::DispatcherClientProvider;
 use lib::{netutils, service};
 use proto::scheduler_proto::scheduler_server::SchedulerServer;
@@ -19,8 +19,9 @@ pub async fn start_scheduler_server(
 ) -> anyhow::Result<()> {
     let config = context.load_config();
 
-    let db = SqliteDatabase::connect(&config.scheduler.database_uri).await?;
-    let trigger_store = SqlTriggerStore::create(db).await?;
+    let db = Database::connect(&config.scheduler.database_uri).await?;
+    let trigger_store = SqlTriggerStore::new(db);
+    trigger_store.prepare().await?;
 
     let dispatcher_client_provider = Arc::new(DispatcherClientProvider::new(
         config.scheduler.dispatcher_uri.clone(),
@@ -69,7 +70,7 @@ pub mod test_helpers {
     use std::sync::Arc;
 
     use lib::database::trigger_store::SqlTriggerStore;
-    use lib::database::SqliteDatabase;
+    use lib::database::Database;
     use lib::grpc_client_provider::DispatcherClientProvider;
     use lib::service::ServiceContext;
     use proto::scheduler_proto::scheduler_client::SchedulerClient;
@@ -98,8 +99,9 @@ pub mod test_helpers {
                 context.load_config().scheduler.dispatcher_uri,
             ));
 
-        let db = SqliteDatabase::in_memory().await.unwrap();
-        let trigger_store = SqlTriggerStore::create(db).await.unwrap();
+        let db = Database::in_memory().await.unwrap();
+        let trigger_store = SqlTriggerStore::new(db);
+        trigger_store.prepare().await.unwrap();
         let event_scheduler = Arc::new(EventScheduler::new(
             context.clone(),
             Box::new(trigger_store),

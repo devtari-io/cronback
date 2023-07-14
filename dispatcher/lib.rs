@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use lib::database::attempt_log_store::{AttemptLogStore, SqlAttemptLogStore};
 use lib::database::invocation_store::{InvocationStore, SqlInvocationStore};
-use lib::database::SqliteDatabase;
+use lib::database::Database;
 use lib::{netutils, service};
 use proto::dispatcher_proto::dispatcher_server::DispatcherServer;
 use tracing::info;
@@ -26,12 +26,18 @@ pub async fn start_dispatcher_server(
     )
     .unwrap();
 
-    let db = SqliteDatabase::connect(&config.dispatcher.database_uri).await?;
-    let attempt_store: Arc<dyn AttemptLogStore + Send + Sync> =
-        Arc::new(SqlAttemptLogStore::create(db.clone()).await?);
+    let db = Database::connect(&config.dispatcher.database_uri).await?;
+    let attempt_store: Arc<dyn AttemptLogStore + Send + Sync> = Arc::new({
+        let s = SqlAttemptLogStore::new(db.clone());
+        s.prepare().await?;
+        s
+    });
 
-    let invocation_store: Arc<dyn InvocationStore + Send + Sync> =
-        Arc::new(SqlInvocationStore::create(db).await?);
+    let invocation_store: Arc<dyn InvocationStore + Send + Sync> = Arc::new({
+        let s = SqlInvocationStore::new(db);
+        s.prepare().await?;
+        s
+    });
 
     let dispatch_manager =
         DispatchManager::new(invocation_store, attempt_store);

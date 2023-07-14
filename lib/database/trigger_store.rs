@@ -1,13 +1,26 @@
 use async_trait::async_trait;
+use sea_query::{Alias, ColumnDef, Expr, Iden, Query, Table};
+use sea_query_binder::SqlxBinder;
 use sqlx::Row;
 use tracing::debug;
 
 use super::errors::DatabaseError;
-use super::helpers::{get_by_id_query, insert_query, paginated_query};
-use crate::database::SqliteDatabase;
+use super::helpers::{
+    get_by_id_query,
+    insert_query,
+    paginated_query,
+    JsonField,
+    KVIden,
+};
+use crate::database::Database;
 use crate::types::{ProjectId, ShardedId, Status, Trigger, TriggerId};
 
 pub type TriggerStoreError = DatabaseError;
+
+#[derive(Iden)]
+enum TriggersIden {
+    Triggers,
+}
 
 #[async_trait]
 pub trait TriggerStore {
@@ -31,7 +44,7 @@ pub trait TriggerStore {
         id: &TriggerId,
     ) -> Result<Option<Status>, TriggerStoreError>;
 
-    async fn get_triggers_by_owner(
+    async fn get_triggers_by_project(
         &self,
         project: &ProjectId,
         before: Option<TriggerId>,
@@ -41,27 +54,22 @@ pub trait TriggerStore {
 }
 
 pub struct SqlTriggerStore {
-    db: SqliteDatabase,
+    db: Database,
 }
 
 impl SqlTriggerStore {
-    pub async fn create(db: SqliteDatabase) -> Result<Self, TriggerStoreError> {
-        let s = Self { db };
-        s.prepare().await?;
-        Ok(s)
+    pub fn new(db: Database) -> Self {
+        Self { db }
     }
 
-    async fn prepare(&self) -> Result<(), TriggerStoreError> {
-        sqlx::query(
-            r#"
-            CREATE TABLE IF NOT EXISTS triggers (
-                id TEXT PRIMARY KEY,
-                value TEXT
-            )
-        "#,
-        )
-        .execute(&self.db.pool)
-        .await?;
+    pub async fn prepare(&self) -> Result<(), TriggerStoreError> {
+        let sql = Table::create()
+            .table(TriggersIden::Triggers)
+            .if_not_exists()
+            .col(ColumnDef::new(KVIden::Id).text().primary_key())
+            .col(ColumnDef::new(KVIden::Value).json_binary())
+            .build_any(self.db.schema_builder().as_ref());
+        sqlx::query(&sql).execute(&self.db.pool).await?;
         Ok(())
     }
 }
@@ -72,30 +80,40 @@ impl TriggerStore for SqlTriggerStore {
         &self,
         trigger: &Trigger,
     ) -> Result<(), TriggerStoreError> {
-        insert_query(&self.db.pool, "triggers", &trigger.id, trigger).await
+        insert_query(&self.db, TriggersIden::Triggers, &trigger.id, trigger)
+            .await
     }
 
     async fn get_all_active_triggers(
         &self,
     ) -> Result<Vec<Trigger>, TriggerStoreError> {
-        let results = sqlx::query(
-            "SELECT id, value FROM triggers where JSON_EXTRACT(value, \
-             '$.status') IN ('active', 'paused')",
-        )
-        .fetch_all(&self.db.pool)
-        .await?
-        .into_iter()
-        .map(|r| {
-            let id = r.get::<String, _>("id");
-            debug!(trigger_id = %id, "Loading trigger from database");
-            let j = r.get::<String, _>("value");
-            serde_json::from_str::<Trigger>(&j)
-        })
-        .collect::<Result<Vec<_>, _>>();
+        let (sql, values) = Query::select()
+            .columns([KVIden::Id, KVIden::Value])
+            .from(TriggersIden::Triggers)
+            .and_where(
+                Expr::expr(
+                    Expr::col(KVIden::Value)
+                        .cast_json_field("status", self.db.pool.any_kind()),
+                )
+                .is_in(["active", "paused"]),
+            )
+            .build_any_sqlx(self.db.builder().as_ref());
+
+        let results = sqlx::query_with(&sql, values)
+            .fetch_all(&self.db.pool)
+            .await?
+            .into_iter()
+            .map(|r| {
+                let id = r.get::<String, _>(KVIden::Id.to_string().as_str());
+                debug!(trigger_id = %id, "Loading trigger from database");
+                let j = r.get::<String, _>(KVIden::Value.to_string().as_str());
+                serde_json::from_str::<Trigger>(&j)
+            })
+            .collect::<Result<Vec<_>, _>>();
         Ok(results?)
     }
 
-    async fn get_triggers_by_owner(
+    async fn get_triggers_by_project(
         &self,
         project: &ProjectId,
         before: Option<TriggerId>,
@@ -103,8 +121,8 @@ impl TriggerStore for SqlTriggerStore {
         limit: usize,
     ) -> Result<Vec<Trigger>, TriggerStoreError> {
         paginated_query(
-            &self.db.pool,
-            "triggers",
+            &self.db,
+            TriggersIden::Triggers,
             "project",
             project.value(),
             &before,
@@ -118,7 +136,7 @@ impl TriggerStore for SqlTriggerStore {
         &self,
         id: &TriggerId,
     ) -> Result<Option<Trigger>, TriggerStoreError> {
-        get_by_id_query(&self.db.pool, "triggers", id).await
+        get_by_id_query(&self.db, TriggersIden::Triggers, id).await
     }
 
     async fn get_status(
@@ -126,14 +144,25 @@ impl TriggerStore for SqlTriggerStore {
         project: &ProjectId,
         id: &TriggerId,
     ) -> Result<Option<Status>, TriggerStoreError> {
-        let result = sqlx::query(
-            "SELECT id, value->'$.status' AS status FROM triggers WHERE id = \
-             ? AND JSON_EXTRACT(value, '$.project') = ?",
-        )
-        .bind(id.to_string())
-        .bind(project.to_string())
-        .fetch_one(&self.db.pool)
-        .await;
+        let (sql, values) = Query::select()
+            .column(KVIden::Id)
+            .expr_as(
+                Expr::col(KVIden::Value)
+                    .get_json_field("status", self.db.pool.any_kind()),
+                Alias::new("status"),
+            )
+            .from(TriggersIden::Triggers)
+            .and_where(Expr::col(KVIden::Id).eq(id.to_string()))
+            .and_where(
+                Expr::col(KVIden::Value)
+                    .cast_json_field("project", self.db.pool.any_kind())
+                    .eq(project.to_string()),
+            )
+            .build_any_sqlx(self.db.builder().as_ref());
+
+        let result = sqlx::query_with(&sql, values)
+            .fetch_one(&self.db.pool)
+            .await;
 
         match result {
             | Ok(r) => {
@@ -153,7 +182,7 @@ mod tests {
     use chrono::{Timelike, Utc};
 
     use super::{SqlTriggerStore, TriggerStore};
-    use crate::database::SqliteDatabase;
+    use crate::database::Database;
     use crate::types::{Emit, ProjectId, Status, Trigger, TriggerId, Webhook};
 
     fn build_trigger(
@@ -188,8 +217,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_sql_trigger_store() -> anyhow::Result<()> {
-        let db = SqliteDatabase::in_memory().await?;
-        let store = SqlTriggerStore::create(db).await?;
+        let db = Database::in_memory().await?;
+        let store = SqlTriggerStore::new(db);
+        store.prepare().await?;
 
         let owner1 = ProjectId::new();
         let owner2 = ProjectId::new();
@@ -228,12 +258,22 @@ mod tests {
 
         // Test get by owner
         let mut results = store
-            .get_triggers_by_owner(&owner1, None, None, 100)
+            .get_triggers_by_project(&owner1, None, None, 100)
             .await?;
-        let mut expected = vec![t1, t2];
+        let mut expected = vec![t1.clone(), t2.clone()];
         expected.sort_by(|a, b| a.id.cmp(&b.id));
         results.sort_by(|a, b| a.id.cmp(&b.id));
         assert_eq!(results, expected);
+
+        // Test Get Status
+        assert_eq!(
+            Some(Status::Active),
+            store.get_status(&owner1, &t1.id).await?
+        );
+        assert_eq!(
+            Some(Status::Paused),
+            store.get_status(&owner1, &t2.id).await?
+        );
 
         Ok(())
     }

@@ -1,9 +1,15 @@
 use async_trait::async_trait;
+use sea_query::{ColumnDef, Iden, Table};
 
 use super::errors::DatabaseError;
-use super::helpers::{get_by_id_query, insert_query, paginated_query};
-use crate::database::SqliteDatabase;
+use super::helpers::{get_by_id_query, insert_query, paginated_query, KVIden};
+use crate::database::Database;
 use crate::types::{AttemptLogId, EmitAttemptLog, InvocationId, ShardedId};
+
+#[derive(Iden)]
+enum AttemptsIden {
+    Attempts,
+}
 
 pub type AttemptLogStoreError = DatabaseError;
 
@@ -29,29 +35,22 @@ pub trait AttemptLogStore {
 }
 
 pub struct SqlAttemptLogStore {
-    db: SqliteDatabase,
+    db: Database,
 }
 
 impl SqlAttemptLogStore {
-    pub async fn create(
-        db: SqliteDatabase,
-    ) -> Result<Self, AttemptLogStoreError> {
-        let s = Self { db };
-        s.prepare().await?;
-        Ok(s)
+    pub fn new(db: Database) -> Self {
+        Self { db }
     }
 
-    async fn prepare(&self) -> Result<(), AttemptLogStoreError> {
-        sqlx::query(
-            r#"
-            CREATE TABLE IF NOT EXISTS attempts (
-                id TEXT PRIMARY KEY,
-                value TEXT
-            )
-        "#,
-        )
-        .execute(&self.db.pool)
-        .await?;
+    pub async fn prepare(&self) -> Result<(), AttemptLogStoreError> {
+        let sql = Table::create()
+            .table(AttemptsIden::Attempts)
+            .if_not_exists()
+            .col(ColumnDef::new(KVIden::Id).text().primary_key())
+            .col(ColumnDef::new(KVIden::Value).json_binary())
+            .build_any(self.db.schema_builder().as_ref());
+        sqlx::query(&sql).execute(&self.db.pool).await?;
         Ok(())
     }
 }
@@ -62,7 +61,8 @@ impl AttemptLogStore for SqlAttemptLogStore {
         &self,
         attempt: &EmitAttemptLog,
     ) -> Result<(), AttemptLogStoreError> {
-        insert_query(&self.db.pool, "attempts", &attempt.id, attempt).await
+        insert_query(&self.db, AttemptsIden::Attempts, &attempt.id, attempt)
+            .await
     }
 
     async fn get_attempts_for_invocation(
@@ -73,8 +73,8 @@ impl AttemptLogStore for SqlAttemptLogStore {
         limit: usize,
     ) -> Result<Vec<EmitAttemptLog>, AttemptLogStoreError> {
         paginated_query(
-            &self.db.pool,
-            "attempts",
+            &self.db,
+            AttemptsIden::Attempts,
             "invocation",
             id.value(),
             &before,
@@ -88,7 +88,7 @@ impl AttemptLogStore for SqlAttemptLogStore {
         &self,
         id: &AttemptLogId,
     ) -> Result<Option<EmitAttemptLog>, AttemptLogStoreError> {
-        get_by_id_query(&self.db.pool, "attempts", id).await
+        get_by_id_query(&self.db, AttemptsIden::Attempts, id).await
     }
 }
 
@@ -101,7 +101,7 @@ mod tests {
     use chrono_tz::UTC;
 
     use super::{AttemptLogStore, SqlAttemptLogStore};
-    use crate::database::SqliteDatabase;
+    use crate::database::Database;
     use crate::types::{
         AttemptLogId,
         EmitAttemptLog,
@@ -142,8 +142,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_sql_trigger_store() -> anyhow::Result<()> {
-        let db = SqliteDatabase::in_memory().await?;
-        let store = SqlAttemptLogStore::create(db).await?;
+        let db = Database::in_memory().await?;
+        let store = SqlAttemptLogStore::new(db);
+        store.prepare().await?;
 
         let owner = ProjectId::new();
         let inv1 = InvocationId::new(&owner);
