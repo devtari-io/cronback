@@ -7,32 +7,60 @@ use lib::types::{Action, Run, RunStatus};
 use metrics::{decrement_gauge, increment_gauge};
 use proto::dispatcher_proto;
 use thiserror::Error;
-use tracing::error;
+use tracing::{error, info};
 
 use crate::actions;
 
 #[derive(Error, Debug)]
 pub enum DispatcherManagerError {
     #[error("store error: {0}")]
-    StoreError(#[from] RunStoreError),
+    Store(#[from] RunStoreError),
 }
 
 pub struct DispatchManager {
+    _cell_id: u32,
     attempt_store: Arc<dyn AttemptLogStore + Send + Sync>,
     run_store: Arc<dyn RunStore + Send + Sync>,
 }
 
 impl DispatchManager {
     pub fn new(
+        cell_id: u32,
         run_store: Arc<dyn RunStore + Send + Sync>,
         attempt_store: Arc<dyn AttemptLogStore + Send + Sync>,
     ) -> Self {
-        // TODO: Load all non completed runs from the database
-
         Self {
+            _cell_id: cell_id,
             run_store,
             attempt_store,
         }
+    }
+
+    pub async fn start(&self) -> Result<(), DispatcherManagerError> {
+        // TODO: Fetch only runs for this cell
+
+        let pending_runs = self
+            .run_store
+            .get_runs_by_status(RunStatus::Attempting)
+            .await?;
+
+        info!(
+            "Loaded {} pending runs from the database",
+            pending_runs.len()
+        );
+
+        for r in pending_runs {
+            tokio::spawn(
+                RunJob::from(
+                    r,
+                    Arc::clone(&self.run_store),
+                    Arc::clone(&self.attempt_store),
+                )
+                .run(),
+            );
+        }
+
+        Ok(())
     }
 
     pub async fn run(

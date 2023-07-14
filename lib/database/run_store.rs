@@ -9,7 +9,7 @@ use crate::database::models::prelude::Runs;
 use crate::database::Database;
 use crate::model::ModelId;
 use crate::prelude::ValidShardedId;
-use crate::types::{ProjectId, Run, RunId, TriggerId};
+use crate::types::{ProjectId, Run, RunId, RunStatus, TriggerId};
 
 pub type RunStoreError = DatabaseError;
 
@@ -37,6 +37,11 @@ pub trait RunStore {
         project: &ValidShardedId<ProjectId>,
         pagination: PaginationIn,
     ) -> Result<PaginatedResponse<Run>, RunStoreError>;
+
+    async fn get_runs_by_status(
+        &self,
+        status: RunStatus,
+    ) -> Result<Vec<Run>, RunStoreError>;
 }
 
 pub struct SqlRunStore {
@@ -107,6 +112,17 @@ impl RunStore for SqlRunStore {
         let res = query.all(&self.db.orm).await?;
 
         Ok(PaginatedResponse::paginate(res, &pagination))
+    }
+
+    async fn get_runs_by_status(
+        &self,
+        status: RunStatus,
+    ) -> Result<Vec<Run>, RunStoreError> {
+        let result = Runs::find()
+            .filter(runs::Column::Status.eq(status))
+            .all(&self.db.orm)
+            .await?;
+        Ok(result)
     }
 }
 
@@ -235,6 +251,11 @@ mod tests {
             Some(mismatch_project_i1)
         );
 
+        // Test get_run_by_status
+
+        let results = store.get_runs_by_status(RunStatus::Failed).await?;
+        let expected = vec![i1.clone()];
+        assert_eq!(results, expected);
         Ok(())
     }
 }

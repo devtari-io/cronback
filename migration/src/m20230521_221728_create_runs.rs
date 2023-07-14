@@ -57,6 +57,17 @@ impl MigrationTrait for Migration {
                     .to_owned(),
             )
             .await?;
+
+        manager
+            .create_index(
+                Index::create()
+                    .if_not_exists()
+                    .name("IX_runs_status")
+                    .table(Runs::Table)
+                    .col(Runs::Status)
+                    .to_owned(),
+            )
+            .await?;
         Ok(())
     }
 

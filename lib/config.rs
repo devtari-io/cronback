@@ -33,6 +33,7 @@ pub struct MainConfig {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct DispatcherConfig {
+    pub cell_id: u32,
     pub address: String,
     pub port: u16,
     pub request_processing_timeout_s: u64,
