@@ -2,7 +2,6 @@ mod dispatch_manager;
 mod emits;
 mod handler;
 mod retry;
-mod validators;
 
 use std::sync::Arc;
 

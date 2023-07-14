@@ -24,9 +24,9 @@ use metrics::counter;
 use reqwest::header::HeaderValue;
 use reqwest::Method;
 use tracing::{debug, error, info};
+use validator::Validate;
 
 use crate::retry::RetryPolicy;
-use crate::validators::validate_webhook;
 
 fn to_reqwest_http_method(method: &HttpMethod) -> reqwest::Method {
     match method {
@@ -145,7 +145,7 @@ async fn dispatch_webhook(
     webhook: &Webhook,
     payload: &Option<Payload>,
 ) -> WebhookAttemptDetails {
-    let validation_result = validate_webhook(webhook);
+    let validation_result = webhook.validate();
 
     if let Err(e) = validation_result {
         debug!(

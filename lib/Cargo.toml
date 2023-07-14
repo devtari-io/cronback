@@ -29,6 +29,7 @@ tonic = { workspace = true }
 tower = { workspace = true }
 tower-http = { workspace = true }
 ulid = { workspace = true }
+validator = { workspace = true }
 
 # Unique Dependencies
 config = { version = "0.13", features = ["toml"] }
@@ -44,6 +45,10 @@ tokio = { version = "1", features = ["full"] }
 tonic-reflection = "0.9.0"
 tracing = { version = "0.1", features = ["log"] }
 url = { version = "2.3.1", features = ["serde"] }
-validator = { version = "0.16.0", features = ["derive"] }
 valuable = { version = "0.1.0", features = ["derive"] }
 monostate = { version = "0.1" }
+# A crate that re-exposes the unstable IP features that got introduced in
+# https://github.com/rust-lang/rust/issues/27709.
+# Given that this is an untrusted repo, we're pinning it to a particular
+# revision after reviewing the code at this revision.
+ipext = {git = "https://github.com/jedisct1/rust-ipext", rev="0ebeb115bd67"}
