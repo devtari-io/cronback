@@ -144,8 +144,14 @@ impl TriggerStore for SqlTriggerStore {
         &self,
         trigger: &Trigger,
     ) -> Result<(), TriggerStoreError> {
-        update_query(&self.db, TriggersIden::Triggers, &trigger.id, trigger)
-            .await
+        update_query(
+            &self.db,
+            TriggersIden::Triggers,
+            &trigger.project,
+            &trigger.id,
+            trigger,
+        )
+        .await
     }
 
     async fn get_all_active_triggers(
@@ -201,11 +207,10 @@ impl TriggerStore for SqlTriggerStore {
 
     async fn get_trigger(
         &self,
-        project: &ProjectId,
+        project_id: &ProjectId,
         id: &TriggerId,
     ) -> Result<Option<Trigger>, TriggerStoreError> {
-        let t = get_by_id_query(&self.db, TriggersIden::Triggers, id).await?;
-        Ok(t.filter(|x: &Trigger| x.project.inner() == project))
+        get_by_id_query(&self.db, TriggersIden::Triggers, project_id, id).await
     }
 
     async fn get_status(
@@ -243,6 +248,7 @@ mod tests {
     use chrono::{Timelike, Utc};
 
     use super::{SqlTriggerStore, TriggerStore};
+    use crate::database::errors::DatabaseError;
     use crate::database::trigger_store::TriggerStoreError;
     use crate::database::Database;
     use crate::model::ValidShardedId;
@@ -286,14 +292,13 @@ mod tests {
         let store = SqlTriggerStore::new(db);
         store.prepare().await?;
 
-        let owner1 = ProjectId::generate();
+        let project1 = ProjectId::generate();
+        let project2 = ProjectId::generate();
 
-        let owner2 = ProjectId::generate();
-
-        let t1 = build_trigger("t1", owner1.clone(), Status::Scheduled);
-        let t2 = build_trigger("t2", owner1.clone(), Status::Paused);
-        let t3 = build_trigger("t3", owner2.clone(), Status::Scheduled);
-        let t4 = build_trigger("t4", owner2.clone(), Status::Expired);
+        let t1 = build_trigger("t1", project1.clone(), Status::Scheduled);
+        let t2 = build_trigger("t2", project1.clone(), Status::Paused);
+        let t3 = build_trigger("t3", project2.clone(), Status::Scheduled);
+        let t4 = build_trigger("t4", project2.clone(), Status::Expired);
 
         // Test installs
         store.install_trigger(&t1).await?;
@@ -302,18 +307,30 @@ mod tests {
         store.install_trigger(&t4).await?;
 
         // Test getters
-        assert_eq!(store.get_trigger(&owner1, &t1.id).await?, Some(t1.clone()));
-        assert_eq!(store.get_trigger(&owner1, &t2.id).await?, Some(t2.clone()));
-        assert_eq!(store.get_trigger(&owner2, &t3.id).await?, Some(t3.clone()));
-        assert_eq!(store.get_trigger(&owner2, &t4.id).await?, Some(t4.clone()));
+        assert_eq!(
+            store.get_trigger(&project1, &t1.id).await?,
+            Some(t1.clone())
+        );
+        assert_eq!(
+            store.get_trigger(&project1, &t2.id).await?,
+            Some(t2.clone())
+        );
+        assert_eq!(
+            store.get_trigger(&project2, &t3.id).await?,
+            Some(t3.clone())
+        );
+        assert_eq!(
+            store.get_trigger(&project2, &t4.id).await?,
+            Some(t4.clone())
+        );
         // Wrong project.
-        assert_eq!(store.get_trigger(&owner1, &t4.id).await?, None);
+        assert_eq!(store.get_trigger(&project1, &t4.id).await?, None);
 
         // Test fetching non existent trigger
         assert_eq!(
             store
                 .get_trigger(
-                    &owner1,
+                    &project1,
                     &TriggerId::from("non_existent".to_string())
                 )
                 .await?,
@@ -329,7 +346,7 @@ mod tests {
 
         // Test get by owner
         let mut results = store
-            .get_triggers_by_project(&owner1, None, None, None, None, 100)
+            .get_triggers_by_project(&project1, None, None, None, None, 100)
             .await?;
         let mut expected = vec![t1.clone(), t2.clone()];
         expected.sort_by(|a, b| a.id.cmp(&b.id));
@@ -339,15 +356,15 @@ mod tests {
         // Test Get Status
         assert_eq!(
             Some(Status::Scheduled),
-            store.get_status(&owner1, &t1.id).await?
+            store.get_status(&project1, &t1.id).await?
         );
         assert_eq!(
             Some(Status::Paused),
-            store.get_status(&owner1, &t2.id).await?
+            store.get_status(&project1, &t2.id).await?
         );
 
         // Test reference uniqueness
-        let mut t5 = build_trigger("t5", owner1.clone(), Status::Scheduled);
+        let mut t5 = build_trigger("t5", project1.clone(), Status::Scheduled);
         t5.reference = Some("Ref".to_string());
         let t6 = t5.clone();
         store.install_trigger(&t5).await?;
@@ -359,7 +376,7 @@ mod tests {
         // Test get by reference
         let results = store
             .get_triggers_by_project(
-                &owner1,
+                &project1,
                 Some("Ref".to_string()),
                 None,
                 None,
@@ -372,7 +389,7 @@ mod tests {
         // Test get by status
         let results = store
             .get_triggers_by_project(
-                &owner1,
+                &project1,
                 None,
                 Some(vec![Status::Paused]),
                 None,
@@ -381,6 +398,29 @@ mod tests {
             )
             .await?;
         assert_eq!(results, vec![t2.clone()]);
+
+        // Test update trigger
+        let mut new_t1 = t1.clone();
+        new_t1.status = Status::Expired;
+
+        store.update_trigger(&new_t1).await?;
+        assert_eq!(
+            store.get_trigger(&project1, &t1.id).await?,
+            Some(new_t1.clone())
+        );
+
+        //
+        let mut mismatch_project_t1 = new_t1.clone();
+        mismatch_project_t1.project = ProjectId::generate();
+        mismatch_project_t1.status = Status::Scheduled;
+        assert!(matches!(
+            store.update_trigger(&mismatch_project_t1).await,
+            Err(DatabaseError::Query(sqlx::Error::RowNotFound))
+        ));
+        assert_ne!(
+            store.get_trigger(&project1, &t1.id).await?,
+            Some(mismatch_project_t1)
+        );
 
         Ok(())
     }

@@ -23,22 +23,13 @@ pub(crate) async fn get(
     let invocation = state
         .db
         .invocation_store
-        .get_invocation(&id)
+        .get_invocation(&project, &id)
         .await
         .map_err(|e| AppStateError::DatabaseError(e.to_string()))?;
 
     let Some(invocation) = invocation else {
-            return Ok((
-                StatusCode::NOT_FOUND,
-                // TODO: We need a proper API design for API errors
-                Json("Invocation not found"),
-            )
-                .into_response());
+            return Err(ApiError::NotFound(id.to_string()));
     };
-
-    if invocation.project != project {
-        return Err(ApiError::NotFound(id.to_string()));
-    }
 
     Ok((StatusCode::OK, Json(invocation)).into_response())
 }

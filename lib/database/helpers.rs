@@ -11,6 +11,7 @@ use sqlx::Row;
 use super::errors::DatabaseError;
 use super::Database;
 use crate::model::ModelId;
+use crate::types::ProjectId;
 
 #[derive(Iden)]
 pub enum KVIden {
@@ -44,6 +45,7 @@ where
 pub async fn update_query<'a, Table, IdType, Type>(
     db: &'a Database,
     table: Table,
+    project: &'a ProjectId,
     id: &'a IdType,
     obj: &'a Type,
 ) -> Result<(), DatabaseError>
@@ -58,16 +60,23 @@ where
             (KVIden::Id, id.to_string().into()),
             (KVIden::Value, to_json_value(db, obj)?),
         ])
+        .and_where(Expr::col(KVIden::Project).eq(project.to_string()))
         .and_where(Expr::col(KVIden::Id).eq(id.to_string()))
         .build_any_sqlx(db.builder().as_ref());
 
-    sqlx::query_with(&sql, values).execute(&db.pool).await?;
+    let res = sqlx::query_with(&sql, values).execute(&db.pool).await?;
+
+    if res.rows_affected() != 1 {
+        return Err(DatabaseError::Query(sqlx::Error::RowNotFound));
+    }
+
     Ok(())
 }
 
 pub async fn get_by_id_query<'a, Table, IdType, Type>(
     db: &'a Database,
     table: Table,
+    project: &'a ProjectId,
     id: &'a IdType,
 ) -> Result<Option<Type>, DatabaseError>
 where
@@ -81,6 +90,7 @@ where
             KVIden::ValueText,
         )
         .from(table)
+        .and_where(Expr::col(KVIden::Project).eq(project.value()))
         .and_where(Expr::col(KVIden::Id).eq(id.to_string()))
         .build_any_sqlx(db.builder().as_ref());
 

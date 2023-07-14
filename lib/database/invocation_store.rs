@@ -36,11 +36,13 @@ pub trait InvocationStore {
 
     async fn get_invocation(
         &self,
+        project: &ProjectId,
         id: &InvocationId,
     ) -> Result<Option<Invocation>, InvocationStoreError>;
 
     async fn get_invocations_by_trigger(
         &self,
+        project: &ProjectId,
         trigger_id: &TriggerId,
         before: Option<InvocationId>,
         after: Option<InvocationId>,
@@ -49,7 +51,7 @@ pub trait InvocationStore {
 
     async fn get_invocations_by_project(
         &self,
-        owner_id: &ProjectId,
+        project: &ProjectId,
         before: Option<InvocationId>,
         after: Option<InvocationId>,
         limit: usize,
@@ -126,6 +128,7 @@ impl InvocationStore for SqlInvocationStore {
         update_query(
             &self.db,
             InvocationsIden::Invocations,
+            &invocation.project,
             &invocation.id,
             invocation,
         )
@@ -134,13 +137,16 @@ impl InvocationStore for SqlInvocationStore {
 
     async fn get_invocation(
         &self,
+        project: &ProjectId,
         id: &InvocationId,
     ) -> Result<Option<Invocation>, InvocationStoreError> {
-        get_by_id_query(&self.db, InvocationsIden::Invocations, id).await
+        get_by_id_query(&self.db, InvocationsIden::Invocations, project, id)
+            .await
     }
 
     async fn get_invocations_by_trigger(
         &self,
+        project: &ProjectId,
         trigger_id: &TriggerId,
         before: Option<InvocationId>,
         after: Option<InvocationId>,
@@ -149,7 +155,9 @@ impl InvocationStore for SqlInvocationStore {
         paginated_query(
             &self.db,
             InvocationsIden::Invocations,
-            Expr::col(InvocationsIden::TriggerId).eq(trigger_id.value()),
+            Expr::col(InvocationsIden::TriggerId)
+                .eq(trigger_id.value())
+                .and(Expr::col(KVIden::Project).eq(project.value())),
             &before,
             &after,
             Some(limit),
@@ -184,6 +192,7 @@ mod tests {
     use chrono_tz::UTC;
 
     use super::{InvocationStore, SqlInvocationStore};
+    use crate::database::errors::DatabaseError;
     use crate::database::Database;
     use crate::model::ValidShardedId;
     use crate::types::{
@@ -230,14 +239,14 @@ mod tests {
         let store = SqlInvocationStore::new(db);
         store.prepare().await?;
 
-        let owner1 = ProjectId::generate();
-        let owner2 = ProjectId::generate();
-        let t1 = TriggerId::generate(&owner1);
-        let t2 = TriggerId::generate(&owner2);
+        let project1 = ProjectId::generate();
+        let project2 = ProjectId::generate();
+        let t1 = TriggerId::generate(&project1);
+        let t2 = TriggerId::generate(&project2);
 
-        let mut i1 = build_invocation(t1.clone(), owner1.clone());
-        let i2 = build_invocation(t2.clone(), owner2.clone());
-        let i3 = build_invocation(t1.clone(), owner1.clone());
+        let mut i1 = build_invocation(t1.clone(), project1.clone());
+        let i2 = build_invocation(t2.clone(), project2.clone());
+        let i3 = build_invocation(t1.clone(), project1.clone());
 
         // Test stores
         store.store_invocation(&i1).await?;
@@ -245,30 +254,53 @@ mod tests {
         store.store_invocation(&i3).await?;
 
         // Test getters
-        assert_eq!(store.get_invocation(&i1.id).await?, Some(i1.clone()));
-        assert_eq!(store.get_invocation(&i2.id).await?, Some(i2.clone()));
-        assert_eq!(store.get_invocation(&i3.id).await?, Some(i3.clone()));
+        assert_eq!(
+            store.get_invocation(&project1, &i1.id).await?,
+            Some(i1.clone())
+        );
+        assert_eq!(
+            store.get_invocation(&project2, &i2.id).await?,
+            Some(i2.clone())
+        );
+        assert_eq!(
+            store.get_invocation(&project1, &i3.id).await?,
+            Some(i3.clone())
+        );
 
         // Test fetching non existent invocation
         assert_eq!(
             store
-                .get_invocation(&InvocationId::from("non_existent".to_string()))
+                .get_invocation(
+                    &project1,
+                    &InvocationId::from("non_existent".to_string())
+                )
                 .await?,
             None
         );
 
+        // Test fetching an invocation with wrong project
+        assert_eq!(store.get_invocation(&project2, &i1.id).await?, None);
+
         // Test get invocations by trigger
         let mut results = store
-            .get_invocations_by_trigger(&t1, None, None, 100)
+            .get_invocations_by_trigger(&project1, &t1, None, None, 100)
             .await?;
         let mut expected = vec![i1.clone(), i3.clone()];
         expected.sort_by(|a, b| a.id.cmp(&b.id));
         results.sort_by(|a, b| a.id.cmp(&b.id));
         assert_eq!(results, expected);
 
+        // Test get invocation by trigger with wrong project
+        assert_eq!(
+            store
+                .get_invocations_by_trigger(&project2, &t1, None, None, 100)
+                .await?,
+            vec![]
+        );
+
         // Test get invocations by owner
         let results = store
-            .get_invocations_by_project(&owner2, None, None, 100)
+            .get_invocations_by_project(&project2, None, None, 100)
             .await?;
         let expected = vec![i2.clone()];
         assert_eq!(results, expected);
@@ -286,7 +318,23 @@ mod tests {
 
         // Update the invocation
         store.update_invocation(&i1).await?;
-        assert_eq!(store.get_invocation(&i1.id).await?, Some(i1.clone()));
+        assert_eq!(
+            store.get_invocation(&project1, &i1.id).await?,
+            Some(i1.clone())
+        );
+
+        // Update should fail when using wrong project
+        let mut mismatch_project_i1 = i1.clone();
+        mismatch_project_i1.project = ProjectId::generate();
+        mismatch_project_i1.status = vec![];
+        assert!(matches!(
+            store.update_invocation(&mismatch_project_i1).await,
+            Err(DatabaseError::Query(sqlx::Error::RowNotFound))
+        ));
+        assert_ne!(
+            store.get_invocation(&project1, &i1.id).await?,
+            Some(mismatch_project_i1)
+        );
 
         Ok(())
     }

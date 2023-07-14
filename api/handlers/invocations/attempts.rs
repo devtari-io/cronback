@@ -24,21 +24,15 @@ pub(crate) async fn list(
     let Query(pagination) = pagination.unwrap_or_default();
     pagination.validate()?;
 
-    let Some(invocation) = state
+    // Ensure that the invocation exists for better user experience
+    let Some(_) = state
         .db
         .invocation_store
-        .get_invocation(&id)
+        .get_invocation(&project, &id)
         .await
         .map_err(|e| AppStateError::DatabaseError(e.to_string()))? else {
-            return Ok(
-                StatusCode::NOT_FOUND.into_response()
-            );
+            return Err(ApiError::NotFound(id.to_string()));
         };
-
-    // TODO: Remove after changing all operations to query by project id.
-    if invocation.project != project {
-        return Err(ApiError::NotFound(id.to_string()));
-    }
 
     // Trick. We want to know if there is a next page, so we ask for one more
     let limit = pagination.limit() + 1;
@@ -47,6 +41,7 @@ pub(crate) async fn list(
         .db
         .attempt_store
         .get_attempts_for_invocation(
+            &project,
             &id,
             pagination.before.clone(),
             pagination.after.clone(),

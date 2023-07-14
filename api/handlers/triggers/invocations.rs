@@ -23,7 +23,8 @@ pub(crate) async fn list(
     let Query(pagination) = pagination.unwrap_or_default();
     pagination.validate()?;
 
-    let Some(trigger) = state
+    // Ensure that the trigger exists for better user experience
+    let Some(_) = state
         .db
         .trigger_store
         .get_trigger(&project, &trigger_id)
@@ -32,10 +33,6 @@ pub(crate) async fn list(
             return Err(ApiError::NotFound(trigger_id.to_string()));
         };
 
-    if trigger.project != project {
-        return Err(ApiError::NotFound(trigger_id.to_string()));
-    }
-
     // Trick. We want to know if there is a next page, so we ask for one more
     let limit = pagination.limit() + 1;
 
@@ -43,6 +40,7 @@ pub(crate) async fn list(
         .db
         .invocation_store
         .get_invocations_by_trigger(
+            &project,
             &trigger_id,
             pagination.before.clone(),
             pagination.after.clone(),
