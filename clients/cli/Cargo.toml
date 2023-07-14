@@ -1,0 +1,31 @@
+[package]
+name = "cronback-cli"
+# We maintain the CLI and rust-client versions independently from the workspace.
+version = "0.1.0"
+edition.workspace = true
+authors.workspace = true
+categories = ["command-line-utilities"]
+keywords = ["cli"]
+repository = "https://github.com/devtari-io/cronback"
+homepage = "https://cronback.me"
+
+[[bin]]
+name = "cronback"
+path = "src/main.rs"
+
+[dependencies]
+cronback = { path = "../rust", version = "0.1.0" }
+clap = { version = "4", features = ["env", "derive", "wrap_help"] }
+colored = "2.0"
+serde_json = { workspace = true }
+etcetera = { version = "0.8.0" }
+tracing = { workspace = true }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+tokio = { workspace = true, features = ["signal", "rt-multi-thread", "macros"] }
+anyhow = { version = "1.0.71" }
+url = { version = "2.3.1" }
+clap-verbosity-flag = { version = "2.0.1" }
+env_logger = "0.10.0"
+once_cell = { version = "1.17.1" }
+dotenvy = "0.15"
+async-trait = { workspace = true }
