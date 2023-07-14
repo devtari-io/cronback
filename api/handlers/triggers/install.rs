@@ -42,11 +42,11 @@ pub(crate) async fn install_or_update(
 
         return Err(ApiError::ServiceUnavailable);
     }
-    // Decide the scheduler cell
-    // Pick cell.
-    let mut scheduler = state.get_scheduler(&request_id, &project).await?;
-    // Send the request to the scheduler
-    let install_request = request.into_proto(project, id, fail_if_exists);
+    let mut scheduler = state
+        .scheduler_clients
+        .get_client(&request_id, &project)
+        .await?;
+    let install_request = request.into_proto(id, fail_if_exists);
 
     let response = scheduler
         .install_trigger(install_request)

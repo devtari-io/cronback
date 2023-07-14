@@ -1,14 +1,12 @@
 use std::sync::Arc;
 
-use lib::model::ModelId;
+use lib::prelude::*;
 use lib::service::ServiceContext;
-use lib::types::{trigger, ProjectId};
+use lib::types::trigger;
 use proto::scheduler_proto::scheduler_server::Scheduler;
 use proto::scheduler_proto::{
     CancelTriggerRequest,
     CancelTriggerResponse,
-    FindTriggersRequest,
-    FindTriggersResponse,
     GetTriggerRequest,
     GetTriggerResponse,
     InstallTriggerRequest,
@@ -47,13 +45,12 @@ impl Scheduler for SchedulerAPIHandler {
         &self,
         request: Request<InstallTriggerRequest>,
     ) -> Result<Response<InstallTriggerResponse>, Status> {
-        let (_metadata, _ext, request) = request.into_parts();
-        // TODO: Move project to request metadata instead of inlining in
-        // requests.
-        let project =
-            ProjectId::from(request.project_id.clone()).validated()?;
+        let ctx = request.context()?;
         // Creating a new trigger from install_trigger
-        let reply = self.scheduler.install_trigger(project, request).await?;
+        let reply = self
+            .scheduler
+            .install_trigger(ctx, request.into_inner())
+            .await?;
         Ok(Response::new(reply))
     }
 
@@ -61,23 +58,16 @@ impl Scheduler for SchedulerAPIHandler {
         &self,
         request: Request<RunTriggerRequest>,
     ) -> Result<Response<RunTriggerResponse>, Status> {
+        let ctx = request.context()?;
         // check if trigger exists
         // A trigger that exists will run regardless of its state
         // manual run has nothing to do with the spinner or event
         // scheduler
         //
-        let (_metadata, _ext, request) = request.into_parts();
-        // TODO: Move project to request metadata instead of inlining in
-        // requests.
-        let project =
-            ProjectId::from(request.project_id.clone()).validated()?;
+        let request = request.into_inner();
         let run = self
             .scheduler
-            .run_trigger(
-                project,
-                request.id.clone().into(),
-                request.mode().into(),
-            )
+            .run_trigger(ctx, request.id.clone().into(), request.mode().into())
             .await?;
         Ok(Response::new(RunTriggerResponse {
             run: Some(run.into()),
@@ -88,20 +78,15 @@ impl Scheduler for SchedulerAPIHandler {
         &self,
         request: Request<GetTriggerRequest>,
     ) -> Result<Response<GetTriggerResponse>, Status> {
-        let (_metadata, _ext, request) = request.into_parts();
-        // TODO: Move project to request metadata instead of inlining in
-        // requests.
-        let project =
-            ProjectId::from(request.project_id.clone()).validated()?;
+        let ctx = request.context()?;
+        let request = request.into_inner();
 
         // trigger must have an id set
         if request.id.is_empty() {
             return Err(Status::invalid_argument("Id must be set"));
         }
-        let trigger = self
-            .scheduler
-            .get_trigger(project, request.id.into())
-            .await?;
+        let trigger =
+            self.scheduler.get_trigger(ctx, request.id.into()).await?;
         let reply = GetTriggerResponse {
             trigger: Some(trigger.into()),
         };
@@ -112,15 +97,10 @@ impl Scheduler for SchedulerAPIHandler {
         &self,
         request: Request<PauseTriggerRequest>,
     ) -> Result<Response<PauseTriggerResponse>, Status> {
-        let (_metadata, _ext, request) = request.into_parts();
-        // TODO: Move project to request metadata instead of inlining in
-        // requests.
-        let project =
-            ProjectId::from(request.project_id.clone()).validated()?;
-        let trigger = self
-            .scheduler
-            .pause_trigger(project, request.id.into())
-            .await?;
+        let ctx = request.context()?;
+        let request = request.into_inner();
+        let trigger =
+            self.scheduler.pause_trigger(ctx, request.id.into()).await?;
         Ok(Response::new(PauseTriggerResponse {
             trigger: Some(trigger.into()),
         }))
@@ -130,14 +110,11 @@ impl Scheduler for SchedulerAPIHandler {
         &self,
         request: Request<ResumeTriggerRequest>,
     ) -> Result<Response<ResumeTriggerResponse>, Status> {
-        let (_metadata, _ext, request) = request.into_parts();
-        // TODO: Move project to request metadata instead of inlining in
-        // requests.
-        let project =
-            ProjectId::from(request.project_id.clone()).validated()?;
+        let ctx = request.context()?;
+        let request = request.into_inner();
         let trigger = self
             .scheduler
-            .resume_trigger(project, request.id.into())
+            .resume_trigger(ctx, request.id.into())
             .await?;
         Ok(Response::new(ResumeTriggerResponse {
             trigger: Some(trigger.into()),
@@ -148,14 +125,11 @@ impl Scheduler for SchedulerAPIHandler {
         &self,
         request: Request<CancelTriggerRequest>,
     ) -> Result<Response<CancelTriggerResponse>, Status> {
-        let (_metadata, _ext, request) = request.into_parts();
-        // TODO: Move project to request metadata instead of inlining in
-        // requests.
-        let project =
-            ProjectId::from(request.project_id.clone()).validated()?;
+        let ctx = request.context()?;
+        let request = request.into_inner();
         let trigger = self
             .scheduler
-            .cancel_trigger(project, request.id.into())
+            .cancel_trigger(ctx, request.id.into())
             .await?;
         Ok(Response::new(CancelTriggerResponse {
             trigger: Some(trigger.into()),
@@ -166,17 +140,14 @@ impl Scheduler for SchedulerAPIHandler {
         &self,
         request: Request<ListTriggersRequest>,
     ) -> Result<Response<ListTriggersResponse>, Status> {
-        let (_metadata, _ext, request) = request.into_parts();
-        // TODO: Move project to request metadata instead of inlining in
-        // requests.
-        let project =
-            ProjectId::from(request.project_id.clone()).validated()?;
+        let ctx = request.context()?;
+        let request = request.into_inner();
 
         let (reference, statuses) = list_filter_into_parts(request.filter);
         let manifests = self
             .scheduler
             .list_triggers(
-                project,
+                ctx,
                 reference,
                 statuses,
                 request.limit as usize,
@@ -187,13 +158,6 @@ impl Scheduler for SchedulerAPIHandler {
         Ok(Response::new(ListTriggersResponse {
             triggers: manifests.into_iter().map(Into::into).collect(),
         }))
-    }
-
-    async fn find_triggers(
-        &self,
-        _request: Request<FindTriggersRequest>,
-    ) -> Result<Response<FindTriggersResponse>, Status> {
-        todo!()
     }
 }
 

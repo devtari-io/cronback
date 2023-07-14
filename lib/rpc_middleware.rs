@@ -6,23 +6,25 @@ use metrics::{histogram, increment_counter};
 use tonic::body::BoxBody;
 use tower::{Layer, Service};
 
-use crate::types::RequestId;
+use crate::consts::{PROJECT_ID_HEADER, REQUEST_ID_HEADER};
+use crate::model::{ModelId, ValidShardedId};
+use crate::types::{ProjectId, RequestId};
 
 #[derive(Debug, Clone, Default)]
-pub struct TelemetryMiddleware {
+pub struct CronbackRpcMiddleware {
     /// Sets the label "service" in emitted metrics
     service_name: String,
 }
 
-impl TelemetryMiddleware {
-    pub fn new(service_name: &str) -> TelemetryMiddleware {
-        TelemetryMiddleware {
+impl CronbackRpcMiddleware {
+    pub fn new(service_name: &str) -> CronbackRpcMiddleware {
+        CronbackRpcMiddleware {
             service_name: service_name.into(),
         }
     }
 }
 
-impl<S> Layer<S> for TelemetryMiddleware {
+impl<S> Layer<S> for CronbackRpcMiddleware {
     type Service = InnerMiddleware<S>;
 
     fn layer(&self, service: S) -> Self::Service {
@@ -74,15 +76,27 @@ where
         let clone = self.inner.clone();
         let mut inner = std::mem::replace(&mut self.inner, clone);
 
-        // Do we have a cronback-request-id header?
-        if let Some(cronback_request_id) =
-            req.headers().get("cronback-request-id")
+        // Do we have a x-cronback-request-id header? Only used in grpc
+        // services. The api-server will set the request-id header with
+        // a random value.
+        if let Some(cronback_request_id) = req.headers().get(REQUEST_ID_HEADER)
         {
             // If so, set the request id to the value of the header
             let cronback_request_id = cronback_request_id.to_str().unwrap();
             let cronback_request_id =
                 RequestId::from(cronback_request_id.to_owned());
             req.extensions_mut().insert(cronback_request_id);
+        }
+
+        // Do we have a x-cronback-project-id header?
+        // If project-id is set, it must be valid. We store the result in
+        // extensions.
+        if let Some(project_id) = req.headers().get(PROJECT_ID_HEADER) {
+            // If so, set the project id to the value of the header
+            let project_id = project_id.to_str().unwrap();
+            let maybe_project_id =
+                ProjectId::from(project_id.to_owned()).validated();
+            req.extensions_mut().insert(maybe_project_id);
         }
 
         // Removes the leading '/' in the path.
@@ -95,7 +109,7 @@ where
             "endpoint" => endpoint.clone()
         );
         Box::pin(async move {
-            let response = inner.call(req).await?;
+            let mut response = inner.call(req).await?;
             let latency_s = (Instant::now() - start).as_secs_f64();
             histogram!(
                 "rpc.duration_seconds",
@@ -103,6 +117,28 @@ where
                 "service" => service_name.clone(),
                 "endpoint" => endpoint.clone(),
             );
+
+            // Inject request_id into response headers
+            if let Some(request_id) =
+                response.extensions().get::<RequestId>().cloned()
+            {
+                response.headers_mut().insert(
+                    REQUEST_ID_HEADER,
+                    request_id.to_string().parse().unwrap(),
+                );
+            }
+
+            // Inject project_id into response headers
+            if let Some(project_id) = response
+                .extensions()
+                .get::<ValidShardedId<ProjectId>>()
+                .cloned()
+            {
+                response.headers_mut().insert(
+                    PROJECT_ID_HEADER,
+                    project_id.to_string().parse().unwrap(),
+                );
+            }
 
             Ok(response)
         })

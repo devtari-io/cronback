@@ -5,11 +5,12 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
 use lib::model::ValidShardedId;
-use lib::types::{ProjectId, RequestId, TriggerId, TriggerManifest};
+use lib::types::{ProjectId, RequestId, TriggerId};
 use proto::scheduler_proto::CancelTriggerRequest;
 
 use crate::errors::ApiError;
 use crate::extractors::ValidatedId;
+use crate::model::TriggerManifest;
 use crate::AppState;
 
 #[tracing::instrument(skip(state))]
@@ -20,7 +21,10 @@ pub(crate) async fn cancel(
     Extension(project): Extension<ValidShardedId<ProjectId>>,
     Extension(request_id): Extension<RequestId>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let mut scheduler = state.get_scheduler(&request_id, &project).await?;
+    let mut scheduler = state
+        .scheduler_clients
+        .get_client(&request_id, &project)
+        .await?;
     let trigger = scheduler
         .cancel_trigger(CancelTriggerRequest {
             project_id: project.into(),

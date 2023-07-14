@@ -13,11 +13,9 @@
     },
     "body": "{ \"name\": \"asoli\"}"
   },
-  "action": [
-    {
-      "type": "webhook",
-      "url": "http://localhost:3000/action",
-      "timeout_s": 30
-    }
-  ]
+  "action": {
+    "type": "webhook",
+    "url": "http://localhost:3000/action",
+    "timeout_s": 30
+  }
 }

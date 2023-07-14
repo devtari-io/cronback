@@ -57,7 +57,6 @@ pub(crate) struct InstallTriggerRequest {
 impl InstallTriggerRequest {
     pub fn into_proto(
         self,
-        project: ValidShardedId<ProjectId>,
         id: Option<ValidShardedId<TriggerId>>,
         fail_if_exists: bool,
     ) -> scheduler_proto::InstallTriggerRequest {
@@ -65,7 +64,6 @@ impl InstallTriggerRequest {
         scheduler_proto::InstallTriggerRequest {
             id: id.map(Into::into),
             fail_if_exists,
-            project_id: project.into(),
             name: self.name.unwrap_or_else(|| generator.next().unwrap()),
             description: self.description,
             reference: self.reference,

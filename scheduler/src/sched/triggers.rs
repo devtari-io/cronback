@@ -522,7 +522,7 @@ impl ActiveTrigger {
 mod tests {
     use std::time::Duration;
 
-    use lib::timeutil::parse_iso8601;
+    use lib::timeutil::parse_iso8601_and_duration;
     use lib::types::{
         Action,
         HttpMethod,
@@ -637,9 +637,9 @@ mod tests {
         // generating some time points, one in the past, and three in the
         // future.
         let timepoints = vec![
-            parse_iso8601("PT-1M").unwrap(), /* 1 minute ago (in the past) */
-            parse_iso8601("PT2M").unwrap(),
-            parse_iso8601("PT3M").unwrap(),
+            parse_iso8601_and_duration("PT-1M").unwrap(), /* 1 minute ago (in the past) */
+            parse_iso8601_and_duration("PT2M").unwrap(),
+            parse_iso8601_and_duration("PT3M").unwrap(),
         ];
 
         let schedule = create_run_at(timepoints);

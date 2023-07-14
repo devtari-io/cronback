@@ -8,7 +8,7 @@ use std::time::Duration;
 use handler::SchedulerAPIHandler;
 use lib::database::trigger_store::SqlTriggerStore;
 use lib::database::Database;
-use lib::grpc_client_provider::DispatcherClientProvider;
+use lib::grpc_client_provider::GrpcClientProvider;
 use lib::{netutils, service};
 use proto::scheduler_proto::scheduler_server::SchedulerServer;
 use sched::event_scheduler::EventScheduler;
@@ -23,14 +23,12 @@ pub async fn start_scheduler_server(
     let trigger_store = SqlTriggerStore::new(db);
     trigger_store.prepare().await?;
 
-    let dispatcher_client_provider = Arc::new(DispatcherClientProvider::new(
-        config.scheduler.dispatcher_uri.clone(),
-    ));
+    let dispatcher_clients = Arc::new(GrpcClientProvider::new(context.clone()));
 
     let event_scheduler = Arc::new(EventScheduler::new(
         context.clone(),
         Box::new(trigger_store),
-        dispatcher_client_provider,
+        dispatcher_clients,
     ));
 
     let addr =
@@ -53,7 +51,7 @@ pub async fn start_scheduler_server(
     let svc = SchedulerServer::new(handler);
 
     // grpc server
-    service::grpc_serve(
+    service::grpc_serve_tcp(
         &mut context,
         addr,
         svc,
@@ -66,38 +64,33 @@ pub async fn start_scheduler_server(
 }
 
 pub mod test_helpers {
-    use std::future::Future;
     use std::sync::Arc;
 
+    use lib::clients::scheduler_client::ScopedSchedulerClient;
     use lib::database::trigger_store::SqlTriggerStore;
     use lib::database::Database;
-    use lib::grpc_client_provider::DispatcherClientProvider;
-    use lib::service::ServiceContext;
-    use proto::scheduler_proto::scheduler_client::SchedulerClient;
+    use lib::grpc_client_provider::test_helpers::TestGrpcClientProvider;
+    use lib::grpc_client_provider::GrpcClientProvider;
+    use lib::service::{self, ServiceContext};
     use proto::scheduler_proto::scheduler_server::SchedulerServer;
     use tempfile::NamedTempFile;
-    use tokio::net::{UnixListener, UnixStream};
-    use tokio_stream::wrappers::UnixListenerStream;
-    use tonic::transport::{Channel, Endpoint, Server, Uri};
-    use tower::service_fn;
+    use tokio::task::JoinHandle;
 
     use crate::handler::SchedulerAPIHandler;
     use crate::sched::event_scheduler::EventScheduler;
 
     pub async fn test_server_and_client(
-        context: ServiceContext,
-    ) -> (impl Future<Output = ()>, SchedulerClient<Channel>) {
+        mut context: ServiceContext,
+    ) -> (
+        JoinHandle<()>,
+        TestGrpcClientProvider<ScopedSchedulerClient>,
+    ) {
         let socket = NamedTempFile::new().unwrap();
         let socket = Arc::new(socket.into_temp_path());
         std::fs::remove_file(&*socket).unwrap();
 
-        let uds = UnixListener::bind(&*socket).unwrap();
-        let stream = UnixListenerStream::new(uds);
-
         let dispatcher_client_provider =
-            Arc::new(DispatcherClientProvider::new(
-                context.load_config().scheduler.dispatcher_uri,
-            ));
+            Arc::new(GrpcClientProvider::new(context.clone()));
 
         let db = Database::in_memory().await.unwrap();
         let trigger_store = SqlTriggerStore::new(db);
@@ -113,31 +106,24 @@ pub mod test_helpers {
             SchedulerAPIHandler::new(context.clone(), event_scheduler.clone());
         let svc = SchedulerServer::new(handler);
 
-        let serve_future = async move {
-            let result = Server::builder()
-                .add_service(svc)
-                .serve_with_incoming(stream)
-                .await;
-            event_scheduler.shutdown().await;
-            // Validate that server is running fine...
-            assert!(result.is_ok());
-        };
+        let cloned_socket = Arc::clone(&socket);
 
-        let socket = Arc::clone(&socket);
-        // Connect to the server over a Unix socket
-        // The URL will be ignored.
-        //
-        let channel = Endpoint::try_from("http://example.url")
-            .unwrap()
-            .connect_with_connector(service_fn(move |_: Uri| {
-                let socket = Arc::clone(&socket);
-                async move { UnixStream::connect(&*socket).await }
-            }))
-            .await
-            .unwrap();
+        let serve_future = tokio::spawn(async move {
+            let request_processing_timeout_s = 3;
+            service::grpc_serve_unix(
+                &mut context,
+                &*cloned_socket,
+                svc,
+                request_processing_timeout_s,
+            )
+            .await;
+        });
 
-        let client = SchedulerClient::new(channel);
+        // Give the server time to start.
+        tokio::time::sleep(std::time::Duration::from_millis(250)).await;
 
-        (serve_future, client)
+        let client_provider = TestGrpcClientProvider::new_single_shard(socket);
+
+        (serve_future, client_provider)
     }
 }

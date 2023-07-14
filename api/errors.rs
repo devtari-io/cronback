@@ -5,6 +5,7 @@ use axum::extract::rejection::JsonRejection;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
+use lib::grpc_client_provider::GrpcClientError;
 use serde::Serialize;
 use serde_with::skip_serializing_none;
 use thiserror::Error;
@@ -82,6 +83,9 @@ pub enum ApiError {
     // This is always 503 Service Unavailable!
     #[error(transparent)]
     AppStateError(#[from] AppStateError),
+    // This is always 503 Service Unavailable!
+    #[error(transparent)]
+    GrpcClientError(#[from] GrpcClientError),
 }
 
 impl ApiError {
@@ -112,6 +116,7 @@ impl ApiError {
             }
             | ApiError::BytesRejection(e) => e.status(),
             | ApiError::AppStateError(_) => StatusCode::SERVICE_UNAVAILABLE,
+            | ApiError::GrpcClientError(_) => StatusCode::SERVICE_UNAVAILABLE,
         }
     }
 }

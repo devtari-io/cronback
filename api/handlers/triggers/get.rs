@@ -31,7 +31,10 @@ pub(crate) async fn get(
     Extension(project): Extension<ValidShardedId<ProjectId>>,
     Extension(request_id): Extension<RequestId>,
 ) -> Result<impl IntoResponse, ApiError> {
-    let mut scheduler = state.get_scheduler(&request_id, &project).await?;
+    let mut scheduler = state
+        .scheduler_clients
+        .get_client(&request_id, &project)
+        .await?;
     let trigger = scheduler
         .get_trigger(GetTriggerRequest {
             project_id: project.into(),
@@ -70,7 +73,10 @@ pub(crate) async fn list(
     // Trick. We want to know if there is a next page, so we ask for one more
     let limit = pagination.limit() + 1;
 
-    let mut scheduler = state.get_scheduler(&request_id, &project).await?;
+    let mut scheduler = state
+        .scheduler_clients
+        .get_client(&request_id, &project)
+        .await?;
     let triggers = scheduler
         .list_triggers(ListTriggersRequest {
             project_id: project.into(),

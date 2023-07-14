@@ -1289,7 +1289,7 @@
           }
         },
         "headers": {
-          "cronback-request-id": {
+          "x-cronback-request-id": {
             "schema": {
               "type": "string"
             },

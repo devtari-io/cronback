@@ -7,12 +7,15 @@ pub fn parse_utc_from_rfc3339(input: &str) -> DateTime<Utc> {
         .unwrap()
         .with_timezone(&Utc)
 }
+
 // Note that we reset nanoseconds to 0 to:
+// Left only for historical reasons
 // - Ensure that the same time is always returned, regardless of the nanosecond
 //   value
 // - Enforce per-second granularity
 
-pub fn parse_iso8601(input: &str) -> Option<DateTime<Tz>> {
+#[deprecated]
+pub fn parse_iso8601_and_duration(input: &str) -> Option<DateTime<Tz>> {
     let parsed_datetime = DateTime::parse_from_str(input, "%+")
         .map(|t| t.with_nanosecond(0).unwrap().with_timezone(&UTC));
 
@@ -47,7 +50,7 @@ pub fn parse_iso8601(input: &str) -> Option<DateTime<Tz>> {
 
 // Only use when the input is trusted to be correct ISO8601
 pub fn parse_iso8601_unsafe(input: &str) -> DateTime<Tz> {
-    parse_iso8601(input).unwrap()
+    parse_iso8601_and_duration(input).unwrap()
 }
 
 pub fn to_iso8601(input: &DateTime<Tz>) -> String {
@@ -63,7 +66,7 @@ pub mod iso8601_dateformat_serde {
     use chrono_tz::Tz;
     use serde::{self, Deserialize, Deserializer, Serializer};
 
-    use super::parse_iso8601;
+    use super::parse_iso8601_and_duration;
 
     pub fn serialize<S>(
         input: &DateTime<Tz>,
@@ -83,7 +86,7 @@ pub mod iso8601_dateformat_serde {
         D: Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        let dt = parse_iso8601(&s).ok_or_else(|| {
+        let dt = parse_iso8601_and_duration(&s).ok_or_else(|| {
             serde::de::Error::custom(
                 "Invalid datetime format. Only ISO-8601 is allowed.",
             )
@@ -97,7 +100,7 @@ pub mod iso8601_dateformat_vec_serde {
     use chrono_tz::Tz;
     use serde::{self, Deserialize, Deserializer, Serializer};
 
-    use super::{parse_iso8601, to_iso8601};
+    use super::{parse_iso8601_and_duration, to_iso8601};
 
     pub fn serialize<S>(
         timepoints: &Vec<DateTime<Tz>>,
@@ -125,7 +128,7 @@ pub mod iso8601_dateformat_vec_serde {
         let items: Result<Vec<DateTime<Tz>>, D::Error> = vec_de
             .into_iter()
             .map(|x| {
-                parse_iso8601(&x).ok_or_else(|| {
+                parse_iso8601_and_duration(&x).ok_or_else(|| {
                     serde::de::Error::custom(
                         "Invalid datetime format. Only ISO-8601 is allowed.",
                     )
@@ -140,7 +143,7 @@ pub mod iso8601_dateformat_vec_serde {
 #[test]
 fn test_iso8601_duration_parsing() {
     let input1 = "PT5M";
-    let result = parse_iso8601(input1);
+    let result = parse_iso8601_and_duration(input1);
     let now = Utc::now().with_nanosecond(0).unwrap().with_timezone(&UTC);
     assert!(result.is_some());
     assert_eq!(5, (result.unwrap() - now).num_minutes());
@@ -149,7 +152,7 @@ fn test_iso8601_duration_parsing() {
 #[test]
 fn test_iso8601_negative_duration_parsing() {
     let input = "PT-5M";
-    let result = parse_iso8601(input);
+    let result = parse_iso8601_and_duration(input);
     let now = Utc::now().with_nanosecond(0).unwrap().with_timezone(&UTC);
     assert!(result.is_some());
     assert_eq!(-5, (result.unwrap() - now).num_minutes());
@@ -159,7 +162,7 @@ fn test_iso8601_negative_duration_parsing() {
 fn test_iso8601_parsing() {
     // no nanoseconds
     let input1 = "2023-03-05T21:27:32Z";
-    let result = parse_iso8601(input1).unwrap();
+    let result = parse_iso8601_and_duration(input1).unwrap();
 
     let parsed_datetime = DateTime::parse_from_str(input1, "%+")
         .map(|t| t.with_nanosecond(0).unwrap().with_timezone(&UTC))
@@ -167,6 +170,6 @@ fn test_iso8601_parsing() {
     assert_eq!(parsed_datetime, result);
     // with nanoseconds trimmed
     let input1 = "2023-03-05T21:27:32.424Z";
-    let result = parse_iso8601(input1).unwrap();
+    let result = parse_iso8601_and_duration(input1).unwrap();
     assert_eq!(parsed_datetime, result);
 }

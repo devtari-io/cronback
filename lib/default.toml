@@ -3,15 +3,19 @@ roles = ["api", "dispatcher", "scheduler"]
 prometheus_address = "0.0.0.0"
 prometheus_port = 9000
 
+[main.dispatcher_cell_map]
+# Maps a cell_id to a dispatcher address
+0 = "http://127.0.0.1:9999"
+
+[main.scheduler_cell_map]
+# Maps a cell_id to a scheduler address
+0 = "http://127.0.0.1:9811"
+
 [api]
 address = "0.0.0.0"
 port = 8888
 database_uri = "sqlite://database.sqlite?mode=rwc"
 admin_api_keys = []
-
-[api.scheduler_cell_map]
-# Maps a cell_id to a scheduler address
-0 = "http://127.0.0.1:9811"
 
 [dispatcher]
 # Localhost only by default
@@ -28,7 +32,6 @@ port = 9811
 request_processing_timeout_s = 30
 spinner_yield_max_ms = 250
 max_triggers_per_tick = 100000
-dispatcher_uri = "http://127.0.0.1:9999"
 database_uri = "sqlite://database.sqlite?mode=rwc"
 db_flush_s = 10
 dangerous_fast_forward = false

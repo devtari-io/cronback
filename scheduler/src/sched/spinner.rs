@@ -6,9 +6,11 @@ use std::time::{Duration, Instant};
 use std::vec;
 
 use chrono::{DateTime, Utc};
-use lib::grpc_client_provider::DispatcherClientProvider;
+use lib::clients::dispatcher_client::ScopedDispatcherClient;
+use lib::grpc_client_provider::GrpcClientProvider;
+use lib::prelude::RequestContext;
 use lib::service::ServiceContext;
-use lib::types::{Status, TriggerId};
+use lib::types::{RequestId, Status, TriggerId};
 use metrics::{counter, gauge, histogram};
 use tokio::runtime::Handle;
 use tracing::{debug, info, trace, warn, Instrument};
@@ -22,7 +24,7 @@ pub(crate) struct Spinner {
     triggers: Arc<RwLock<ActiveTriggerMap>>,
     shutdown: Arc<RwLock<bool>>,
     context: ServiceContext,
-    dispatcher_client_provider: Arc<DispatcherClientProvider>,
+    dispatcher_clients: Arc<GrpcClientProvider<ScopedDispatcherClient>>,
 }
 
 pub(crate) struct SpinnerHandle {
@@ -94,14 +96,14 @@ impl Spinner {
     pub fn new(
         context: ServiceContext,
         triggers: Arc<RwLock<ActiveTriggerMap>>,
-        dispatcher_client_provider: Arc<DispatcherClientProvider>,
+        dispatcher_clients: Arc<GrpcClientProvider<ScopedDispatcherClient>>,
     ) -> Self {
         Self {
             tokio_handle: Handle::current(),
             shutdown: Arc::new(RwLock::new(false)),
             context,
             triggers,
-            dispatcher_client_provider,
+            dispatcher_clients,
         }
     }
 
@@ -337,13 +339,13 @@ impl Spinner {
             return Some(handle);
         }
         // TODO:
-        // Can't we dispatch? if we can't, we should retry a few times, then we
+        // Can we dispatch? if we can't, we should retry a few times, then we
         // drop into  failsafe mode.
         // In failsafe mode:
         //  - Stop the if spinner
         //  - Run a health check loop to find alive dispatchers.
         //  - Once a live dispatcher is found, re-init the spinner and continue.
-        let provider = self.dispatcher_client_provider.clone();
+        let provider = self.dispatcher_clients.clone();
         // TODO: Think about when should we persist the fact that we dispatched.
         let handle = self.tokio_handle.spawn(
             async move {
@@ -352,6 +354,12 @@ impl Spinner {
                 // memory we are only interested in knowing if
                 // we errored or not.
                 dispatch::dispatch(
+                    RequestContext::new(
+                        // We generate a new request Id as this is a
+                        // system-generated request.
+                        RequestId::new(),
+                        trigger.project.clone(),
+                    ),
                     trigger,
                     provider,
                     super::event_dispatcher::DispatchMode::Async,

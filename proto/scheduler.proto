@@ -12,8 +12,6 @@ service Scheduler {
   rpc RunTrigger (RunTriggerRequest)  returns (RunTriggerResponse);
   /// Get a trigger by id
   rpc GetTrigger (GetTriggerRequest)  returns (GetTriggerResponse);
-  /// Find a list of triggers by condition
-  rpc FindTriggers (FindTriggersRequest)  returns (FindTriggersResponse);
   /// Retrieve a list of triggers 
   rpc ListTriggers (ListTriggersRequest)  returns (ListTriggersResponse);
   /// Pause a running trigger
@@ -34,7 +32,6 @@ message InstallTriggerRequest {
   // Id is only set if we are updating an existing trigger and we know the id up front
   optional string id = 1;
   bool fail_if_exists = 2;
-  string project_id = 3;
   string name = 4;
   /// [Future] User supplied identifier, unique per owner account
   optional string reference = 5;
@@ -101,12 +98,6 @@ message GetTriggerRequest {
 
 message GetTriggerResponse {
   trigger_proto.Trigger trigger = 1;
-}
-
-// == Find TRIGGERS ==
-message FindTriggersRequest {
-}
-message FindTriggersResponse {
 }
 
 // == LIST TRIGGER ==

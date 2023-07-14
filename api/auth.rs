@@ -198,8 +198,11 @@ pub async fn auth<B>(
 
     match state.db.auth_store.validate_key(&api_key).await {
         | Ok(project) => {
-            req.extensions_mut().insert(project);
-            Ok(next.run(req).await)
+            req.extensions_mut().insert(project.clone());
+            let mut resp = next.run(req).await;
+            // Inject project_id in the response extensions as well.
+            resp.extensions_mut().insert(project);
+            Ok(resp)
         }
         | Err(AuthStoreError::AuthFailed(_)) => Err(ApiError::Unauthorized),
         | Err(e) => {

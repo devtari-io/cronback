@@ -23,7 +23,7 @@ use super::{
     WebhookAttemptDetails,
 };
 use crate::model::ValidShardedId;
-use crate::timeutil::parse_iso8601;
+use crate::timeutil::parse_iso8601_and_duration;
 
 impl From<trigger_proto::Trigger> for Trigger {
     fn from(value: trigger_proto::Trigger) -> Self {
@@ -138,7 +138,7 @@ impl From<trigger_proto::RunAt> for super::RunAt {
             timepoints: value
                 .timepoints
                 .into_iter()
-                .map(|d| parse_iso8601(&d).unwrap())
+                .map(|d| parse_iso8601_and_duration(&d).unwrap())
                 .collect(),
             remaining: value.remaining,
         }
@@ -248,7 +248,7 @@ impl From<attempt_proto::ActionAttemptLog> for ActionAttemptLog {
             project: ValidShardedId::from_string_unsafe(value.project_id),
             status: value.status.into(),
             details: value.details.unwrap().into(),
-            created_at: parse_iso8601(&value.created_at).unwrap(),
+            created_at: parse_iso8601_and_duration(&value.created_at).unwrap(),
         }
     }
 }
@@ -281,7 +281,7 @@ impl From<run_proto::Run> for Run {
             id: value.id.into(),
             trigger: value.trigger_id.into(),
             project: ValidShardedId::from_string_unsafe(value.project_id),
-            created_at: parse_iso8601(&value.created_at).unwrap(),
+            created_at: parse_iso8601_and_duration(&value.created_at).unwrap(),
             payload: value.payload.map(|p| p.into()),
             action: value.action.unwrap().into(),
             status: value.status.into(),

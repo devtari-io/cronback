@@ -28,6 +28,8 @@ pub struct MainConfig {
     pub roles: HashSet<Role>,
     pub prometheus_address: String,
     pub prometheus_port: u16,
+    pub dispatcher_cell_map: HashMap<u64, String>,
+    pub scheduler_cell_map: HashMap<u64, String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -47,7 +49,6 @@ pub struct SchedulerConfig {
     pub request_processing_timeout_s: u64,
     pub spinner_yield_max_ms: u64,
     pub max_triggers_per_tick: u64,
-    pub dispatcher_uri: String,
     pub database_uri: String,
     pub db_flush_s: u64,
     pub dangerous_fast_forward: bool,
@@ -57,7 +58,6 @@ pub struct SchedulerConfig {
 pub struct ApiConfig {
     pub address: String,
     pub port: u16,
-    pub scheduler_cell_map: HashMap<u64, String>,
     pub database_uri: String,
     pub admin_api_keys: HashSet<String>,
 }

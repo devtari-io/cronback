@@ -1,6 +1,12 @@
 use std::sync::Arc;
 
-use lib::grpc_client_provider::DispatcherClientProvider;
+use lib::clients::dispatcher_client::ScopedDispatcherClient;
+use lib::grpc_client_provider::{
+    GrpcClientError,
+    GrpcClientFactory,
+    GrpcClientProvider,
+};
+use lib::prelude::*;
 use lib::types::{Run, Trigger};
 use proto::dispatcher_proto::{self, DispatchRequest};
 use proto::scheduler_proto;
@@ -9,9 +15,11 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub(crate) enum DispatchError {
     #[error("Failed while attempting to communicate with dispatcher")]
-    TransportError(#[from] tonic::transport::Error),
+    Transport(#[from] tonic::transport::Error),
     #[error("Dispatcher returned an error, this is unexpected!")]
-    LogicalError(#[from] tonic::Status),
+    Logical(#[from] tonic::Status),
+    #[error("Failed while attempting to connect to dispatcher")]
+    GrpcClient(#[from] GrpcClientError),
 }
 
 pub(crate) enum DispatchMode {
@@ -41,17 +49,20 @@ impl From<scheduler_proto::RunMode> for DispatchMode {
 }
 
 pub(crate) struct DispatchJob {
+    context: RequestContext,
     dispatch_request: DispatchRequest,
-    dispatcher_client_provider: Arc<DispatcherClientProvider>,
+    dispatcher_clients: Arc<GrpcClientProvider<ScopedDispatcherClient>>,
 }
 
 impl DispatchJob {
     pub fn from_trigger(
+        context: RequestContext,
         trigger: Trigger,
-        dispatcher_client_provider: Arc<DispatcherClientProvider>,
+        dispatcher_clients: Arc<GrpcClientProvider<ScopedDispatcherClient>>,
         mode: DispatchMode,
     ) -> Self {
         Self {
+            context,
             dispatch_request: DispatchRequest {
                 trigger_id: trigger.id.to_string(),
                 project_id: trigger.project.to_string(),
@@ -59,7 +70,7 @@ impl DispatchJob {
                 payload: trigger.payload.map(|p| p.into()),
                 mode: dispatcher_proto::DispatchMode::from(mode).into(),
             },
-            dispatcher_client_provider,
+            dispatcher_clients,
         }
     }
 
@@ -68,8 +79,10 @@ impl DispatchJob {
     }
 
     pub async fn run(&mut self) -> Result<Run, DispatchError> {
-        let mut client =
-            self.dispatcher_client_provider.get_or_create().await?;
+        let mut client = self
+            .dispatcher_clients
+            .get_client(&self.context.request_id, &self.context.project_id)
+            .await?;
 
         let resp = client.dispatch(self.dispatch_request.clone()).await?;
         let run = resp.into_inner().run.unwrap();

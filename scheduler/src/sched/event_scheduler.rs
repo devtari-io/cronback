@@ -2,9 +2,11 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
 
 use chrono::Utc;
+use lib::clients::dispatcher_client::ScopedDispatcherClient;
 use lib::database::trigger_store::{TriggerStore, TriggerStoreError};
-use lib::grpc_client_provider::DispatcherClientProvider;
+use lib::grpc_client_provider::GrpcClientProvider;
 use lib::model::ValidShardedId;
+use lib::prelude::*;
 use lib::service::ServiceContext;
 use lib::types::{ProjectId, Run, Status, Trigger, TriggerId, TriggerManifest};
 use proto::scheduler_proto::{InstallTriggerRequest, InstallTriggerResponse};
@@ -50,21 +52,21 @@ pub(crate) struct EventScheduler {
     triggers: Arc<RwLock<ActiveTriggerMap>>,
     spinner: Mutex<Option<SpinnerHandle>>,
     store: Box<dyn TriggerStore + Send + Sync>,
-    dispatcher_client_provider: Arc<DispatcherClientProvider>,
+    dispatcher_clients: Arc<GrpcClientProvider<ScopedDispatcherClient>>,
 }
 
 impl EventScheduler {
     pub fn new(
         context: ServiceContext,
         store: Box<dyn TriggerStore + Send + Sync>,
-        dispatcher_client_provider: Arc<DispatcherClientProvider>,
+        dispatcher_clients: Arc<GrpcClientProvider<ScopedDispatcherClient>>,
     ) -> Self {
         Self {
             context,
             triggers: Arc::default(),
             spinner: Mutex::default(),
             store,
-            dispatcher_client_provider,
+            dispatcher_clients,
         }
     }
 
@@ -79,7 +81,7 @@ impl EventScheduler {
                 Spinner::new(
                     self.context.clone(),
                     self.triggers.clone(),
-                    self.dispatcher_client_provider.clone(),
+                    self.dispatcher_clients.clone(),
                 )
                 .start(),
             );
@@ -253,7 +255,7 @@ impl EventScheduler {
 
     pub async fn install_trigger(
         &self,
-        project: ValidShardedId<ProjectId>,
+        context: RequestContext,
         mut install_trigger: InstallTriggerRequest,
     ) -> Result<InstallTriggerResponse, TriggerError> {
         // If we have an Id already, we must allow updates.
@@ -291,8 +293,10 @@ impl EventScheduler {
         // find the existing trigger by id
         if let Some(trigger_id) = install_trigger.id.clone() {
             let trigger_id = TriggerId::from(trigger_id);
-            let existing_trigger =
-                self.store.get_trigger(&project, &trigger_id).await?;
+            let existing_trigger = self
+                .store
+                .get_trigger(&context.project_id, &trigger_id)
+                .await?;
             let Some(existing_trigger) = existing_trigger else {
                 return Err(TriggerError::NotFound(trigger_id));
             };
@@ -301,14 +305,14 @@ impl EventScheduler {
                 .await;
         }
 
-        let id = TriggerId::generate(&project);
+        let id = TriggerId::generate(&context.project_id);
 
         // We want to keep a copy in case we have to call update later.
         let copied_request = install_trigger.clone();
         let is_scheduled = install_trigger.schedule.is_some();
         let trigger = Trigger {
             id: id.into(),
-            project: project.clone(),
+            project: context.project_id.clone(),
             reference: install_trigger.reference.clone(),
             name: install_trigger.name,
             description: install_trigger.description,
@@ -342,7 +346,7 @@ impl EventScheduler {
                     let mut triggers = self
                         .store
                         .get_triggers_by_project(
-                            &project.clone(),
+                            &context.project_id.clone(),
                             copied_request.reference.clone(),
                             /* statuses = */ None,
                             /* before = */ None,
@@ -385,7 +389,7 @@ impl EventScheduler {
     #[tracing::instrument(skip_all, fields(trigger_id = %id))]
     pub async fn get_trigger(
         &self,
-        project: ValidShardedId<ProjectId>,
+        context: RequestContext,
         id: TriggerId,
     ) -> Result<Trigger, TriggerError> {
         let triggers = self.triggers.clone();
@@ -399,12 +403,14 @@ impl EventScheduler {
         .await?;
         // Get from the database if this is not an active trigger.
         match trigger_res {
-            | Ok(trigger) if trigger.project == project => Ok(trigger),
+            | Ok(trigger) if trigger.project == context.project_id => {
+                Ok(trigger)
+            }
             // The trigger was found but owned by a different user!
             | Ok(_) => Err(TriggerError::NotFound(id.clone())),
             | Err(TriggerError::NotFound(_)) => {
                 self.store
-                    .get_trigger(&project, &id)
+                    .get_trigger(&context.project_id, &id)
                     .await?
                     .ok_or_else(|| TriggerError::NotFound(id))
             }
@@ -415,7 +421,7 @@ impl EventScheduler {
     #[tracing::instrument(skip(self))]
     pub async fn list_triggers(
         &self,
-        project: ValidShardedId<ProjectId>,
+        context: RequestContext,
         reference: Option<String>,
         statuses: Option<Vec<Status>>,
         limit: usize,
@@ -427,7 +433,12 @@ impl EventScheduler {
         let triggers = self
             .store
             .get_triggers_by_project(
-                &project, reference, statuses, before, after, limit,
+                &context.project_id,
+                reference,
+                statuses,
+                before,
+                after,
+                limit,
             )
             .await?;
 
@@ -461,11 +472,11 @@ impl EventScheduler {
     #[tracing::instrument(skip_all, fields(trigger_id = %id))]
     pub async fn run_trigger(
         &self,
-        project: ValidShardedId<ProjectId>,
+        context: RequestContext,
         id: TriggerId,
         mode: DispatchMode,
     ) -> Result<Run, TriggerError> {
-        let trigger = self.get_trigger(project, id).await?;
+        let trigger = self.get_trigger(context.clone(), id).await?;
 
         if trigger.status == Status::Cancelled {
             return Err(TriggerError::InvalidStatus(
@@ -474,7 +485,7 @@ impl EventScheduler {
             ));
         }
         let run =
-            dispatch(trigger, self.dispatcher_client_provider.clone(), mode)
+            dispatch(context, trigger, self.dispatcher_clients.clone(), mode)
                 .await?;
         Ok(run)
     }
@@ -482,11 +493,11 @@ impl EventScheduler {
     #[tracing::instrument(skip_all, fields(trigger_id = %id))]
     pub async fn pause_trigger(
         &self,
-        project: ValidShardedId<ProjectId>,
+        context: RequestContext,
         id: TriggerId,
     ) -> Result<TriggerManifest, TriggerError> {
         let triggers = self.triggers.clone();
-        let status = self.get_trigger_status(&project, &id).await?;
+        let status = self.get_trigger_status(&context.project_id, &id).await?;
         // if value, check that it's alive.
         if !status.alive() {
             return Err(TriggerError::InvalidStatus(
@@ -504,11 +515,11 @@ impl EventScheduler {
     #[tracing::instrument(skip_all, fields(trigger_id = %id))]
     pub async fn resume_trigger(
         &self,
-        project: ValidShardedId<ProjectId>,
+        context: RequestContext,
         id: TriggerId,
     ) -> Result<TriggerManifest, TriggerError> {
         let triggers = self.triggers.clone();
-        let status = self.get_trigger_status(&project, &id).await?;
+        let status = self.get_trigger_status(&context.project_id, &id).await?;
         // if value, check that it's alive.
         if !status.alive() {
             return Err(TriggerError::InvalidStatus(
@@ -526,11 +537,11 @@ impl EventScheduler {
     #[tracing::instrument(skip_all, fields(trigger_id = %id))]
     pub async fn cancel_trigger(
         &self,
-        project: ValidShardedId<ProjectId>,
+        context: RequestContext,
         id: TriggerId,
     ) -> Result<TriggerManifest, TriggerError> {
         let triggers = self.triggers.clone();
-        let status = self.get_trigger_status(&project, &id).await?;
+        let status = self.get_trigger_status(&context.project_id, &id).await?;
         // if value, check that it's alive.
         if !status.cancelleable() {
             return Err(TriggerError::InvalidStatus(
@@ -540,7 +551,7 @@ impl EventScheduler {
         }
 
         if status == Status::OnDemand {
-            let mut trigger = self.get_trigger(project, id).await?;
+            let mut trigger = self.get_trigger(context, id).await?;
             trigger.status = Status::Cancelled;
             let manifest = trigger.get_manifest();
             self.store.update_trigger(&trigger).await?;

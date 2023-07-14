@@ -47,7 +47,7 @@ pub async fn start_dispatcher_server(
     info!("Starting Dispatcher on {:?}", addr);
 
     // The stack of middleware that our service will be wrapped in
-    service::grpc_serve(
+    service::grpc_serve_tcp(
         &mut context,
         addr,
         svc,
