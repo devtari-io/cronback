@@ -44,6 +44,14 @@ fn setup_logging_subscriber(
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Load .env file if it exists
+    match dotenvy::dotenv() {
+        | Ok(_) => {}
+        // .env files are optional
+        | Err(e) if e.not_found() => {}
+        | Err(e) => bail!("Failed to load .env file: {e}"),
+    };
+
     // Shutdown broadcast channel first
     let opts = cli::CliOpts::parse();
     let mut shutdown = Shutdown::default();

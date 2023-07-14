@@ -470,6 +470,7 @@ dependencies = [
  "clap",
  "colored",
  "dispatcher",
+ "dotenvy",
  "lib",
  "metrics",
  "metrics-exporter-prometheus",

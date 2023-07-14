@@ -74,6 +74,7 @@ colored = "2.0"
 metrics-exporter-prometheus = { version = "0.11", features = ["async-runtime"] }
 metrics-util = "0.14.0"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+dotenvy = "0.15"
 
 [dev-dependencies]
 proto = { path = "proto" }
