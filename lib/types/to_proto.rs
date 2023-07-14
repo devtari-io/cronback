@@ -136,12 +136,12 @@ impl From<Status> for i32 {
 impl From<HttpMethod> for i32 {
     fn from(value: HttpMethod) -> Self {
         let enum_value = match value {
-            | HttpMethod::GET => webhook_proto::HttpMethod::Get,
-            | HttpMethod::POST => webhook_proto::HttpMethod::Post,
-            | HttpMethod::PUT => webhook_proto::HttpMethod::Put,
-            | HttpMethod::DELETE => webhook_proto::HttpMethod::Delete,
-            | HttpMethod::PATCH => webhook_proto::HttpMethod::Patch,
-            | HttpMethod::HEAD => webhook_proto::HttpMethod::Head,
+            | HttpMethod::Get => webhook_proto::HttpMethod::Get,
+            | HttpMethod::Post => webhook_proto::HttpMethod::Post,
+            | HttpMethod::Put => webhook_proto::HttpMethod::Put,
+            | HttpMethod::Delete => webhook_proto::HttpMethod::Delete,
+            | HttpMethod::Patch => webhook_proto::HttpMethod::Patch,
+            | HttpMethod::Head => webhook_proto::HttpMethod::Head,
         };
         enum_value as i32
     }

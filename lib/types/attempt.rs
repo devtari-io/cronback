@@ -12,7 +12,6 @@ use crate::timeutil::iso8601_dateformat_serde;
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(deny_unknown_fields)]
 pub struct EmitAttemptLog {
     pub id: AttemptLogId,
     pub invocation: InvocationId,
@@ -27,7 +26,6 @@ pub struct EmitAttemptLog {
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(deny_unknown_fields)]
 pub struct WebhookAttemptDetails {
     pub response_code: Option<i32>,
     #[serde_as(as = "DurationSecondsWithFrac")]
@@ -51,14 +49,12 @@ impl WebhookAttemptDetails {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
-#[serde(deny_unknown_fields)]
 #[serde(untagged)]
 pub enum AttemptDetails {
     WebhookAttemptDetails(WebhookAttemptDetails),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(deny_unknown_fields)]
 #[serde(rename_all = "snake_case")]
 pub enum AttemptStatus {
     Succeeded,

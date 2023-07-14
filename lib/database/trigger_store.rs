@@ -276,7 +276,7 @@ mod tests {
             emit: vec![Emit::Webhook(Webhook {
                 _kind: Default::default(),
                 url: Some("http://test".to_string()),
-                http_method: crate::types::HttpMethod::GET,
+                http_method: crate::types::HttpMethod::Get,
                 timeout_s: Duration::from_secs(5),
                 retry: None,
             })],

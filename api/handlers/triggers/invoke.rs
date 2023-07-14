@@ -8,9 +8,9 @@ use lib::model::ValidShardedId;
 use lib::types::{Invocation, ProjectId, RequestId, TriggerId};
 use proto::scheduler_proto::InvokeTriggerRequest;
 
-use crate::api_model::InvokeTrigger;
 use crate::errors::ApiError;
 use crate::extractors::ValidatedId;
+use crate::model::InvokeTrigger;
 use crate::AppState;
 
 #[tracing::instrument(skip(state))]

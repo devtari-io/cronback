@@ -1,17 +1,14 @@
 use std::sync::Arc;
 
 use axum::extract::State;
-use axum::http::StatusCode;
-use axum::response::IntoResponse;
-use axum::{debug_handler, Extension, Json};
+use axum::{debug_handler, Extension};
 use lib::model::ValidShardedId;
-use lib::types::{ProjectId, RequestId, Trigger, TriggerId};
-use proto::scheduler_proto::InstallTriggerRequest;
+use lib::types::{ProjectId, RequestId, TriggerId};
 use tracing::error;
 
-use crate::api_model::InstallTrigger;
 use crate::errors::ApiError;
 use crate::extractors::ValidatedJson;
+use crate::model::{InstallTriggerRequest, InstallTriggerResponse};
 use crate::AppState;
 
 #[tracing::instrument(skip(state))]
@@ -20,8 +17,8 @@ pub(crate) async fn install(
     State(state): State<Arc<AppState>>,
     Extension(project): Extension<ValidShardedId<ProjectId>>,
     Extension(request_id): Extension<RequestId>,
-    ValidatedJson(request): ValidatedJson<InstallTrigger>,
-) -> Result<impl IntoResponse, ApiError> {
+    ValidatedJson(request): ValidatedJson<InstallTriggerRequest>,
+) -> Result<InstallTriggerResponse, ApiError> {
     // TODO (AhmedSoliman): Make this configurable via a HEADER
     let fail_if_exists = false;
     install_or_update(state, None, request_id, fail_if_exists, project, request)
@@ -34,8 +31,8 @@ pub(crate) async fn install_or_update(
     request_id: RequestId,
     fail_if_exists: bool,
     project: ValidShardedId<ProjectId>,
-    request: InstallTrigger,
-) -> Result<impl IntoResponse, ApiError> {
+    request: InstallTriggerRequest,
+) -> Result<InstallTriggerResponse, ApiError> {
     // If we have an Id already, we must allow updates.
     if id.is_some() && fail_if_exists {
         error!(
@@ -49,19 +46,16 @@ pub(crate) async fn install_or_update(
     // Pick cell.
     let mut scheduler = state.get_scheduler(&request_id, &project).await?;
     // Send the request to the scheduler
-    let install_request: InstallTriggerRequest =
-        request.into_proto(project, id, fail_if_exists);
+    let install_request = request.into_proto(project, id, fail_if_exists);
 
     let response = scheduler
         .install_trigger(install_request)
         .await?
         .into_inner();
-    let trigger: Trigger = response.trigger.unwrap().into();
-    let status = if response.already_existed {
-        StatusCode::OK
-    } else {
-        StatusCode::CREATED
-    };
 
-    Ok((status, Json(trigger)))
+    let response = InstallTriggerResponse {
+        trigger: response.trigger.unwrap().into(),
+        already_existed: response.already_existed,
+    };
+    Ok(response)
 }

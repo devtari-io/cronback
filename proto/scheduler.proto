@@ -31,7 +31,7 @@ enum InvocationMode {
 }
 
 message InstallTriggerRequest {
-// Id is only set if we are updating an existing trigger and we know the id up front
+  // Id is only set if we are updating an existing trigger and we know the id up front
   optional string id = 1;
   bool fail_if_exists = 2;
   string project_id = 3;

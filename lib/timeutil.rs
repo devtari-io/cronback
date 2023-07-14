@@ -44,6 +44,10 @@ pub fn to_iso8601(input: &DateTime<Tz>) -> String {
     input.format("%+").to_string()
 }
 
+pub fn default_timezone() -> String {
+    "Etc/UTC".to_string()
+}
+
 pub mod iso8601_dateformat_serde {
     use chrono::DateTime;
     use chrono_tz::Tz;

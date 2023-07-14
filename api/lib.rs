@@ -1,9 +1,9 @@
-mod api_model;
 pub(crate) mod auth;
 pub(crate) mod auth_store;
 pub mod errors;
 pub(crate) mod extractors;
 mod handlers;
+mod model;
 
 use std::str::FromStr;
 use std::sync::Arc;
@@ -12,10 +12,7 @@ use std::time::Instant;
 use auth_store::AuthStore;
 use axum::extract::MatchedPath;
 use axum::http::{Request, StatusCode};
-use axum::middleware::{
-    Next,
-    {self},
-};
+use axum::middleware::{self, Next};
 use axum::response::IntoResponse;
 use axum::routing::get;
 use axum::Router;

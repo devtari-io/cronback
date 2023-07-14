@@ -6,9 +6,9 @@ use axum::{debug_handler, Extension};
 use lib::model::ValidShardedId;
 use lib::types::{ProjectId, RequestId, TriggerId};
 
-use crate::api_model::InstallTrigger;
 use crate::errors::ApiError;
 use crate::extractors::{ValidatedId, ValidatedJson};
+use crate::model::InstallTriggerRequest;
 use crate::AppState;
 
 #[tracing::instrument(skip(state))]
@@ -18,7 +18,7 @@ pub(crate) async fn put(
     ValidatedId(id): ValidatedId<TriggerId>,
     Extension(project): Extension<ValidShardedId<ProjectId>>,
     Extension(request_id): Extension<RequestId>,
-    ValidatedJson(request): ValidatedJson<InstallTrigger>,
+    ValidatedJson(request): ValidatedJson<InstallTriggerRequest>,
 ) -> Result<impl IntoResponse, ApiError> {
     let fail_if_exists = false;
     crate::handlers::triggers::install::install_or_update(

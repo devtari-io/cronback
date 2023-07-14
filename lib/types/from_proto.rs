@@ -176,12 +176,12 @@ impl From<i32> for HttpMethod {
             | webhook_proto::HttpMethod::Unknown => {
                 panic!("We should never see HttpMethod::Unknown")
             }
-            | webhook_proto::HttpMethod::Get => HttpMethod::GET,
-            | webhook_proto::HttpMethod::Post => HttpMethod::POST,
-            | webhook_proto::HttpMethod::Put => HttpMethod::PUT,
-            | webhook_proto::HttpMethod::Delete => HttpMethod::DELETE,
-            | webhook_proto::HttpMethod::Patch => HttpMethod::PATCH,
-            | webhook_proto::HttpMethod::Head => HttpMethod::HEAD,
+            | webhook_proto::HttpMethod::Get => HttpMethod::Get,
+            | webhook_proto::HttpMethod::Post => HttpMethod::Post,
+            | webhook_proto::HttpMethod::Put => HttpMethod::Put,
+            | webhook_proto::HttpMethod::Delete => HttpMethod::Delete,
+            | webhook_proto::HttpMethod::Patch => HttpMethod::Patch,
+            | webhook_proto::HttpMethod::Head => HttpMethod::Head,
         }
     }
 }

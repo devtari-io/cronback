@@ -8,8 +8,8 @@ use lib::model::ValidShardedId;
 use lib::types::{InvocationId, ProjectId, TriggerId};
 use validator::Validate;
 
-use crate::api_model::{paginate, Pagination};
 use crate::errors::ApiError;
+use crate::model::{paginate, Pagination};
 use crate::{AppState, AppStateError};
 
 #[tracing::instrument(skip(state))]

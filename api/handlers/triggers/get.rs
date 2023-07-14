@@ -22,9 +22,9 @@ use proto::scheduler_proto::{
 use serde::Deserialize;
 use validator::Validate;
 
-use crate::api_model::{paginate, Pagination};
 use crate::errors::ApiError;
 use crate::extractors::ValidatedId;
+use crate::model::{paginate, Pagination};
 use crate::AppState;
 
 #[tracing::instrument(skip(state))]

@@ -1,0 +1,42 @@
+use std::collections::HashMap;
+
+use dto_helpers::IntoProto;
+use proto::trigger_proto;
+use serde::{Deserialize, Serialize};
+use serde_with::{serde_as, skip_serializing_none};
+use validator::Validate;
+
+#[serde_as]
+#[skip_serializing_none]
+#[derive(
+    IntoProto,
+    Debug,
+    Clone,
+    Default,
+    Serialize,
+    Deserialize,
+    Validate,
+    PartialEq,
+)]
+#[into_proto(into = "trigger_proto::Payload")]
+#[serde(default)]
+#[serde(deny_unknown_fields)]
+pub struct Payload {
+    #[validate(length(
+        max = 30,
+        message = "Max number of headers reached (>=30)"
+    ))]
+    pub headers: HashMap<String, String>,
+    #[serde(default = "default_content_type")]
+    pub content_type: String,
+    #[validate(length(
+        min = 0,
+        max = 1048576,
+        message = "Payload must be under 1MiB"
+    ))]
+    pub body: String,
+}
+
+fn default_content_type() -> String {
+    "application/json; charset=utf-8".to_owned()
+}

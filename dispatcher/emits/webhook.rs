@@ -30,12 +30,12 @@ use crate::retry::RetryPolicy;
 
 fn to_reqwest_http_method(method: &HttpMethod) -> reqwest::Method {
     match method {
-        | HttpMethod::GET => Method::GET,
-        | HttpMethod::POST => Method::POST,
-        | HttpMethod::PUT => Method::PUT,
-        | HttpMethod::DELETE => Method::DELETE,
-        | HttpMethod::HEAD => Method::HEAD,
-        | HttpMethod::PATCH => Method::PATCH,
+        | HttpMethod::Get => Method::GET,
+        | HttpMethod::Post => Method::POST,
+        | HttpMethod::Put => Method::PUT,
+        | HttpMethod::Delete => Method::DELETE,
+        | HttpMethod::Head => Method::HEAD,
+        | HttpMethod::Patch => Method::PATCH,
     }
 }
 

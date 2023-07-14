@@ -28,6 +28,10 @@ message Recurring {
   optional uint64 remaining = 4;
 }
 
+message Test {
+  string _data = 1;
+}
+
 enum RetryPolicy {
   RetryPolicy_UNKNOWN = 0;
   SIMPLE = 1;
