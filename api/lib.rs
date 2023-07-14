@@ -25,7 +25,7 @@ use lib::database::invocation_store::{InvocationStore, SqlInvocationStore};
 use lib::database::trigger_store::{SqlTriggerStore, TriggerStore};
 use lib::database::Database;
 use lib::grpc_client_provider::GrpcRequestTracingInterceptor;
-use lib::types::{ProjectId, RequestId, Shard, ShardedId};
+use lib::types::{ProjectId, RequestId};
 use lib::{netutils, service};
 use metrics::{histogram, increment_counter};
 use proto::scheduler_proto::scheduler_client::SchedulerClient as GenSchedulerClient;
@@ -73,16 +73,18 @@ impl AppState {
     pub async fn get_scheduler(
         &self,
         request_id: &RequestId,
-        project: &ProjectId,
+        _project: &ProjectId,
     ) -> Result<SchedulerClient, AppStateError> {
         // For now, we'll assume all triggers are on Cell 0
-        self.scheduler(request_id, project.shard()).await
+        // TODO: Use the project's shard to determine which
+        // scheduler to use.
+        self.scheduler(request_id /* project.shard() */).await
     }
 
     pub async fn scheduler(
         &self,
         request_id: &RequestId,
-        shard: Shard,
+        /* shard: Shard, */
     ) -> Result<SchedulerClient, AppStateError> {
         let address = self
             .config
@@ -92,9 +94,9 @@ impl AppState {
             // For now, we'll assume all triggers are on Cell 0
             .get(&0)
             .ok_or_else(|| {
-                AppStateError::RoutingError(format!(
-                    "No scheduler found for shard {shard}"
-                ))
+                AppStateError::RoutingError(
+                    "No scheduler found for shard".to_string(),
+                )
             })?;
         // TODO: Cache the scheduler channels
         let channel = Endpoint::from_str(address).unwrap().connect().await?;
