@@ -2,17 +2,24 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use chrono::Utc;
-use futures::FutureExt;
 use lib::database::attempt_log_store::AttemptLogStore;
+use lib::database::run_store::RunStore;
 use lib::model::ValidShardedId;
+use lib::prelude::{
+    DELIVERY_ATTEMPT_NUM_HEADER,
+    PROJECT_ID_HEADER,
+    RUN_ID_HEADER,
+};
 use lib::types::{
-    ActionAttemptLog,
+    Action,
+    Attempt,
     AttemptDetails,
-    AttemptLogId,
+    AttemptId,
     AttemptStatus,
     HttpMethod,
     Payload,
     ProjectId,
+    Run,
     RunId,
     RunStatus,
     TriggerId,
@@ -25,7 +32,7 @@ use reqwest::Method;
 use tracing::{debug, error, info};
 use validator::Validate;
 
-use crate::retry::RetryPolicy;
+use crate::retry::Retry;
 
 fn to_reqwest_http_method(method: &HttpMethod) -> reqwest::Method {
     match method {
@@ -39,108 +46,140 @@ fn to_reqwest_http_method(method: &HttpMethod) -> reqwest::Method {
 }
 
 pub struct WebhookActionJob {
-    pub run_id: RunId,
-    pub trigger_id: TriggerId,
-    pub project: ValidShardedId<ProjectId>,
-
-    pub webhook: Webhook,
-    pub payload: Option<Payload>,
-
+    pub run: Run,
+    pub run_store: Arc<dyn RunStore + Send + Sync>,
     pub attempt_store: Arc<dyn AttemptLogStore + Send + Sync>,
 }
 
 impl WebhookActionJob {
-    #[tracing::instrument(skip_all, fields(
-            run_id = %self.run_id,
-            trigger_id = %self.trigger_id,
-            webhook_url = self.webhook.url
-            ))]
-    pub async fn run(&self) -> RunStatus {
-        let retry_policy = if let Some(config) = &self.webhook.retry {
-            RetryPolicy::with_config(config.clone())
+    pub async fn run(mut self) -> Run {
+        let Action::Webhook(ref webhook) = self.run.action else {
+                // We should only get here if this is a webhook action!
+                panic!("Expected webhook action, got {:?}", self.run.action);
+            };
+
+        let retry = if let Some(config) = webhook.retry.clone() {
+            Retry::with_config(config)
         } else {
-            RetryPolicy::no_retry()
+            Retry::no_retry()
         };
 
-        let res = retry_policy
-            .retry(|retry_num| {
-                {
-                    async move {
-                        counter!("dispatcher.attempts_total", 1);
-                        info!(
-                            "Executing retry #{retry_num} for run {}",
-                            &self.run_id,
-                        );
+        info!(
+            run_id = %self.run.id,
+            "Executing webhook action",
+        );
 
-                        let attempt_start_time = Utc::now();
+        for delay in retry {
+            if self.run.status == RunStatus::Succeeded {
+                // No need for further attempts;
+                break;
+            }
+            // Wait for the delay before retrying
+            let attempt_num = delay.attempt_number();
+            let attempt_limit = delay.attempts_limit();
 
-                        let attempt_id = AttemptLogId::generate(&self.project);
-                        let response = dispatch_webhook(
-                            &self.trigger_id,
-                            &self.run_id,
-                            &attempt_id,
-                            retry_num,
-                            &self.webhook,
-                            &self.payload,
-                        )
-                        .await;
+            if !delay.first_attempt() {
+                info!(
+                    run_id = %self.run.id,
+                    project_id = %self.run.project_id,
+                    trigger_id = %self.run.trigger_id,
+                    "Previous attempt has failed. Next attempt {}/{} will run after {}s",
+                    attempt_num,
+                    attempt_limit,
+                    delay.duration().as_secs_f32(),
+                );
+            }
+            delay.await;
 
-                        let attempt_log = ActionAttemptLog {
-                            id: attempt_id.clone().into(),
-                            run_id: self.run_id.clone(),
-                            trigger_id: self.trigger_id.clone(),
-                            project_id: self.project.clone(),
-                            status: if response.is_success() {
-                                AttemptStatus::Succeeded
-                            } else {
-                                AttemptStatus::Failed
-                            },
-                            details: AttemptDetails::WebhookAttemptDetails(
-                                response.clone(),
-                            ),
-                            created_at: attempt_start_time,
-                        };
+            info!(
+                run_id = %self.run.id,
+                project_id = %self.run.project_id,
+                trigger_id = %self.run.trigger_id,
+                "Executing attempt {}/{} on this run trigger run",
+                attempt_num,
+                attempt_limit,
+            );
+            counter!("dispatcher.attempts_total", 1);
 
-                        info!(
-                        attempt_id = %attempt_log.id,
-                        status = ?attempt_log.status,
-                        "dispatch-attempt"
-                        );
+            let attempt_start_time = Utc::now();
 
-                        if let Err(e) =
-                            self.attempt_store.log_attempt(attempt_log).await
-                        {
-                            error!(
-                                "Failed to log attempt {attempt_id} to \
-                                 database: {}",
-                                e
-                            );
-                        }
-
-                        if response.is_success() {
-                            Ok(())
-                        } else {
-                            Err(())
-                        }
-                    }
-                }
-                .boxed()
-            })
+            let attempt_id = AttemptId::generate(&self.run.project_id);
+            // Actually dispatch the webhook
+            let response = dispatch_webhook(
+                &self.run.trigger_id,
+                &self.run.project_id,
+                &self.run.id,
+                &attempt_id,
+                attempt_num,
+                webhook,
+                &self.run.payload,
+            )
             .await;
 
-        match res {
-            | Ok(_) => RunStatus::Succeeded,
-            | Err(_) => RunStatus::Failed,
+            // Record the attempt
+            let attempt = Attempt {
+                id: attempt_id.clone().into(),
+                run_id: self.run.id.clone(),
+                trigger_id: self.run.trigger_id.clone(),
+                project_id: self.run.project_id.clone(),
+                status: if response.is_success() {
+                    AttemptStatus::Succeeded
+                } else {
+                    AttemptStatus::Failed
+                },
+                details: AttemptDetails::WebhookAttemptDetails(
+                    response.clone(),
+                ),
+                attempt_num,
+                created_at: attempt_start_time,
+            };
+
+            if let Err(e) =
+                self.attempt_store.log_attempt(attempt.clone()).await
+            {
+                error!("Failed to log attempt {attempt_id} to database: {}", e);
+            }
+
+            // Record the latest attempt
+            self.run.latest_attempt = Some(attempt);
+            // We record the status if successful to avoid an extra DB write
+            if response.is_success() {
+                self.run.status = RunStatus::Succeeded;
+            }
+
+            if let Err(e) = self.run_store.update_run(self.run.clone()).await {
+                // What will happen in case? We will not retry the webhook, but
+                // run will be stuck in "attempting" forever!
+                // A potential recovery mechanism is to look at the Attempts
+                // table (if the attempt was persisted successfully and fix up
+                // the run status.
+                error!(
+                    "Failed to persist run status for run {} for action : {}",
+                    self.run.id, e
+                );
+            }
         }
+        // Exhausted all retries, or we succeeded.
+        if self.run.status != RunStatus::Succeeded {
+            self.run.status = RunStatus::Failed;
+            if let Err(e) = self.run_store.update_run(self.run.clone()).await {
+                error!(
+                    "Failed to persist run status for run {} for action : {}",
+                    self.run.id, e
+                );
+            }
+        }
+        self.run
     }
 }
 
 #[tracing::instrument(skip(payload))]
 async fn dispatch_webhook(
     trigger_id: &TriggerId,
+    project_id: &ValidShardedId<ProjectId>,
     run_id: &RunId,
-    attempt_id: &AttemptLogId,
-    retry_num: u32,
+    attempt_id: &AttemptId,
+    attempt_num: u32,
     webhook: &Webhook,
     payload: &Option<Payload>,
 ) -> WebhookAttemptDetails {
@@ -148,7 +187,9 @@ async fn dispatch_webhook(
 
     if let Err(e) = validation_result {
         debug!(
+            project_id = %project_id,
             trigger_id = %trigger_id,
+            run_id = %run_id,
             "Webhook validation failure for trigger '{}': {}",
             trigger_id.to_string(),
             e.to_string(),
@@ -169,16 +210,14 @@ async fn dispatch_webhook(
     let http_method = to_reqwest_http_method(&webhook.http_method);
     // Custom Cronback headers
     let mut http_headers = reqwest::header::HeaderMap::new();
+    http_headers.insert(RUN_ID_HEADER, run_id.to_string().parse().unwrap());
+
     http_headers
-        .insert("Cronback-Trigger", trigger_id.to_string().parse().unwrap());
-    http_headers.insert("Cronback-Run", run_id.to_string().parse().unwrap());
-    // TODO: Consider removing this.
-    http_headers
-        .insert("Cronback-Attempt", attempt_id.to_string().parse().unwrap());
+        .insert(PROJECT_ID_HEADER, project_id.to_string().parse().unwrap());
 
     http_headers.insert(
-        "Cronback-Delivery-Retry-Counter",
-        retry_num.to_string().parse().unwrap(),
+        DELIVERY_ATTEMPT_NUM_HEADER,
+        attempt_num.to_string().parse().unwrap(),
     );
 
     if let Some(payload) = payload {

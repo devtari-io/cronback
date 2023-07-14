@@ -47,9 +47,7 @@ impl RunCommand for List {
     ) -> Result<()> {
         let client = common_options.new_client()?;
         let status: Vec<TriggerStatus> = match self.status {
-            | Some(ref statuses) => {
-                statuses.iter().map(|s| (*s).into()).collect()
-            }
+            | Some(ref statuses) => statuses.to_vec(),
 
             | None => {
                 vec![

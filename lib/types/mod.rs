@@ -12,7 +12,7 @@ pub use webhook::*;
 pub use crate::database::models::attempts::{
     AttemptDetails,
     AttemptStatus,
-    Model as ActionAttemptLog,
+    Model as Attempt,
     WebhookAttemptDetails,
 };
 pub use crate::database::models::runs::{Model as Run, RunStatus};

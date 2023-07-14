@@ -1,13 +1,14 @@
 mod args;
 mod command;
 mod confirm;
+mod runs;
 mod triggers;
 mod ui;
 mod whoami;
 
 use anyhow::Result;
 pub use command::RunCommand;
-pub(crate) use confirm::{confirm, confirm_or_abort};
+pub(crate) use confirm::confirm_or_abort;
 use tokio::io::AsyncWriteExt;
 use tracing::log::info;
 

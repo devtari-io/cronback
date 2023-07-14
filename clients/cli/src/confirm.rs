@@ -8,13 +8,14 @@ where
         return true;
     }
     let answer =
-        rprompt::prompt_reply(&format!("{} [y/N] ", msg.as_ref())).unwrap();
+        rprompt::prompt_reply(format!("{} [y/N] ", msg.as_ref())).unwrap();
     if ACCEPTABLE_YES.contains(&answer.as_str()) {
         return true;
     }
     false
 }
 
+#[allow(unused_macros)]
 #[rustfmt::skip]
 macro_rules! confirm {
     ($self:ident, $($arg:tt)*) => {{
@@ -33,4 +34,5 @@ macro_rules! confirm_or_abort {
     }}
 }
 
+#[allow(unused)]
 pub(crate) use {confirm, confirm_or_abort};

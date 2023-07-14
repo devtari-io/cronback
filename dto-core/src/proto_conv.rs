@@ -7,6 +7,8 @@ use syn::{DataEnum, DataStruct, DeriveInput};
 
 use crate::attributes::{
     Direction,
+    FromProtoInfo,
+    IntoProtoInfo,
     ProtoFieldInfo,
     ProtoInfo,
     ProtoVariantInfo,
@@ -14,7 +16,7 @@ use crate::attributes::{
 use crate::utils::{to_pascal_case, to_snake_case};
 
 pub(crate) fn expand_proto_conv(
-    direction: Direction,
+    direction: Direction<FromProtoInfo, IntoProtoInfo>,
     info: ProtoInfo,
     input: DeriveInput,
 ) -> darling::Result<TokenStream> {
@@ -32,7 +34,7 @@ pub(crate) fn expand_proto_conv(
 }
 
 fn expand_struct(
-    direction: Direction,
+    direction: Direction<FromProtoInfo, IntoProtoInfo>,
     info: ProtoInfo,
     struct_data: DataStruct,
 ) -> Result<TokenStream, Error> {
@@ -43,6 +45,10 @@ fn expand_struct(
         let Some(field_info) = acc.handle(ProtoFieldInfo::from_field(&field)) else {
             continue;
         };
+        // direction-wise #[direction_proto(..)] attributes
+        let Some(direction) = acc.handle(direction.with_field(&field)) else {
+            continue;
+        };
         let field_tok = acc.handle(field_info.gen_tokens(direction));
         if let Some(field_tok) = field_tok {
             field_tokens.push(field_tok);
@@ -50,10 +56,10 @@ fn expand_struct(
     }
 
     let (from_type, for_type) = match direction {
-        | Direction::FromProto => {
+        | Direction::FromProto(_) => {
             (info.target.to_token_stream(), info.ident.to_token_stream())
         }
-        | Direction::IntoProto => {
+        | Direction::IntoProto(_) => {
             (info.ident.to_token_stream(), info.target.to_token_stream())
         }
     };
@@ -74,7 +80,7 @@ fn expand_struct(
 }
 
 fn expand_enum(
-    direction: Direction,
+    direction: Direction<FromProtoInfo, IntoProtoInfo>,
     info: ProtoInfo,
     enum_data: DataEnum,
 ) -> Result<TokenStream, Error> {
@@ -89,7 +95,7 @@ fn expand_enum(
 }
 
 fn expand_non_unit_enum(
-    direction: Direction,
+    direction: Direction<FromProtoInfo, IntoProtoInfo>,
     info: ProtoInfo,
     enum_data: DataEnum,
 ) -> Result<TokenStream, Error> {
@@ -148,8 +154,10 @@ fn expand_non_unit_enum(
     };
 
     let (source_type, target_type) = match direction {
-        | Direction::FromProto => (fully_qualified_oneof_type, quote! {Self}),
-        | Direction::IntoProto => {
+        | Direction::FromProto(_) => {
+            (fully_qualified_oneof_type, quote! {Self})
+        }
+        | Direction::IntoProto(_) => {
             (info.ident.to_token_stream(), fully_qualified_oneof_type)
         }
     };
@@ -158,9 +166,16 @@ fn expand_non_unit_enum(
         Vec::with_capacity(enum_data.variants.len());
 
     for variant in enum_data.variants {
+        // general #[proto(..)] attributes
         let Some(variant_info) = acc.handle(ProtoVariantInfo::from_variant(&variant)) else {
             continue;
         };
+
+        // direction-wise #[direction_proto(..)] attributes
+        let Some(direction) = acc.handle(direction.with_variant(&variant)) else {
+            continue;
+        };
+
         let variant_tok = acc.handle(variant_info.gen_tokens(
             direction,
             &source_type,
@@ -184,16 +199,16 @@ fn expand_non_unit_enum(
     }
 
     let (from_type, for_type) = match direction {
-        | Direction::FromProto => {
+        | Direction::FromProto(_) => {
             (info.target.to_token_stream(), info.ident.to_token_stream())
         }
-        | Direction::IntoProto => {
+        | Direction::IntoProto(_) => {
             (info.ident.to_token_stream(), info.target.to_token_stream())
         }
     };
 
     let body = match direction {
-        | Direction::IntoProto => {
+        | Direction::IntoProto(_) => {
             quote! {
                 let o = match value {
                     #(#variant_tokens)*
@@ -203,7 +218,7 @@ fn expand_non_unit_enum(
                 }
             }
         }
-        | Direction::FromProto => {
+        | Direction::FromProto(_) => {
             quote! {
                 match value.#oneof_ident.unwrap() {
                     #(#variant_tokens)*
@@ -226,7 +241,7 @@ fn expand_non_unit_enum(
 }
 
 fn expand_unit_only_enum(
-    direction: Direction,
+    direction: Direction<FromProtoInfo, IntoProtoInfo>,
     info: ProtoInfo,
     enum_data: DataEnum,
 ) -> Result<TokenStream, Error> {
@@ -236,16 +251,20 @@ fn expand_unit_only_enum(
         Vec::with_capacity(enum_data.variants.len());
 
     let (from_type, for_type) = match direction {
-        | Direction::FromProto => {
+        | Direction::FromProto(_) => {
             (info.target.to_token_stream(), info.ident.to_token_stream())
         }
-        | Direction::IntoProto => {
+        | Direction::IntoProto(_) => {
             (info.ident.to_token_stream(), info.target.to_token_stream())
         }
     };
 
     for variant in enum_data.variants {
         let Some(variant_info) = acc.handle(ProtoVariantInfo::from_variant(&variant)) else {
+            continue;
+        };
+        // direction-wise #[direction_proto(..)] attributes
+        let Some(direction) = acc.handle(direction.with_variant(&variant)) else {
             continue;
         };
         let variant_tok = acc
@@ -268,7 +287,7 @@ fn expand_unit_only_enum(
     }
 
     let tokens = match direction {
-        | Direction::IntoProto => {
+        | Direction::IntoProto(_) => {
             quote! {
                 #[automatically_derived]
                 #[allow(clippy::all)]
@@ -293,7 +312,7 @@ fn expand_unit_only_enum(
                 }
             }
         }
-        | Direction::FromProto => {
+        | Direction::FromProto(_) => {
             quote! {
 
             #[automatically_derived]

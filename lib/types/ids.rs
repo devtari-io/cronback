@@ -1,6 +1,3 @@
-// use derive_more::{Deref, Display, From, Into};
-// use serde::{Deserialize, Serialize};
-
 use crate::model::define_model_id;
 
 define_model_id! {
@@ -24,8 +21,8 @@ define_model_id! {
 
 define_model_id! {
     @prefix = "att",
-    @proto = proto::common::AttemptLogId,
-    pub struct AttemptLogId;
+    @proto = proto::common::AttemptId,
+    pub struct AttemptId;
 }
 
 #[cfg(test)]

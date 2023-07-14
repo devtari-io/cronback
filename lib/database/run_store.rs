@@ -169,6 +169,7 @@ mod tests {
             }),
             payload: None,
             status: RunStatus::Attempting,
+            latest_attempt: None,
         }
     }
 

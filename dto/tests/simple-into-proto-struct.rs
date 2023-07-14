@@ -27,7 +27,7 @@ pub struct Recurring {
     pub(crate) remaining: u64,
     #[proto(skip)]
     pub stuff: String,
-    #[proto(map_into_proto = "subsub::to_string", map_into_by_ref)]
+    #[into_proto(map = "subsub::to_string", map_by_ref)]
     pub data: Vec<i32>,
     // non-public will not be included in the proto
     internal: String,

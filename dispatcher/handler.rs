@@ -2,12 +2,11 @@ use std::sync::Arc;
 
 use chrono::Utc;
 use futures::TryFutureExt;
-use lib::database::attempt_log_store::AttemptLogStore;
 use lib::database::run_store::RunStore;
 use lib::database::DatabaseError;
 use lib::prelude::TonicRequestExt;
 use lib::service::ServiceContext;
-use lib::types::{ProjectId, Run, RunId, RunStatus, TriggerId};
+use lib::types::{Run, RunId, RunStatus, TriggerId};
 use metrics::counter;
 use proto::common::PaginationIn;
 use proto::dispatcher_proto::dispatcher_server::Dispatcher;
@@ -24,14 +23,11 @@ use tonic::{Request, Response, Status};
 
 use crate::dispatch_manager::DispatchManager;
 
-const NUM_INLINE_ATTEMPTS_PER_RUN: i32 = 5;
-
 pub(crate) struct DispatcherAPIHandler {
     #[allow(unused)]
     context: ServiceContext,
     dispatch_manager: DispatchManager,
     run_store: Arc<dyn RunStore + Send + Sync>,
-    attempt_store: Arc<dyn AttemptLogStore + Send + Sync>,
 }
 
 impl DispatcherAPIHandler {
@@ -39,13 +35,11 @@ impl DispatcherAPIHandler {
         context: ServiceContext,
         dispatch_manager: DispatchManager,
         run_store: Arc<dyn RunStore + Send + Sync>,
-        attempt_store: Arc<dyn AttemptLogStore + Send + Sync>,
     ) -> Self {
         Self {
             context,
             dispatch_manager,
             run_store,
-            attempt_store,
         }
     }
 }
@@ -56,21 +50,21 @@ impl Dispatcher for DispatcherAPIHandler {
         &self,
         request: Request<DispatchRequest>,
     ) -> Result<Response<DispatchResponse>, Status> {
-        let (_metadata, _extensions, request) = request.into_parts();
+        let ctx = request.context()?;
+        let request = request.into_inner();
 
         let dispatch_mode = request.mode();
-        let project_id: lib::prelude::ValidShardedId<ProjectId> =
-            request.project_id.unwrap().into();
-        let run_id = RunId::generate(&project_id);
+        let run_id = RunId::generate(&ctx.project_id);
 
         let run = Run {
             id: run_id.into(),
             trigger_id: request.trigger_id.unwrap().into(),
-            project_id,
+            project_id: ctx.project_id,
             created_at: Utc::now(),
             payload: request.payload.map(|p| p.into()),
             action: request.action.unwrap().into(),
             status: RunStatus::Attempting,
+            latest_attempt: None,
         };
 
         counter!("dispatcher.runs_total", 1);
@@ -89,36 +83,21 @@ impl Dispatcher for DispatcherAPIHandler {
         &self,
         request: Request<GetRunRequest>,
     ) -> Result<Response<GetRunResponse>, Status> {
-        let project_id = request.context()?.project_id;
-        let (_metadata, _extensions, request) = request.into_parts();
+        let ctx = request.context()?;
+        let request = request.into_inner();
 
         let run_id: RunId = request.run_id.unwrap().into();
 
-        let (run, latest_attempt) = tokio::join!(
-            self.run_store
-                .get_run(&project_id, &run_id)
-                .map_err(DispatcherHandlerError::Store),
-            self.attempt_store
-                .get_attempts_for_run(
-                    &project_id,
-                    &run_id,
-                    PaginationIn {
-                        limit: NUM_INLINE_ATTEMPTS_PER_RUN,
-                        cursor: None
-                    },
-                )
-                .map_err(DispatcherHandlerError::Store),
-        );
+        let run = self
+            .run_store
+            .get_run(&ctx.project_id, &run_id)
+            .map_err(DispatcherHandlerError::Store)
+            .await?;
 
-        match run? {
+        match run {
             | Some(run) => {
                 Ok(Response::new(GetRunResponse {
                     run: Some(run.into()),
-                    latest_attempts: latest_attempt?
-                        .data
-                        .into_iter()
-                        .map(Into::into)
-                        .collect(),
                 }))
             }
             | None => {
@@ -131,15 +110,14 @@ impl Dispatcher for DispatcherAPIHandler {
         &self,
         request: Request<ListRunsRequest>,
     ) -> Result<Response<ListRunsResponse>, Status> {
-        let project_id = request.context()?.project_id;
-        let (_metadata, _extensions, request) = request.into_parts();
-
+        let ctx = request.context()?;
+        let request = request.into_inner();
         let trigger_id: TriggerId = request.trigger_id.unwrap().into();
         let pagination: PaginationIn = request.pagination.unwrap();
 
         let runs = self
             .run_store
-            .get_runs_by_trigger(&project_id, &trigger_id, pagination)
+            .get_runs_by_trigger(&ctx.project_id, &trigger_id, pagination)
             .await
             .map_err(DispatcherHandlerError::Store)?;
 

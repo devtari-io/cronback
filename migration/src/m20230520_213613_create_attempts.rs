@@ -32,6 +32,11 @@ impl MigrationTrait for Migration {
                     )
                     .col(ColumnDef::new(Attempts::Details).json().not_null())
                     .col(
+                        ColumnDef::new(Attempts::AttemptNum)
+                            .unsigned()
+                            .not_null(),
+                    )
+                    .col(
                         ColumnDef::new(Attempts::CreatedAt)
                             .date_time()
                             .not_null(),
@@ -87,6 +92,7 @@ enum Attempts {
     ProjectId,
     Status,
     Details,
+    AttemptNum,
     CreatedAt,
 }
 

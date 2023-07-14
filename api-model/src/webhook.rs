@@ -68,11 +68,8 @@ pub struct Webhook {
     #[serde_as(as = "DurationSecondsWithFrac")]
     #[cfg_attr(
         feature = "dto",
-        proto(
-            map_into_proto = "std::time::Duration::as_secs_f64",
-            map_into_by_ref,
-            map_from_proto = "Duration::from_secs_f64"
-        )
+        into_proto(map = "std::time::Duration::as_secs_f64", map_by_ref),
+        from_proto(map = "Duration::from_secs_f64")
     )]
     pub timeout_s: std::time::Duration,
     // None means no retry
@@ -128,11 +125,8 @@ pub struct SimpleRetry {
     #[serde_as(as = "DurationSecondsWithFrac")]
     #[cfg_attr(
         feature = "dto",
-        proto(
-            map_into_proto = "std::time::Duration::as_secs_f64",
-            map_into_by_ref,
-            map_from_proto = "Duration::from_secs_f64"
-        )
+        into_proto(map = "std::time::Duration::as_secs_f64", map_by_ref),
+        from_proto(map = "Duration::from_secs_f64")
     )]
     #[cfg_attr(
         feature = "validation",
@@ -170,11 +164,8 @@ pub struct ExponentialBackoffRetry {
     #[serde_as(as = "DurationSecondsWithFrac")]
     #[cfg_attr(
         feature = "dto",
-        proto(
-            map_into_proto = "std::time::Duration::as_secs_f64",
-            map_into_by_ref,
-            map_from_proto = "Duration::from_secs_f64"
-        )
+        into_proto(map = "std::time::Duration::as_secs_f64", map_by_ref),
+        from_proto(map = "Duration::from_secs_f64")
     )]
     #[cfg_attr(
         feature = "validation",
@@ -184,11 +175,8 @@ pub struct ExponentialBackoffRetry {
     #[serde_as(as = "DurationSecondsWithFrac")]
     #[cfg_attr(
         feature = "dto",
-        proto(
-            map_into_proto = "std::time::Duration::as_secs_f64",
-            map_into_by_ref,
-            map_from_proto = "Duration::from_secs_f64"
-        )
+        into_proto(map = "std::time::Duration::as_secs_f64", map_by_ref),
+        from_proto(map = "Duration::from_secs_f64")
     )]
     #[cfg_attr(
         feature = "validation",

@@ -1,4 +1,4 @@
-use cronback_api_model::{Run, RunMode, RunTrigger};
+use cronback_api_model::{GetRunResponse, Run, RunMode, RunTrigger};
 use http::Method;
 use reqwest::IntoUrl;
 use serde::de::DeserializeOwned;
@@ -241,6 +241,17 @@ impl Client {
                     .append_pair("limit", &limit.to_string());
             }
         }
+
+        self.execute_request(Method::GET, path).await
+    }
+
+    /// Retrieve a run by id.
+    pub async fn get_run<T>(&self, id: T) -> Result<Response<GetRunResponse>>
+    where
+        T: AsRef<str>,
+    {
+        let path = format!("/v1/triggers/-/runs/{}", id.as_ref());
+        let path = self.config.base_url.join(&path)?;
 
         self.execute_request(Method::GET, path).await
     }

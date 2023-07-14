@@ -13,6 +13,7 @@ use tracing::{info, trace};
 
 use super::event_dispatcher::DispatchError;
 
+#[allow(unused)]
 #[derive(Error, Debug)]
 pub(crate) enum TriggerError {
     #[error("Cannot parse cron expression")]

@@ -6,7 +6,7 @@ use lib::types::RunId;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none};
 
-use super::{Action, ActionAttemptLog, Payload};
+use super::{Action, Attempt, Payload};
 #[cfg(not(feature = "dto"))]
 use crate::RunId;
 
@@ -84,9 +84,10 @@ pub struct Run {
     #[cfg_attr(feature = "dto", proto(required))]
     pub action: Action,
     pub status: RunStatus,
+    pub latest_attempt: Option<Attempt>,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[cfg_attr(
     feature = "dto",
     derive(FromProto),
@@ -96,5 +97,4 @@ pub struct GetRunResponse {
     #[serde(flatten)]
     #[cfg_attr(feature = "dto", proto(required))]
     pub run: Run,
-    pub latest_attempts: Vec<ActionAttemptLog>,
 }

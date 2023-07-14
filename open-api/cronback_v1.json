@@ -732,26 +732,13 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/Run"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "latest_attempts": {
-                          "type": "array",
-                          "description": "The last 5 webhook delivery attempts in this run.",
-                          "items": {
-                            "$ref": "#/components/schemas/WebhookAttempt"
-                          }
-                        }
-                      }
-                    }
-                  ]
+                  "$ref": "#/components/schemas/Run"
                 }
               }
             }
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
           }
         },
         "operationId": "get-trigger-run",
@@ -1244,6 +1231,7 @@
             }
           }
         ],
+        "description": "Defines a single run for a trigger. A run is an \"instance\" of a trigger that was created at a given point in time to execute an action (e.g. deliver a webhook)",
         "properties": {
           "id": {
             "type": "string",
@@ -1274,9 +1262,12 @@
           },
           "payload": {
             "$ref": "#/components/schemas/Payload"
+          },
+          "latest_attempt": {
+            "$ref": "#/components/schemas/WebhookAttempt",
+            "description": "Details about the latest delivery attempt that has been executed on this run"
           }
-        },
-        "description": "Defines a single run for a trigger. A run is an \"instance\" of a trigger that was created at a given point in time to execute an action (e.g. deliver a webhook)"
+        }
       },
       "WebhookAttempt": {
         "title": "Webhook Delivery Attempt",
@@ -1284,13 +1275,8 @@
           "id": "9s68v5iiffjv7"
         },
         "type": "object",
+        "x-internal": true,
         "properties": {
-          "id": {
-            "type": "string",
-            "example": "att_054001GXBF3E9MDBACQVCCY6D5E3MN",
-            "description": "An internal unique server-generated identifier for this particular attempt.",
-            "readOnly": true
-          },
           "status": {
             "type": "string",
             "enum": [
@@ -1307,20 +1293,23 @@
               "response_code": {
                 "type": "integer",
                 "example": 200,
-                "description": "The http status code returned from the webhook end point."
+                "description": "The http status code returned from the webhook end point.",
+                "readOnly": true
               },
               "response_latency_s": {
                 "type": "number",
                 "format": "double",
                 "example": 0.4,
-                "description": "The total latency for this webhook delivery attempt. This measures how fast the webhook end point responded to cronback."
+                "description": "The total latency for this webhook delivery attempt. This measures how fast the webhook end point responded to cronback.",
+                "readOnly": true
               },
               "error_message": {
                 "type": [
                   "string",
                   "null"
                 ],
-                "description": "If delivery was not successful, this will hold a human readable error message."
+                "description": "If delivery was not successful, this will hold a human readable error message.",
+                "readOnly": true
               }
             }
           },
@@ -1330,9 +1319,14 @@
             "format": "date-time",
             "description": "RFC3339 datetime indicating the time this attempt was created.",
             "readOnly": true
+          },
+          "attempt_num": {
+            "type": "integer",
+            "example": 2,
+            "description": "Indicates the order of this delivery attempt in a trigger run.",
+            "readOnly": true
           }
-        },
-        "x-internal": true
+        }
       }
     },
     "securitySchemes": {

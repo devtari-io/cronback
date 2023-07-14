@@ -2,12 +2,18 @@ use darling::ast::Style;
 use proc_macro2::TokenStream;
 use quote::quote_spanned;
 
-use crate::attributes::{Direction, ProtoVariantInfo, Skip};
+use crate::attributes::{
+    Direction,
+    FromProtoVariantInfo,
+    IntoProtoVariantInfo,
+    ProtoVariantInfo,
+    Skip,
+};
 
 impl ProtoVariantInfo {
     pub(crate) fn gen_tokens(
         self,
-        direction: Direction,
+        direction: Direction<FromProtoVariantInfo, IntoProtoVariantInfo>,
         source_type: &TokenStream,
         target_type: &TokenStream,
     ) -> darling::Result<TokenStream> {
@@ -20,8 +26,8 @@ impl ProtoVariantInfo {
         }
 
         let (s_variant, t_variant) = match direction {
-            | Direction::IntoProto => (variant_name, target_variant_name),
-            | Direction::FromProto => (target_variant_name, variant_name),
+            | Direction::IntoProto(_) => (variant_name, target_variant_name),
+            | Direction::FromProto(_) => (target_variant_name, variant_name),
         };
 
         match self.fields.style {
@@ -57,7 +63,7 @@ mod tests {
     #[track_caller]
     fn gen_tokens_test_helper(
         variant: ProtoVariantInfo,
-        direction: Direction,
+        direction: Direction<FromProtoVariantInfo, IntoProtoVariantInfo>,
         source_type: &TokenStream,
         target_type: &TokenStream,
         expected: TokenStream,
@@ -81,7 +87,9 @@ mod tests {
             parse_quote! { Something {x: i32, y: String} };
         let variant_info = ProtoVariantInfo::from_variant(&variant)?;
 
-        let direction = Direction::IntoProto;
+        let direction: Direction<FromProtoVariantInfo, IntoProtoVariantInfo> =
+            Direction::IntoProto(IntoProtoVariantInfo::from_variant(&variant)?);
+
         let source_type = &parse_quote! { Foo };
         let target_type = &parse_quote! { Bar };
 
@@ -122,10 +130,16 @@ mod tests {
     fn gen_tokens_unit() -> darling::Result<()> {
         // unit
         {
-            let variant_info =
-                ProtoVariantInfo::from_variant(&parse_quote! { Something })?;
+            let variant: syn::Variant = parse_quote! { Something  };
 
-            let direction = Direction::IntoProto;
+            let variant_info = ProtoVariantInfo::from_variant(&variant)?;
+
+            let direction: Direction<
+                FromProtoVariantInfo,
+                IntoProtoVariantInfo,
+            > = Direction::IntoProto(IntoProtoVariantInfo::from_variant(
+                &variant,
+            )?);
             let source_type = &parse_quote! { Foo };
             let target_type = &parse_quote! { Bar };
 
@@ -139,7 +153,12 @@ mod tests {
                 },
             )?;
 
-            let direction = Direction::FromProto;
+            let direction: Direction<
+                FromProtoVariantInfo,
+                IntoProtoVariantInfo,
+            > = Direction::FromProto(FromProtoVariantInfo::from_variant(
+                &variant,
+            )?);
 
             gen_tokens_test_helper(
                 variant_info.clone(),
@@ -154,11 +173,17 @@ mod tests {
 
         // unit - renamed
         {
-            let variant_info = ProtoVariantInfo::from_variant(
-                &parse_quote! { #[proto(name = "AnotherThing")] Something },
-            )?;
+            let variant: &syn::Variant =
+                &parse_quote! { #[proto(name = "AnotherThing")] Something };
 
-            let direction = Direction::IntoProto;
+            let variant_info = ProtoVariantInfo::from_variant(variant)?;
+
+            let direction: Direction<
+                FromProtoVariantInfo,
+                IntoProtoVariantInfo,
+            > = Direction::IntoProto(IntoProtoVariantInfo::from_variant(
+                variant,
+            )?);
             let source_type = &parse_quote! { Foo };
             let target_type = &parse_quote! { Bar };
 
@@ -172,7 +197,12 @@ mod tests {
                 },
             )?;
 
-            let direction = Direction::FromProto;
+            let direction: Direction<
+                FromProtoVariantInfo,
+                IntoProtoVariantInfo,
+            > = Direction::FromProto(FromProtoVariantInfo::from_variant(
+                variant,
+            )?);
 
             gen_tokens_test_helper(
                 variant_info.clone(),
@@ -190,11 +220,16 @@ mod tests {
     #[test]
     fn gen_tokens_non_unit() -> darling::Result<()> {
         {
-            let variant_info = ProtoVariantInfo::from_variant(
-                &parse_quote! { Something(BigObject) },
-            )?;
+            let variant: &syn::Variant = &parse_quote! { Something(BigObject) };
 
-            let direction = Direction::IntoProto;
+            let variant_info = ProtoVariantInfo::from_variant(variant)?;
+
+            let direction: Direction<
+                FromProtoVariantInfo,
+                IntoProtoVariantInfo,
+            > = Direction::IntoProto(IntoProtoVariantInfo::from_variant(
+                variant,
+            )?);
             let source_type = &parse_quote! { Foo };
             let target_type = &parse_quote! { Bar };
 
@@ -208,7 +243,12 @@ mod tests {
                 },
             )?;
 
-            let direction = Direction::FromProto;
+            let direction: Direction<
+                FromProtoVariantInfo,
+                IntoProtoVariantInfo,
+            > = Direction::FromProto(FromProtoVariantInfo::from_variant(
+                variant,
+            )?);
 
             gen_tokens_test_helper(
                 variant_info.clone(),
@@ -223,12 +263,18 @@ mod tests {
 
         // renamed
         {
-            let variant_info = ProtoVariantInfo::from_variant(&parse_quote! {
+            let variant: &syn::Variant = &parse_quote! {
                 #[proto(name = "AnotherThing")]
                 Something(BigObject)
-            })?;
+            };
+            let variant_info = ProtoVariantInfo::from_variant(variant)?;
 
-            let direction = Direction::IntoProto;
+            let direction: Direction<
+                FromProtoVariantInfo,
+                IntoProtoVariantInfo,
+            > = Direction::IntoProto(IntoProtoVariantInfo::from_variant(
+                variant,
+            )?);
             let source_type = &parse_quote! { Foo };
             let target_type = &parse_quote! { Bar };
 
@@ -242,7 +288,12 @@ mod tests {
                 },
             )?;
 
-            let direction = Direction::FromProto;
+            let direction: Direction<
+                FromProtoVariantInfo,
+                IntoProtoVariantInfo,
+            > = Direction::FromProto(FromProtoVariantInfo::from_variant(
+                variant,
+            )?);
 
             gen_tokens_test_helper(
                 variant_info.clone(),

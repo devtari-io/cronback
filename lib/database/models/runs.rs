@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 use dto::{FromProto, IntoProto};
 use sea_orm::entity::prelude::*;
 
+use super::attempts;
 use super::triggers::{Action, Payload};
 use crate::database::pagination::PaginatedEntity;
 use crate::prelude::ValidShardedId;
@@ -29,6 +30,8 @@ pub struct Model {
     #[proto(required)]
     pub action: Action,
     pub status: RunStatus,
+    #[from_proto(always_none)]
+    pub latest_attempt: Option<attempts::Model>,
 }
 
 impl PaginatedEntity for Entity {

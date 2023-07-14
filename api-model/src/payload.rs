@@ -41,7 +41,7 @@ pub struct Payload {
             message = "Payload body size limit reached (>=102400)"
         ))
     )]
-    #[cfg_attr(feature = "dto", proto(map_from_proto = "string_from_bytes"))]
+    #[cfg_attr(feature = "dto", from_proto(map = "string_from_bytes"))]
     pub body: String,
 }
 

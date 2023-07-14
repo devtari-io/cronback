@@ -46,7 +46,6 @@ impl DispatchJob {
             context,
             dispatch_request: DispatchRequest {
                 trigger_id: Some(trigger.id.into()),
-                project_id: Some(trigger.project_id.into()),
                 action: Some(trigger.action.into()),
                 payload: trigger.payload.map(|p| p.into()),
                 mode: dispatcher_proto::DispatchMode::from(mode).into(),

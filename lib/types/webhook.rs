@@ -33,11 +33,8 @@ pub enum HttpMethod {
 pub struct Webhook {
     pub url: String,
     pub http_method: HttpMethod,
-    #[proto(map_from_proto = "Duration::from_secs_f64")]
-    #[proto(
-        map_into_proto = "std::time::Duration::as_secs_f64",
-        map_into_by_ref
-    )]
+    #[from_proto(map = "Duration::from_secs_f64")]
+    #[into_proto(map = "std::time::Duration::as_secs_f64", map_by_ref)]
     pub timeout_s: std::time::Duration,
     // None means no retry
     pub retry: Option<RetryConfig>,
@@ -60,11 +57,8 @@ pub enum RetryConfig {
 #[proto(target = "proto::webhook_proto::SimpleRetry")]
 pub struct SimpleRetry {
     pub max_num_attempts: u32,
-    #[proto(
-        map_into_proto = "std::time::Duration::as_secs_f64",
-        map_into_by_ref
-    )]
-    #[proto(map_from_proto = "Duration::from_secs_f64")]
+    #[into_proto(map = "std::time::Duration::as_secs_f64", map_by_ref)]
+    #[from_proto(map = "Duration::from_secs_f64")]
     pub delay_s: Duration,
 }
 
@@ -74,16 +68,10 @@ pub struct SimpleRetry {
 #[proto(target = "proto::webhook_proto::ExponentialBackoffRetry")]
 pub struct ExponentialBackoffRetry {
     pub max_num_attempts: u32,
-    #[proto(
-        map_into_proto = "std::time::Duration::as_secs_f64",
-        map_into_by_ref
-    )]
-    #[proto(map_from_proto = "Duration::from_secs_f64")]
+    #[into_proto(map = "std::time::Duration::as_secs_f64", map_by_ref)]
+    #[from_proto(map = "Duration::from_secs_f64")]
     pub delay_s: Duration,
-    #[proto(
-        map_into_proto = "std::time::Duration::as_secs_f64",
-        map_into_by_ref
-    )]
-    #[proto(map_from_proto = "Duration::from_secs_f64")]
+    #[into_proto(map = "std::time::Duration::as_secs_f64", map_by_ref)]
+    #[from_proto(map = "Duration::from_secs_f64")]
     pub max_delay_s: Duration,
 }

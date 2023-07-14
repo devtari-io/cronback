@@ -10,28 +10,36 @@ use serde::{Deserialize, Serialize};
 
 use crate::database::pagination::PaginatedEntity;
 use crate::model::ValidShardedId;
-use crate::types::{AttemptLogId, ProjectId, RunId, TriggerId};
+use crate::types::{AttemptId, ProjectId, RunId, TriggerId};
 
-// TODO: Remove serde and implement an API model instead.
 #[derive(
-    Clone, Debug, Serialize, IntoProto, PartialEq, DeriveEntityModel, Eq,
+    Clone,
+    Serialize,
+    Deserialize,
+    Debug,
+    IntoProto,
+    PartialEq,
+    DeriveEntityModel,
+    Eq,
+    FromJsonQueryResult,
 )]
-#[proto(target = "proto::attempt_proto::ActionAttemptLog")]
+#[proto(target = "proto::attempt_proto::Attempt")]
 #[sea_orm(table_name = "attempts")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     #[proto(required)]
-    pub id: AttemptLogId,
+    pub id: AttemptId,
     #[proto(required)]
     pub run_id: RunId,
-    #[proto(required)]
+    #[proto(skip)]
     pub trigger_id: TriggerId,
     #[sea_orm(primary_key, auto_increment = false)]
-    #[proto(required)]
+    #[proto(skip)]
     pub project_id: ValidShardedId<ProjectId>,
     pub status: AttemptStatus,
     #[proto(required)]
     pub details: AttemptDetails,
+    pub attempt_num: u32,
     #[proto(required)]
     pub created_at: DateTime<Utc>,
 }
@@ -47,11 +55,11 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
-#[derive(Debug, IntoProto, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, IntoProto, Clone, PartialEq, Eq)]
 #[proto(target = "proto::attempt_proto::WebhookAttemptDetails")]
 pub struct WebhookAttemptDetails {
     pub response_code: Option<i32>,
-    #[proto(map_into_proto = "Duration::as_secs", map_into_by_ref)]
+    #[into_proto(map = "Duration::as_secs", map_by_ref)]
     pub response_latency_s: Duration,
     pub error_message: Option<String>,
 }
@@ -73,9 +81,9 @@ impl WebhookAttemptDetails {
 #[derive(
     Debug,
     Clone,
-    IntoProto,
     Serialize,
     Deserialize,
+    IntoProto,
     PartialEq,
     Eq,
     FromJsonQueryResult,
@@ -88,8 +96,9 @@ pub enum AttemptDetails {
 
 #[derive(
     Debug,
-    IntoProto,
     Serialize,
+    Deserialize,
+    IntoProto,
     Clone,
     PartialEq,
     Eq,

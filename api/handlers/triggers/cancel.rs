@@ -1,9 +1,7 @@
 use std::sync::Arc;
 
 use axum::extract::{Path, State};
-use axum::http::StatusCode;
-use axum::response::IntoResponse;
-use axum::{debug_handler, Extension, Json};
+use axum::{Extension, Json};
 use lib::model::ValidShardedId;
 use lib::types::{ProjectId, RequestId};
 use proto::scheduler_proto::CancelTriggerRequest;

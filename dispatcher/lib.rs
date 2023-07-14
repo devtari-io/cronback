@@ -44,7 +44,6 @@ pub async fn start_dispatcher_server(
         context.clone(),
         dispatch_manager,
         run_store,
-        attempt_store,
     );
     let svc = DispatcherServer::new(handler);
 

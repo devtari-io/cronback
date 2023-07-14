@@ -211,7 +211,7 @@ pub struct Event {
 pub struct Payload {
     pub headers: HashMap<String, String>,
     pub content_type: String,
-    #[proto(map_from_proto = "string_from_bytes")]
+    #[from_proto(map = "string_from_bytes")]
     pub body: String,
 }
 

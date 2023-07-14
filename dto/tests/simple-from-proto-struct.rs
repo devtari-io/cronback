@@ -10,7 +10,7 @@ mod sub {
 #[derive(FromProto)]
 #[proto(target = "sub::Output")]
 pub struct Output {
-    #[proto(map_from_proto = "perform")]
+    #[from_proto(map = "perform")]
     pub name: String,
 }
 

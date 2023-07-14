@@ -60,6 +60,6 @@ message RunId {
   string value = 1;
 }
 
-message AttemptLogId {
+message AttemptId {
   string value = 1;
 }

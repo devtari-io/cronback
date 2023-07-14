@@ -4,14 +4,13 @@ import "common.proto";
 
 package attempt_proto;
 
-message ActionAttemptLog {
-  common.AttemptLogId id = 1;
+message Attempt {
+  common.AttemptId id = 1;
   common.RunId run_id = 2;
-  common.TriggerId trigger_id = 3;
-  common.ProjectId project_id = 4;
-  AttemptStatus status = 5;
-  AttemptDetails details = 6;
-  common.DateTime created_at = 7;
+  AttemptStatus status = 3;
+  AttemptDetails details = 4;
+  uint32 attempt_num = 5;
+  common.DateTime created_at = 6;
 }
 
 enum AttemptStatus {

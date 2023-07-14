@@ -21,10 +21,9 @@ enum DispatchMode {
 
 message DispatchRequest {
   common.TriggerId trigger_id = 1;
-  common.ProjectId project_id = 2;
-  trigger_proto.Action action = 3;
-  trigger_proto.Payload payload = 4;
-  DispatchMode mode = 5;
+  trigger_proto.Action action = 2;
+  trigger_proto.Payload payload = 3;
+  DispatchMode mode = 4;
 }
 
 message DispatchResponse {
@@ -37,7 +36,6 @@ message GetRunRequest {
 
 message GetRunResponse {
   run_proto.Run run = 1;
-  repeated attempt_proto.ActionAttemptLog latest_attempts = 2;
 }
 
 

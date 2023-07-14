@@ -13,7 +13,7 @@ use once_cell::sync::OnceCell;
 use tokio::io::AsyncWriteExt;
 use url::Url;
 
-use crate::{emitln, triggers, whoami, RunCommand};
+use crate::{emitln, runs, triggers, whoami, RunCommand};
 
 const CRONBACK_SECRET_TOKEN_VAR: &str = "CRONBACK_SECRET_TOKEN";
 
@@ -53,10 +53,15 @@ pub struct CommonOptions {
 
 #[derive(Parser, Debug, Clone)]
 pub enum CliCommand {
-    /// Commands to control triggers
+    /// Commands for triggers
     Triggers {
         #[command(subcommand)]
         command: TriggerCommand,
+    },
+    /// Commands for trigger runs
+    Runs {
+        #[command(subcommand)]
+        command: RunsCommand,
     },
     #[command(name = "whoami")]
     /// Prints information about the current context/environment
@@ -66,12 +71,15 @@ pub enum CliCommand {
 #[derive(Parser, Debug, Clone)]
 pub enum TriggerCommand {
     /// List triggers
+    #[command(visible_alias = "ls")]
     List(triggers::List),
     /// List runs of a trigger
+    #[command(visible_alias = "lr")]
     ListRuns(triggers::ListRuns),
     /// Create a new trigger
     Create(triggers::Create),
     /// View details about a given trigger
+    #[command(visible_alias = "v")]
     View(triggers::View),
     /// Cancel a scheduled trigger.
     Cancel(triggers::Cancel),
@@ -84,9 +92,9 @@ pub enum TriggerCommand {
 }
 
 #[derive(Parser, Debug, Clone)]
-pub struct Triggers {
-    #[command(subcommand)]
-    pub command: TriggerCommand,
+pub enum RunsCommand {
+    /// View details about a given trigger
+    View(runs::View),
 }
 
 impl CommonOptions {
@@ -198,6 +206,9 @@ impl CliCommand {
             | CliCommand::Triggers { command } => {
                 command.run(out, err, common_options).await
             }
+            | CliCommand::Runs { command } => {
+                command.run(out, err, common_options).await
+            }
             | CliCommand::WhoAmI(c) => c.run(out, err, common_options).await,
         }
     }
@@ -230,6 +241,22 @@ impl TriggerCommand {
                 c.run(out, err, common_options).await
             }
             | TriggerCommand::Pause(c) => c.run(out, err, common_options).await,
+        }
+    }
+}
+
+impl RunsCommand {
+    pub async fn run<
+        A: tokio::io::AsyncWrite + Send + Sync + Unpin,
+        B: tokio::io::AsyncWrite + Send + Sync + Unpin,
+    >(
+        &self,
+        out: &mut tokio::io::BufWriter<A>,
+        err: &mut tokio::io::BufWriter<B>,
+        common_options: &CommonOptions,
+    ) -> Result<()> {
+        match self {
+            | RunsCommand::View(c) => c.run(out, err, common_options).await,
         }
     }
 }

@@ -1,8 +1,8 @@
 {
   "schedule": {
     "type": "recurring",
-    "cron": "*/15 * * * * *",
-    "limit": 50
+    "cron": "*/30 * * * * *",
+    "limit": 10
   },
   "payload": {
     "content_type": "text/plain",
@@ -10,9 +10,6 @@
   },
   "action": {
     "type": "webhook",
-    "url": "http://localhost:3000/action",
-    "retry": {
-      "delay_s": 10
-    }
+    "url": "http://localhost:3000/action"
   }
 }

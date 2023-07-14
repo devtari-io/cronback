@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
     Hash,
     Deref,
 )]
-pub struct AttemptLogId(String);
+pub struct AttemptId(String);
 
 #[derive(
     Debug,
