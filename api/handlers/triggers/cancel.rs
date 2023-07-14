@@ -5,9 +5,8 @@ use axum::http::header::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
-use lib::types::{OwnerId, TriggerId, TriggerManifest, ValidId};
+use lib::types::{ProjectId, TriggerId, TriggerManifest, ValidId};
 use proto::scheduler_proto::CancelTriggerRequest;
-use tracing::info;
 
 use crate::errors::ApiError;
 use crate::AppState;
@@ -17,7 +16,7 @@ use crate::AppState;
 pub(crate) async fn cancel(
     state: State<Arc<AppState>>,
     Path(id): Path<TriggerId>,
-    Extension(owner_id): Extension<OwnerId>,
+    Extension(project): Extension<ProjectId>,
 ) -> Result<impl IntoResponse, ApiError> {
     let mut response_headers = HeaderMap::new();
     response_headers
@@ -31,12 +30,11 @@ pub(crate) async fn cancel(
         )
             .into_response());
     }
-    info!("Cancelling trigger {} for owner {}", id, owner_id);
 
-    let mut scheduler = state.scheduler_for_trigger(&id).await?;
+    let mut scheduler = state.get_scheduler(&project).await?;
     let trigger = scheduler
         .cancel_trigger(CancelTriggerRequest {
-            owner_id: owner_id.0.clone(),
+            project_id: project.0.clone(),
             id: id.0,
         })
         .await?

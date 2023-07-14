@@ -3,7 +3,7 @@ use std::sync::Arc;
 use axum::extract::State;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Json};
-use lib::types::OwnerId;
+use lib::types::ProjectId;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
@@ -15,7 +15,7 @@ use crate::{AppState, AppStateError};
 #[derive(Deserialize, Debug, Validate)]
 #[serde(deny_unknown_fields)]
 pub struct CreateAPIkeyRequest {
-    owner_id: String,
+    project: String,
 
     #[validate(length(
         min = 2,
@@ -39,7 +39,7 @@ pub(crate) async fn create(
     state
         .db
         .auth_store
-        .save_key(key, &OwnerId::from(req.owner_id), &req.key_name)
+        .save_key(key, &ProjectId::from(req.project), &req.key_name)
         .await
         .map_err(|e| AppStateError::DatabaseError(e.to_string()))?;
 

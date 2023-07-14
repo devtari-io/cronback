@@ -1,0 +1,715 @@
+{
+  "openapi": "3.1.0",
+  "x-stoplight": {
+    "id": "k35idp3ucv89r"
+  },
+  "info": {
+    "title": "Cronback Admin API",
+    "version": "1.0",
+    "contact": {
+      "name": "Cronback Support",
+      "url": "https://cronback.me",
+      "email": "support@cronback.me"
+    },
+    "termsOfService": "https://cronback.me/terms",
+    "description": "API needs a description",
+    "summary": "Internal admin API to manage users, keys, and projects."
+  },
+  "servers": [
+    {
+      "url": "https://api.cronback.me/v1",
+      "description": "Production"
+    },
+    {
+      "description": "Staging",
+      "url": "https://api.jungle.cronback.me/v1"
+    },
+    {
+      "url": "http://localhost:8888/v1",
+      "description": "Local Development"
+    }
+  ],
+  "paths": {
+    "/admin/api_key": {
+      "post": {
+        "summary": "Generate API key",
+        "operationId": "post-admin-api_key",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "key": {
+                      "type": "string",
+                      "description": "The generated secret key (`sk_` token). This key cannot be retrieved after initial creation."
+                    }
+                  },
+                  "required": [
+                    "key"
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized if admin_key is incorrect."
+          }
+        },
+        "tags": [
+          "API Keys"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "project": {
+                    "type": "string",
+                    "description": "The project Id associated with this key"
+                  },
+                  "key_name": {
+                    "type": "string",
+                    "description": "A human-readable identifier for this key. Needs to be unique per project."
+                  }
+                },
+                "required": [
+                  "project",
+                  "key_name"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "admin_key": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Trigger": {
+        "type": "object",
+        "x-examples": {
+          "Example 1": {
+            "created_at": "2023-03-25T17:43:23.654278298Z",
+            "description": "Periodically ping healthcheck.io",
+            "emit": [
+              {
+                "webhook": {
+                  "http_method": "GET",
+                  "retry": null,
+                  "timeout_s": 5,
+                  "url": "https://hc-ping.com/812aaa48-08a5-45b7-a74c-e5baebc10ec1"
+                }
+              }
+            ],
+            "hidden_last_invoked_at": "2023-03-25T21:35:00.057112087Z",
+            "id": "trig_ab1.01GWCXWB869BXW8Q2XZGE0JBQ6",
+            "name": "Healthchecks.io",
+            "owner_id": "ab1",
+            "payload": {
+              "body": "{}",
+              "content_type": "application/json",
+              "headers": {
+                "test-header": "test-value"
+              }
+            },
+            "schedule": {
+              "recurring": {
+                "cron": "0 35 * * * *",
+                "limit": 0,
+                "remaining": 0,
+                "timezone": "Etc/UTC"
+              }
+            },
+            "status": "active"
+          }
+        },
+        "description": "Defines a scheduled or on-demand trigger.",
+        "x-stoplight": {
+          "id": "jg714xz8kn27b"
+        },
+        "examples": [],
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "trig_ab1.01GWCXWB869BXW8Q2XZGE0JBQ6",
+            "description": "A unique identifier for the trigger",
+            "readOnly": true
+          },
+          "owner_id": {
+            "type": "string",
+            "example": "acc_0FGWCXWB869BXWSQ2XZGE0JBA3",
+            "description": "The account owning this trigger",
+            "readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "example": "my example trigger",
+            "description": "A human-readable name to identify the trigger. This doesn't need to be unique but we recommend picking unique names to avoid confusion"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2023-03-25T17:43:23.654278298Z",
+            "description": "ISO8601 datetime when this trigger was installed",
+            "readOnly": true
+          },
+          "reference_id": {
+            "type": "string",
+            "description": "Unique user-supplied identified for this trigger. This can be used as an idempotency key when creating triggers. Must be unique if set."
+          },
+          "description": {
+            "type": "string",
+            "example": "Periodically ping healthcheck.io",
+            "description": "A human-readable description."
+          },
+          "emit": {
+            "type": "array",
+            "description": "Which targets to emit when this trigger is invoked, whether this was invoked on a schedule or manually.",
+            "items": {
+              "oneOf": [
+                {
+                  "properties": {
+                    "webhook": {
+                      "$ref": "#/components/schemas/WebhookTarget",
+                      "x-stoplight": {
+                        "id": "my7qyo5isydor"
+                      }
+                    }
+                  }
+                }
+              ],
+              "type": "object"
+            }
+          },
+          "payload": {
+            "$ref": "#/components/schemas/Payload"
+          },
+          "schedule": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Cron"
+              },
+              {
+                "$ref": "#/components/schemas/RunAt"
+              }
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "paused",
+              "expired",
+              "cancelled"
+            ],
+            "description": "Status of the trigger. \n- `active` triggers can be invoked either manually of according to their `trigger.schedule`\n- `paused` triggers will be invoked but will not emit anything.\n- `expired` triggers are scheduled triggers that exhausted their invocations or have no future timepoints.\n- `cancelled` triggers cannot be invoked. Those have been cancelled manually via the `/triggers/{trigger_id}/cancel` API.",
+            "example": "active",
+            "readOnly": true
+          }
+        },
+        "required": [
+          "emit",
+          "payload"
+        ]
+      },
+      "Payload": {
+        "title": "Payload",
+        "x-stoplight": {
+          "id": "4r9satondb3ns"
+        },
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string",
+            "x-stoplight": {
+              "id": "u9dsnyz7t32li"
+            },
+            "description": "The body of the payload is sent as is when a trigger is emitted.",
+            "example": "{\"key\": \"value\"}"
+          },
+          "content_type": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "x-stoplight": {
+              "id": "nxz1bp0pppsm8"
+            },
+            "default": "application/json; charset=utf-8"
+          },
+          "headers": {
+            "type": "object",
+            "x-stoplight": {
+              "id": "qsuqhdb5olzux"
+            }
+          }
+        },
+        "x-internal": true
+      },
+      "Cron": {
+        "title": "Recurring",
+        "x-stoplight": {
+          "id": "gaeky3l62bqwt"
+        },
+        "type": "object",
+        "description": "Defines the recurring schedule",
+        "properties": {
+          "recurring": {
+            "type": "object",
+            "properties": {
+              "cron": {
+                "type": "string",
+                "x-stoplight": {
+                  "id": "i4c7adqqo0h26"
+                },
+                "example": "15 35 * * * *",
+                "description": "A cron-like string to specify when the trigger will be invoked. The cron pattern uses this format: `sec  min   hour   day-of-month   month   day-of-week   year`"
+              },
+              "timezone": {
+                "type": "string",
+                "x-stoplight": {
+                  "id": "p9al0cie3y72r"
+                },
+                "default": "Etc/UTC",
+                "example": "Europe/London",
+                "description": "A valid [IANA TZ Identifier](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) to qualify the cron pattern with"
+              },
+              "limit": {
+                "type": "integer",
+                "x-stoplight": {
+                  "id": "mfadwrgzmqo8q"
+                },
+                "default": 0,
+                "format": "int64",
+                "minimum": 0,
+                "example": 4,
+                "description": "The maximum number of invocations. The trigger's status will transition to `expired` automatically when no more invocations are left"
+              },
+              "remaining": {
+                "type": "integer",
+                "x-stoplight": {
+                  "id": "2d3nwf30r6s2h"
+                },
+                "default": 0,
+                "description": "If limit is set, this will indicate how many future invocations this trigger still has before expiring",
+                "readOnly": true
+              }
+            }
+          }
+        },
+        "x-internal": true
+      },
+      "WebhookTarget": {
+        "title": "WebhookTarget",
+        "x-stoplight": {
+          "id": "cvqbxrub68rym"
+        },
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "x-stoplight": {
+              "id": "hplwwhhbgujsf"
+            },
+            "format": "uri",
+            "example": "https://example.com/my-own-endpoint"
+          },
+          "http_method": {
+            "type": "string",
+            "x-stoplight": {
+              "id": "iijb3i01l7yzu"
+            },
+            "enum": [
+              "GET",
+              "PUT",
+              "PATCH",
+              "HEAD",
+              "DELETE",
+              "POST"
+            ],
+            "default": "POST"
+          },
+          "timeout_s": {
+            "type": "number",
+            "x-stoplight": {
+              "id": "988edpijqnr7k"
+            },
+            "format": "double",
+            "default": 5,
+            "example": 6.2,
+            "minimum": 1,
+            "exclusiveMaximum": 30,
+            "description": "The number of seconds (use fractions for millis) to wait before considering the webhook attempt as `failed`"
+          },
+          "retry": {
+            "x-stoplight": {
+              "id": "nfrhe59pnh9v8"
+            },
+            "description": "The retry policy to use if attempts to execute this webhook fail",
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SimplyRetry"
+              },
+              {
+                "$ref": "#/components/schemas/ExponentialBackoffRetry",
+                "x-stoplight": {
+                  "id": "nd1qrafgotilf"
+                }
+              }
+            ]
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "x-internal": true
+      },
+      "RunAt": {
+        "title": "RunAt",
+        "x-stoplight": {
+          "id": "gwoegy0bco96d"
+        },
+        "type": "object",
+        "properties": {
+          "run_at": {
+            "type": "object",
+            "properties": {
+              "timepoints": {
+                "type": "array",
+                "x-stoplight": {
+                  "id": "pwbg3osqehonh"
+                },
+                "minItems": 1,
+                "uniqueItems": true,
+                "maxItems": 5000,
+                "description": "ISO8601 datetime values (also accepts ISO8601 duration format as inpu, e.g. PT5M)",
+                "items": {
+                  "x-stoplight": {
+                    "id": "7ig7mb74opass"
+                  },
+                  "type": "string",
+                  "format": "date-time",
+                  "example": "2023-03-26T12:49:41+00:00"
+                }
+              },
+              "remaining": {
+                "type": "integer",
+                "x-stoplight": {
+                  "id": "c85h4py9obh4r"
+                },
+                "format": "int64",
+                "readOnly": true
+              }
+            },
+            "required": [
+              "timepoints"
+            ]
+          }
+        },
+        "examples": [
+          {
+            "run_at": {
+              "timepoints": [
+                "2023-03-26T12:49:41+00:00"
+              ],
+              "remaining": 1
+            }
+          },
+          {
+            "run_at": {
+              "timepoints": [
+                "PT5M"
+              ]
+            }
+          }
+        ],
+        "x-internal": true
+      },
+      "ExponentialBackoffRetry": {
+        "title": "ExponentialBackoffRetry",
+        "x-stoplight": {
+          "id": "cmnjvelmfykfa"
+        },
+        "type": "object",
+        "properties": {
+          "exponential_backoff_retry": {
+            "type": "object",
+            "x-stoplight": {
+              "id": "tl3k7nv4gtbmp"
+            },
+            "properties": {
+              "max_num_attempts": {
+                "type": "integer",
+                "x-stoplight": {
+                  "id": "h3xkmm43oqqo7"
+                },
+                "format": "int64",
+                "minimum": 1,
+                "description": "The maximum number of attempts before giving up"
+              },
+              "delay_s": {
+                "type": "number",
+                "x-stoplight": {
+                  "id": "c7cuc75am2ewg"
+                },
+                "format": "double",
+                "minimum": 1,
+                "description": "The initial delay in seconds between attempts. This value is doubled on every subsequent attempt"
+              },
+              "max_delay_s": {
+                "type": "number",
+                "x-stoplight": {
+                  "id": "bsvj0ygpn9nqv"
+                },
+                "format": "double",
+                "minimum": 1,
+                "description": "The upper cap for the delay. Delays are doubled on each attempt until it reaches `max_delay_s`"
+              }
+            }
+          }
+        },
+        "description": "An exponential backoff retry policy",
+        "x-internal": true
+      },
+      "SimplyRetry": {
+        "title": "SimplyRetry",
+        "x-stoplight": {
+          "id": "svb1o16ieshm2"
+        },
+        "type": "object",
+        "description": "A simple retry policy (every X seconds)",
+        "properties": {
+          "simple_retry": {
+            "type": "object",
+            "x-stoplight": {
+              "id": "vkv1yxpop5xei"
+            },
+            "properties": {
+              "max_num_attempts": {
+                "type": "integer",
+                "x-stoplight": {
+                  "id": "uxi4p9ug8m52q"
+                },
+                "format": "int32",
+                "description": "The maximum number of attempts before giving up"
+              },
+              "delay_s": {
+                "type": "number",
+                "x-stoplight": {
+                  "id": "a94kssf1bzlb4"
+                },
+                "format": "double",
+                "minimum": 1,
+                "description": "The delay in seconds between every attempt"
+              }
+            }
+          }
+        },
+        "x-internal": true
+      },
+      "TriggerManifest": {
+        "title": "TriggerManifest",
+        "x-stoplight": {
+          "id": "crf0j8v9wzj63"
+        },
+        "type": "object",
+        "x-examples": {
+          "Example 1": {
+            "created_at": "2023-03-25T17:43:23.654278298Z",
+            "description": "Periodically ping healthcheck.io",
+            "emit": [
+              {
+                "webhook": {
+                  "http_method": "GET",
+                  "retry": null,
+                  "timeout_s": 5,
+                  "url": "https://hc-ping.com/812aaa48-08a5-45b7-a74c-e5baebc10ec1"
+                }
+              }
+            ],
+            "hidden_last_invoked_at": "2023-03-25T21:35:00.057112087Z",
+            "id": "trig_ab1.01GWCXWB869BXW8Q2XZGE0JBQ6",
+            "name": "Healthchecks.io",
+            "owner_id": "ab1",
+            "payload": {
+              "body": "{}",
+              "content_type": "application/json",
+              "headers": {
+                "test-header": "test-value"
+              }
+            },
+            "schedule": {
+              "recurring": {
+                "cron": "0 35 * * * *",
+                "limit": 0,
+                "remaining": 0,
+                "timezone": "Etc/UTC"
+              }
+            },
+            "status": "active"
+          }
+        },
+        "description": "Defines a scheduled or on-demand trigger.",
+        "examples": [],
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "trig_ab1.01GWCXWB869BXW8Q2XZGE0JBQ6",
+            "description": "A unique identifier for the trigger",
+            "readOnly": true
+          },
+          "owner_id": {
+            "type": "string",
+            "example": "acc_0FGWCXWB869BXWSQ2XZGE0JBA3",
+            "description": "The account owning this trigger",
+            "readOnly": true
+          },
+          "name": {
+            "type": "string",
+            "example": "my example trigger",
+            "description": "A human-readable name to identify the trigger. This doesn't need to be unique but we recommend picking unique names to avoid confusion"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2023-03-25T17:43:23.654278298Z",
+            "description": "ISO8601 datetime when this trigger was installed",
+            "readOnly": true
+          },
+          "reference_id": {
+            "type": "string",
+            "description": "Unique user-supplied identified for this trigger. This can be used as an idempotency key when creating triggers. Must be unique if set."
+          },
+          "description": {
+            "type": "string",
+            "example": "Periodically ping healthcheck.io",
+            "description": "A human-readable description."
+          },
+          "schedule": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Cron"
+              },
+              {
+                "$ref": "#/components/schemas/RunAt"
+              }
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "paused",
+              "expired",
+              "cancelled"
+            ],
+            "description": "Status of the trigger. \n- `active` triggers can be invoked either manually of according to their `trigger.schedule`\n- `paused` triggers will be invoked but will not emit anything.\n- `expired` triggers are scheduled triggers that exhausted their invocations or have no future timepoints.\n- `cancelled` triggers cannot be invoked. Those have been cancelled manually via the `/triggers/{trigger_id}/cancel` API.",
+            "example": "active",
+            "readOnly": true
+          },
+          "last_invoked_at": {
+            "type": "string",
+            "description": "ISO8601 datetime when this trigger was last invoked"
+          }
+        }
+      },
+      "Invocation": {
+        "title": "Invocation",
+        "x-stoplight": {
+          "id": "mcl1jeypmouci"
+        },
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "trigger_id": {
+            "type": "string"
+          },
+          "owner_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "payload": {
+            "type": "string"
+          },
+          "status": {
+            "type": "array",
+            "items": {}
+          }
+        }
+      },
+      "WebhookAttempt": {
+        "title": "WebhookAttempt",
+        "x-stoplight": {
+          "id": "9s68v5iiffjv7"
+        },
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        }
+      },
+      "InvocationStatus": {
+        "title": "WebhookStatus",
+        "x-stoplight": {
+          "id": "rtwpwqwefad1t"
+        },
+        "type": "object",
+        "properties": {
+          "": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "admin_key": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "API secret key acquired from cronback admin API"
+      }
+    },
+    "requestBodies": {},
+    "responses": {
+      "Error": {
+        "description": "An error has occurred. The error body contains information about what went wrong.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "error_message": {
+                  "type": "string",
+                  "description": "A human readable description of the error"
+                },
+                "error_type": {
+                  "type": "string",
+                  "description": "An enum value of the category of error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "api_key": []
+    }
+  ],
+  "x-internal": false
+}

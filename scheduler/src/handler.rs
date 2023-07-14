@@ -73,7 +73,7 @@ impl Scheduler for SchedulerAPIHandler {
         info!(request.id, "Invoking trigger");
         let invocation = self
             .scheduler
-            .invoke_trigger(request.owner_id.into(), request.id.into())
+            .invoke_trigger(request.project_id.into(), request.id.into())
             .await?;
         Ok(Response::new(InvokeTriggerResponse {
             invocation: Some(invocation.into()),
@@ -91,7 +91,7 @@ impl Scheduler for SchedulerAPIHandler {
         }
         let trigger = self
             .scheduler
-            .get_trigger(request.owner_id.into(), request.id.into())
+            .get_trigger(request.project_id.into(), request.id.into())
             .await?;
         let reply = GetTriggerResponse {
             trigger: Some(trigger.into()),
@@ -107,7 +107,7 @@ impl Scheduler for SchedulerAPIHandler {
         info!(request.id, "Pausing trigger");
         let trigger = self
             .scheduler
-            .pause_trigger(request.owner_id.into(), request.id.into())
+            .pause_trigger(request.project_id.into(), request.id.into())
             .await?;
         Ok(Response::new(PauseTriggerResponse {
             trigger: Some(trigger.into_manifest().into()),
@@ -122,7 +122,7 @@ impl Scheduler for SchedulerAPIHandler {
         info!(request.id, "Resuming trigger");
         let trigger = self
             .scheduler
-            .resume_trigger(request.owner_id.into(), request.id.into())
+            .resume_trigger(request.project_id.into(), request.id.into())
             .await?;
         Ok(Response::new(ResumeTriggerResponse {
             trigger: Some(trigger.into_manifest().into()),
@@ -137,7 +137,7 @@ impl Scheduler for SchedulerAPIHandler {
         info!(request.id, "Canceling trigger");
         let trigger = self
             .scheduler
-            .cancel_trigger(request.owner_id.into(), request.id.into())
+            .cancel_trigger(request.project_id.into(), request.id.into())
             .await?;
         Ok(Response::new(CancelTriggerResponse {
             trigger: Some(trigger.into_manifest().into()),
@@ -152,7 +152,7 @@ impl Scheduler for SchedulerAPIHandler {
         let manifests = self
             .scheduler
             .list_triggers(
-                request.owner_id.into(),
+                request.project_id.into(),
                 request.limit as usize,
                 request.before.map(Into::into),
                 request.after.map(Into::into),

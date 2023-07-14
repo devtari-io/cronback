@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use monostate::MustBe;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DurationSecondsWithFrac};
 use validator::{Validate, ValidationError};
@@ -23,6 +24,10 @@ pub enum HttpMethod {
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct Webhook {
+    #[serde(rename = "type")]
+    // allows an optional "type" field to be passed in. This enables other
+    // variants of emit to be differentiated.
+    pub _kind: MustBe!("webhook"),
     // TODO validate as url
     #[validate(required)]
     pub url: Option<String>,
@@ -37,6 +42,7 @@ pub struct Webhook {
 impl Default for Webhook {
     fn default() -> Self {
         Self {
+            _kind: Default::default(),
             url: None,
             http_method: HttpMethod::POST,
             timeout_s: Duration::from_secs(5),
@@ -48,6 +54,7 @@ impl Default for Webhook {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 #[serde(deny_unknown_fields)]
+#[serde(untagged)]
 pub enum RetryConfig {
     SimpleRetry(SimpleRetry),
     ExponentialBackoffRetry(ExponentialBackoffRetry),
@@ -55,17 +62,32 @@ pub enum RetryConfig {
 
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, PartialEq)]
+#[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct SimpleRetry {
+    #[serde(rename = "type")]
+    pub _kind: MustBe!("simple"),
     pub max_num_attempts: u32,
     #[serde_as(as = "DurationSecondsWithFrac")]
     pub delay_s: Duration,
+}
+
+impl Default for SimpleRetry {
+    fn default() -> Self {
+        Self {
+            _kind: Default::default(),
+            max_num_attempts: 5,
+            delay_s: Duration::from_secs(60),
+        }
+    }
 }
 
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct ExponentialBackoffRetry {
+    #[serde(rename = "type")]
+    pub _kind: MustBe!("exponential_backoff"),
     pub max_num_attempts: u32,
     #[serde_as(as = "DurationSecondsWithFrac")]
     pub delay_s: Duration,

@@ -39,3 +39,5 @@ sha2 = "0.10.6"
 uuid = { version = "1.2.2", features = ["v4"] }
 validator = { version = "0.16.0", features = ["derive"] }
 tower-http = { version = "0.4.0", features = ["trace", "cors"] }
+names = { version = "0.14.0",  default-features = false }
+

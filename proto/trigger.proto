@@ -65,10 +65,10 @@ message Schedule {
 
 message Trigger {
   string id = 1;
-  string owner_id = 2;
-  /// User supplied identifier, unique per owner
-  optional string reference_id = 3;
-  optional string name = 4;
+  string project_id = 2;
+  /// User supplied identifier, unique per project
+  optional string reference = 3;
+  string name = 4;
   optional string description = 5;
   string created_at = 6;
   repeated Emit emit = 7;
@@ -81,10 +81,10 @@ message Trigger {
 
 message TriggerManifest {
   string id = 1;
-  string owner_id = 2;
-  /// User supplied identifier, unique per owner
-  optional string reference_id = 3;
-  optional string name = 4;
+  string project_id = 2;
+  /// User supplied identifier, unique per project
+  optional string reference = 3;
+  string name = 4;
   optional string description = 5;
   string created_at = 6;
   Schedule schedule = 7;

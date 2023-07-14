@@ -5,8 +5,7 @@ use axum::http::header::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
-use lib::types::{InvocationId, OwnerId, TriggerId};
-use tracing::info;
+use lib::types::{InvocationId, ProjectId, TriggerId};
 use validator::Validate;
 
 use crate::api_model::{paginate, Pagination};
@@ -18,13 +17,12 @@ use crate::{AppState, AppStateError};
 pub(crate) async fn list(
     pagination: Option<Query<Pagination<InvocationId>>>,
     state: State<Arc<AppState>>,
-    Extension(owner_id): Extension<OwnerId>,
+    Extension(project): Extension<ProjectId>,
     Path(trigger_id): Path<TriggerId>,
 ) -> Result<impl IntoResponse, ApiError> {
     let mut response_headers = HeaderMap::new();
     response_headers
         .insert("cronback-trace-id", "SOMETHING SOMETHING".parse().unwrap());
-    info!("Get all invocations for owner {}", owner_id);
     let Query(pagination) = pagination.unwrap_or_default();
     pagination.validate()?;
 
@@ -39,7 +37,7 @@ pub(crate) async fn list(
             );
         };
 
-    if trigger.owner_id != owner_id {
+    if trigger.project != project {
         return Ok(StatusCode::FORBIDDEN.into_response());
     }
 

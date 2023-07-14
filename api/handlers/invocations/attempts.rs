@@ -5,8 +5,7 @@ use axum::http::header::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
-use lib::types::{AttemptLogId, InvocationId, OwnerId, ValidId};
-use tracing::info;
+use lib::types::{AttemptLogId, InvocationId, ProjectId, ValidId};
 use validator::Validate;
 
 use crate::api_model::{paginate, Pagination};
@@ -18,7 +17,7 @@ use crate::{AppState, AppStateError};
 pub(crate) async fn list(
     pagination: Option<Query<Pagination<AttemptLogId>>>,
     state: State<Arc<AppState>>,
-    Extension(owner_id): Extension<OwnerId>,
+    Extension(project): Extension<ProjectId>,
     Path(id): Path<InvocationId>,
 ) -> Result<impl IntoResponse, ApiError> {
     let mut response_headers = HeaderMap::new();
@@ -35,7 +34,6 @@ pub(crate) async fn list(
             .into_response());
     }
 
-    info!("Get all attempts for invocation {}", id);
     let Query(pagination) = pagination.unwrap_or_default();
     pagination.validate()?;
 
@@ -50,7 +48,7 @@ pub(crate) async fn list(
             );
         };
 
-    if invocation.owner_id != owner_id {
+    if invocation.project != project {
         return Ok(StatusCode::FORBIDDEN.into_response());
     }
 

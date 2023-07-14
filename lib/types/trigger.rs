@@ -5,13 +5,14 @@ use std::str::FromStr;
 use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
 use cron::Schedule as CronSchedule;
+use monostate::MustBe;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none};
 use validator::{Validate, ValidationError};
 
 use super::webhook::Webhook;
 use crate::timeutil::iso8601_dateformat_vec_serde;
-use crate::types::{OwnerId, TriggerId};
+use crate::types::{ProjectId, TriggerId};
 use crate::validation::{validate_timezone, validation_error};
 
 #[serde_as]
@@ -20,25 +21,15 @@ use crate::validation::{validate_timezone, validation_error};
 #[serde(deny_unknown_fields)]
 pub struct Trigger {
     pub id: TriggerId,
-
-    pub owner_id: OwnerId,
-
-    pub name: Option<String>,
-
+    pub project: ProjectId,
+    pub name: String,
     pub description: Option<String>,
-
     pub created_at: DateTime<Utc>,
-
-    pub reference_id: Option<String>,
-
-    pub payload: Payload,
-
+    pub reference: Option<String>,
+    pub payload: Option<Payload>,
     pub schedule: Option<Schedule>,
-
     pub emit: Vec<Emit>,
-
     pub status: Status,
-
     pub last_invoked_at: Option<DateTime<Utc>>,
 }
 
@@ -50,11 +41,11 @@ impl Trigger {
     pub fn into_manifest(self) -> TriggerManifest {
         TriggerManifest {
             id: self.id,
-            owner_id: self.owner_id,
+            project: self.project,
             name: self.name,
             description: self.description,
             created_at: self.created_at,
-            reference_id: self.reference_id,
+            reference: self.reference,
             schedule: self.schedule,
             status: self.status,
             last_invoked_at: self.last_invoked_at,
@@ -64,11 +55,11 @@ impl Trigger {
     pub fn get_manifest(&self) -> TriggerManifest {
         TriggerManifest {
             id: self.id.clone(),
-            owner_id: self.owner_id.clone(),
+            project: self.project.clone(),
             name: self.name.clone(),
             description: self.description.clone(),
             created_at: self.created_at,
-            reference_id: self.reference_id.clone(),
+            reference: self.reference.clone(),
             schedule: self.schedule.clone(),
             status: self.status.clone(),
             last_invoked_at: self.last_invoked_at,
@@ -81,11 +72,11 @@ impl Trigger {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TriggerManifest {
     pub id: TriggerId,
-    pub owner_id: OwnerId,
-    pub name: Option<String>,
+    pub project: ProjectId,
+    pub name: String,
     pub description: Option<String>,
     pub created_at: DateTime<Utc>,
-    pub reference_id: Option<String>,
+    pub reference: Option<String>,
     pub schedule: Option<Schedule>,
     pub status: Status,
     pub last_invoked_at: Option<DateTime<Utc>>,
@@ -130,6 +121,7 @@ impl Display for Status {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 #[serde(deny_unknown_fields)]
+#[serde(untagged)]
 pub enum Schedule {
     Recurring(Cron),
     RunAt(RunAt),
@@ -186,11 +178,20 @@ impl Default for Cron {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "snake_case")]
+//#[serde(rename_all = "snake_case")]
+#[serde(untagged)]
 pub enum Emit {
+    Event(Event),
     Webhook(Webhook),
-    //Tunnel(Url),
-    //Event(Event),
+}
+
+#[serde_as]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct Event {
+    #[serde(rename = "type")]
+    kind: MustBe!("event"),
+    event: String,
 }
 
 #[serde_as]
@@ -227,6 +228,7 @@ impl Validate for Emit {
     fn validate(&self) -> Result<(), validator::ValidationErrors> {
         match self {
             | Emit::Webhook(webhook) => webhook.validate(),
+            | Emit::Event(_) => Ok(()),
         }
     }
 }

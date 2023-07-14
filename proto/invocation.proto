@@ -8,7 +8,7 @@ package invocation_proto;
 message Invocation {
   string id = 1;
   string trigger_id = 2;
-  string owner_id = 3;
+  string project_id = 3;
   string created_at = 4;
   trigger_proto.Payload payload = 5;
   // One invocation status per emit. If the trigger has a single emit

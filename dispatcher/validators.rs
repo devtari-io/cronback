@@ -51,6 +51,7 @@ fn validate_endpoint_url_public_ip(host: Option<&str>) -> Result<()> {
 pub(crate) fn validate_dispatch_request(emit: Emit) -> Result<()> {
     let url_string = match emit {
         | Emit::Webhook(Webhook { url, .. }) => url.unwrap(),
+        | Emit::Event(_) => unimplemented!(),
     };
 
     let url = Url::parse(&url_string).map_err(|e| {

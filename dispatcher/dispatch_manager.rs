@@ -93,8 +93,8 @@ impl InvocationJob {
                     }
                     let p = self.invocation.payload.clone();
                     let id = self.invocation.id.clone();
-                    let tid = self.invocation.trigger_id.clone();
-                    let oid = self.invocation.owner_id.clone();
+                    let tid = self.invocation.trigger.clone();
+                    let oid = self.invocation.project.clone();
                     let attempt_store = Arc::clone(&self.attempt_store);
                     emits.push(
                         async move {
@@ -103,7 +103,7 @@ impl InvocationJob {
                                 payload: p,
                                 invocation_id: id,
                                 trigger_id: tid,
-                                owner_id: oid,
+                                project: oid,
                                 attempt_store,
                             };
                             web.delivery_status = e.run().await;

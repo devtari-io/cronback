@@ -1,7 +1,7 @@
 pub mod config;
 pub mod database;
 pub mod grpc_client_provider;
-pub mod model_util;
+pub mod model;
 pub mod netutils;
 pub mod rpc_middleware;
 pub mod service;

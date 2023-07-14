@@ -513,8 +513,7 @@ mod tests {
     use lib::timeutil::parse_iso8601;
     use lib::types::{
         Cron,
-        OwnerId,
-        Payload,
+        ProjectId,
         RunAt,
         Schedule,
         Status,
@@ -543,17 +542,17 @@ mod tests {
     }
 
     fn create_trigger(sched: Schedule) -> Trigger {
-        let owner_id = OwnerId("asoli".to_owned());
-        let id = TriggerId::new(&owner_id);
+        let project = ProjectId("asoli".to_owned());
+        let id = TriggerId::new(&project);
         Trigger {
             id,
-            owner_id,
-            reference_id: None,
-            name: None,
+            project,
+            reference: None,
+            name: "sample-trigger".to_owned(),
             description: None,
             created_at: Utc::now(),
             emit: Vec::default(),
-            payload: Payload::default(),
+            payload: None,
             status: Status::Active,
             schedule: Some(sched),
             last_invoked_at: None,

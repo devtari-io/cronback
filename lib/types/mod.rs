@@ -13,3 +13,5 @@ pub use invocation::*;
 pub use to_proto::*;
 pub use trigger::*;
 pub use webhook::*;
+
+pub use super::model::{Shard, ShardedId, ValidId};

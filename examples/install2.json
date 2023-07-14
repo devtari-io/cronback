@@ -1,15 +1,13 @@
 {
-  "name": "asoli",
   "schedule": {
-    "recurring": {
-          "cron": "*/3 * * * * *",
-          "limit": 20
-    }
+      "cron": "*/3 * * * * *",
+      "limit": 5
   },
-  "emit": [{
-    "webhook": {
+  "emit": {
       "url": "http://localhost:3000/emit",
-      "timeout_s": 25.5
+      "retry": {
+        "delay_s": 10
+      }
+
     }
-  }]
 }

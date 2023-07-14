@@ -5,8 +5,7 @@ use axum::http::header::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
-use lib::types::{InvocationId, OwnerId, ValidId};
-use tracing::info;
+use lib::types::{InvocationId, ProjectId, ValidId};
 use validator::Validate;
 
 use crate::api_model::{paginate, Pagination};
@@ -17,13 +16,12 @@ use crate::{AppState, AppStateError};
 #[debug_handler]
 pub(crate) async fn get(
     state: State<Arc<AppState>>,
-    Extension(owner_id): Extension<OwnerId>,
+    Extension(project): Extension<ProjectId>,
     Path(id): Path<InvocationId>,
 ) -> Result<impl IntoResponse, ApiError> {
     let mut response_headers = HeaderMap::new();
     response_headers
         .insert("cronback-trace-id", "SOMETHING SOMETHING".parse().unwrap());
-    info!("Get invocation with id {}", id);
 
     if !id.is_valid() {
         return Ok((
@@ -52,7 +50,7 @@ pub(crate) async fn get(
                 .into_response());
     };
 
-    if invocation.owner_id != owner_id {
+    if invocation.project != project {
         return Ok(StatusCode::FORBIDDEN.into_response());
     }
 
@@ -64,12 +62,11 @@ pub(crate) async fn get(
 pub(crate) async fn list(
     pagination: Option<Query<Pagination<InvocationId>>>,
     state: State<Arc<AppState>>,
-    Extension(owner_id): Extension<OwnerId>,
+    Extension(project): Extension<ProjectId>,
 ) -> Result<impl IntoResponse, ApiError> {
     let mut response_headers = HeaderMap::new();
     response_headers
         .insert("cronback-trace-id", "SOMETHING SOMETHING".parse().unwrap());
-    info!("Get all invocations for owner {}", owner_id);
 
     let Query(pagination) = pagination.unwrap_or_default();
     pagination.validate()?;
@@ -81,7 +78,7 @@ pub(crate) async fn list(
         .db
         .invocation_store
         .get_invocations_by_owner(
-            &owner_id,
+            &project,
             pagination.before.clone(),
             pagination.after.clone(),
             limit,

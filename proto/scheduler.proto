@@ -25,18 +25,14 @@ service Scheduler {
 }
 
 message InstallTriggerRequest {
-  string owner_id = 1;
-  uint64 cell_id = 2;
+  string project_id = 1;
+  string name = 2;
   /// [Future] User supplied identifier, unique per owner account
-  optional string reference_id = 3;
-  optional string name = 4;
-  optional string description = 5;
-  repeated trigger_proto.Emit emit = 7;
-  trigger_proto.Payload payload = 8;
-  trigger_proto.Schedule schedule = 9;
-  //trigger_proto.EventRetryPolicy event_retry_policy = 10;
-  //OnStatusHandler on_success = 12;
-  //OnStatusHandler on_failure = 13;
+  optional string reference = 3;
+  optional string description = 4;
+  repeated trigger_proto.Emit emit = 5;
+  optional trigger_proto.Payload payload = 6;
+  trigger_proto.Schedule schedule = 7;
 }
 
 // == INSTALL OR UPDATE EXISTING TRIGGER ==
@@ -47,7 +43,7 @@ message InstallTriggerResponse {
 // PAUSE TRIGGER
 message PauseTriggerRequest {
   string id = 1;
-  string owner_id = 2;
+  string project_id = 2;
 }
 
 message PauseTriggerResponse {
@@ -57,7 +53,7 @@ message PauseTriggerResponse {
 // RESUME TRIGGER
 message ResumeTriggerRequest {
   string id = 1;
-  string owner_id = 2;
+  string project_id = 2;
 }
 
 message ResumeTriggerResponse {
@@ -67,7 +63,7 @@ message ResumeTriggerResponse {
 // CANCEL TRIGGER
 message CancelTriggerRequest {
   string id = 1;
-  string owner_id = 2;
+  string project_id = 2;
 }
 
 message CancelTriggerResponse {
@@ -78,7 +74,7 @@ message CancelTriggerResponse {
 // == EXECUTE TRIGGER MANUALLY ==
 message InvokeTriggerRequest {
   string id = 1;
-  string owner_id = 2;
+  string project_id = 2;
 }
 
 message InvokeTriggerResponse {
@@ -88,7 +84,7 @@ message InvokeTriggerResponse {
 // == GET TRIGGER ==
 message GetTriggerRequest {
   string id = 1;
-  string owner_id = 2;
+  string project_id = 2;
 }
 
 message GetTriggerResponse {
@@ -103,7 +99,7 @@ message FindTriggersResponse {
 
 // == LIST TRIGGER ==
 message ListTriggersRequest {
-  string owner_id = 1;
+  string project_id = 1;
   uint64 limit = 2;
   optional string before = 3;
   optional string after = 4;

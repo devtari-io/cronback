@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use super::errors::DatabaseError;
 use super::helpers::{get_by_id_query, insert_query, paginated_query};
 use crate::database::SqliteDatabase;
-use crate::types::{AttemptLogId, EmitAttemptLog, InvocationId, ValidId};
+use crate::types::{AttemptLogId, EmitAttemptLog, InvocationId, ShardedId};
 
 pub type AttemptLogStoreError = DatabaseError;
 
@@ -75,7 +75,7 @@ impl AttemptLogStore for SqlAttemptLogStore {
         paginated_query(
             &self.db.pool,
             "attempts",
-            "invocation_id",
+            "invocation",
             id.value(),
             &before,
             &after,
@@ -106,8 +106,8 @@ mod tests {
         AttemptLogId,
         EmitAttemptLog,
         InvocationId,
-        OwnerId,
         Payload,
+        ProjectId,
         TriggerId,
         WebhookAttemptDetails,
     };
@@ -117,12 +117,12 @@ mod tests {
         // equality comparisons
         let now = Utc::now().with_timezone(&UTC).with_nanosecond(0).unwrap();
 
-        let owner = OwnerId::new();
+        let project = ProjectId::new();
         EmitAttemptLog {
-            id: AttemptLogId::new(&owner),
-            invocation_id: invocation_id.clone(),
-            trigger_id: TriggerId::new(&owner),
-            owner_id: owner.clone(),
+            id: AttemptLogId::new(&project),
+            invocation: invocation_id.clone(),
+            trigger: TriggerId::new(&project),
+            project: project.clone(),
             status: crate::types::AttemptStatus::Succeeded,
             details: crate::types::AttemptDetails::WebhookAttemptDetails(
                 WebhookAttemptDetails {
@@ -133,7 +133,7 @@ mod tests {
                         content_type: "application/json".to_string(),
                         body: "body".to_string(),
                     }),
-                    error_msg: None,
+                    error_message: None,
                 },
             ),
             created_at: now,
@@ -145,7 +145,7 @@ mod tests {
         let db = SqliteDatabase::in_memory().await?;
         let store = SqlAttemptLogStore::create(db).await?;
 
-        let owner = OwnerId::new();
+        let owner = ProjectId::new();
         let inv1 = InvocationId::new(&owner);
         let inv2 = InvocationId::new(&owner);
 

@@ -5,7 +5,7 @@ use serde::Serialize;
 use sqlx::{Pool, Row, Sqlite};
 
 use super::errors::DatabaseError;
-use crate::types::ValidId;
+use crate::types::ShardedId;
 
 pub async fn insert_query<'a, IdType, Type>(
     pool: &'a Pool<Sqlite>,
@@ -64,7 +64,7 @@ pub async fn paginated_query<'a, IdType, Type>(
     limit: usize,
 ) -> Result<Vec<Type>, DatabaseError>
 where
-    IdType: Display + ValidId,
+    IdType: Display + ShardedId,
     Type: DeserializeOwned,
 {
     let mut q: sqlx::QueryBuilder<Sqlite> = sqlx::QueryBuilder::new(format!(

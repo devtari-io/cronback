@@ -5,7 +5,7 @@ use tracing::debug;
 use super::errors::DatabaseError;
 use super::helpers::{get_by_id_query, insert_query, paginated_query};
 use crate::database::SqliteDatabase;
-use crate::types::{OwnerId, Status, Trigger, TriggerId, ValidId};
+use crate::types::{ProjectId, ShardedId, Status, Trigger, TriggerId};
 
 pub type TriggerStoreError = DatabaseError;
 
@@ -27,13 +27,13 @@ pub trait TriggerStore {
 
     async fn get_status(
         &self,
-        owner_id: &OwnerId,
+        project: &ProjectId,
         id: &TriggerId,
     ) -> Result<Option<Status>, TriggerStoreError>;
 
     async fn get_triggers_by_owner(
         &self,
-        owner_id: &OwnerId,
+        project: &ProjectId,
         before: Option<TriggerId>,
         after: Option<TriggerId>,
         limit: usize,
@@ -97,7 +97,7 @@ impl TriggerStore for SqlTriggerStore {
 
     async fn get_triggers_by_owner(
         &self,
-        owner_id: &OwnerId,
+        project: &ProjectId,
         before: Option<TriggerId>,
         after: Option<TriggerId>,
         limit: usize,
@@ -105,8 +105,8 @@ impl TriggerStore for SqlTriggerStore {
         paginated_query(
             &self.db.pool,
             "triggers",
-            "owner_id",
-            owner_id.value(),
+            "project",
+            project.value(),
             &before,
             &after,
             limit,
@@ -123,15 +123,15 @@ impl TriggerStore for SqlTriggerStore {
 
     async fn get_status(
         &self,
-        owner_id: &OwnerId,
+        project: &ProjectId,
         id: &TriggerId,
     ) -> Result<Option<Status>, TriggerStoreError> {
         let result = sqlx::query(
             "SELECT id, value->'$.status' AS status FROM triggers WHERE id = \
-             ? AND JSON_EXTRACT(value, '$.owner_id') = ?",
+             ? AND JSON_EXTRACT(value, '$.project') = ?",
         )
         .bind(id.to_string())
-        .bind(owner_id.to_string())
+        .bind(project.to_string())
         .fetch_one(&self.db.pool)
         .await;
 
@@ -154,39 +154,34 @@ mod tests {
 
     use super::{SqlTriggerStore, TriggerStore};
     use crate::database::SqliteDatabase;
-    use crate::types::{
-        Emit,
-        OwnerId,
-        Payload,
-        Status,
-        Trigger,
-        TriggerId,
-        Webhook,
-    };
+    use crate::types::{Emit, ProjectId, Status, Trigger, TriggerId, Webhook};
 
-    fn build_trigger(name: &str, owner: OwnerId, status: Status) -> Trigger {
+    fn build_trigger(
+        name: &str,
+        project: ProjectId,
+        status: Status,
+    ) -> Trigger {
         // Serialization drops nanoseconds, so to let's zero it here for easier
         // equality comparisons
         let now = Utc::now().with_nanosecond(0).unwrap();
 
         Trigger {
-            id: TriggerId::new(&owner),
-            owner_id: owner,
-            name: Some(name.to_string()),
+            id: TriggerId::new(&project),
+            project,
+            name: name.to_string(),
             description: Some(format!("Desc: {}", name)),
             created_at: now,
-            payload: Payload {
-                ..Default::default()
-            },
+            payload: None,
             schedule: None,
             emit: vec![Emit::Webhook(Webhook {
+                _kind: Default::default(),
                 url: Some("http://test".to_string()),
                 http_method: crate::types::HttpMethod::GET,
                 timeout_s: Duration::from_secs(5),
                 retry: None,
             })],
             status,
-            reference_id: None,
+            reference: None,
             last_invoked_at: None,
         }
     }
@@ -196,8 +191,8 @@ mod tests {
         let db = SqliteDatabase::in_memory().await?;
         let store = SqlTriggerStore::create(db).await?;
 
-        let owner1 = OwnerId::new();
-        let owner2 = OwnerId::new();
+        let owner1 = ProjectId::new();
+        let owner2 = ProjectId::new();
 
         let t1 = build_trigger("t1", owner1.clone(), Status::Active);
         let t2 = build_trigger("t2", owner1.clone(), Status::Paused);

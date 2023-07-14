@@ -7,7 +7,7 @@ use axum::http::{self, HeaderMap, HeaderValue, Request, StatusCode};
 use axum::middleware::Next;
 use axum::response::IntoResponse;
 use base64::Engine;
-use lib::types::OwnerId;
+use lib::types::ProjectId;
 use sha2::{Digest, Sha512};
 use tracing::error;
 use uuid::Uuid;
@@ -151,18 +151,18 @@ pub async fn auth<B>(
     let auth_key = get_auth_key(req.headers())?;
     let admin_keys = &state.config.api.admin_api_keys;
     if admin_keys.contains(&auth_key) {
-        // This is an admin user which is acting on behalf of some owner.
+        // This is an admin user which is acting on behalf of some project.
         const ON_BEHALF_OF_HEADER_NAME: &str = "X-On-Behalf-Of";
 
-        let Some(owner_id) = req
+        let Some(project) = req
             .headers()
             .get(ON_BEHALF_OF_HEADER_NAME)
             .and_then(|h| h.to_str().ok()) else {
                 error!("Admin user didn't set {} header", ON_BEHALF_OF_HEADER_NAME);
                 return Err(StatusCode::BAD_REQUEST);
             };
-        let owner_id = OwnerId::from(owner_id.to_string());
-        req.extensions_mut().insert(owner_id);
+        let project = ProjectId::from(project.to_string());
+        req.extensions_mut().insert(project);
 
         return Ok(next.run(req).await);
     }
@@ -172,8 +172,8 @@ pub async fn auth<B>(
     };
 
     match state.db.auth_store.validate_key(&api_key).await {
-        | Ok(owner_id) => {
-            req.extensions_mut().insert(owner_id);
+        | Ok(project) => {
+            req.extensions_mut().insert(project);
             Ok(next.run(req).await)
         }
         | Err(AuthStoreError::AuthFailed(_)) => Err(StatusCode::UNAUTHORIZED),

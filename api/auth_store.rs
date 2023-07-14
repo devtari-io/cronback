@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use lib::database::SqliteDatabase;
-use lib::types::OwnerId;
+use lib::types::ProjectId;
 use sqlx::Row;
 use thiserror::Error;
 
@@ -21,14 +21,14 @@ pub trait AuthStore {
     async fn save_key(
         &self,
         key: ApiKey,
-        owner: &OwnerId,
+        project: &ProjectId,
         key_name: &str,
     ) -> Result<(), AuthStoreError>;
 
     async fn validate_key(
         &self,
         key: &ApiKey,
-    ) -> Result<OwnerId, AuthStoreError>;
+    ) -> Result<ProjectId, AuthStoreError>;
 
     /// Returns true if the key got revoked, false if the key didn't exist
     async fn revoke_key(&self, key: &ApiKey) -> Result<bool, AuthStoreError>;
@@ -52,7 +52,7 @@ impl SqlAuthStore {
                 key_id TEXT PRIMARY KEY,
                 hash TEXT,
                 hash_version TEXT,
-                owner_id TEXT,
+                project TEXT,
                 name TEXT
             )
         "#,
@@ -68,19 +68,19 @@ impl AuthStore for SqlAuthStore {
     async fn save_key(
         &self,
         key: ApiKey,
-        owner: &OwnerId,
+        project: &ProjectId,
         key_name: &str,
     ) -> Result<(), AuthStoreError> {
         let hashed = key.hash(HashVersion::default());
 
         sqlx::query(
-            "INSERT INTO api_keys (key_id, hash, hash_version, owner_id, \
-             name) VALUES (?,?,?,?,?)",
+            "INSERT INTO api_keys (key_id, hash, hash_version, project, name) \
+             VALUES (?,?,?,?,?)",
         )
         .bind(hashed.key_id)
         .bind(hashed.hash)
         .bind(hashed.hash_version.to_string())
-        .bind(owner.to_string())
+        .bind(project.to_string())
         .bind(key_name)
         .execute(&self.db.pool)
         .await?;
@@ -90,9 +90,9 @@ impl AuthStore for SqlAuthStore {
     async fn validate_key(
         &self,
         user_provided_key: &ApiKey,
-    ) -> Result<OwnerId, AuthStoreError> {
+    ) -> Result<ProjectId, AuthStoreError> {
         let result = sqlx::query(
-            "SELECT key_id, hash, hash_version, owner_id FROM api_keys where \
+            "SELECT key_id, hash, hash_version, project FROM api_keys where \
              key_id = ?",
         )
         .bind(user_provided_key.key_id())
@@ -124,7 +124,7 @@ impl AuthStore for SqlAuthStore {
             ));
         }
 
-        Ok(OwnerId::from(row.get::<String, _>("owner_id")))
+        Ok(ProjectId::from(row.get::<String, _>("project")))
     }
 
     async fn revoke_key(&self, key: &ApiKey) -> Result<bool, AuthStoreError> {
@@ -141,7 +141,7 @@ mod tests {
     use std::str::FromStr;
 
     use lib::database::SqliteDatabase;
-    use lib::types::OwnerId;
+    use lib::types::ProjectId;
 
     use super::{AuthStore, AuthStoreError, SqlAuthStore};
     use crate::auth::ApiKey;
@@ -151,8 +151,8 @@ mod tests {
         let db = SqliteDatabase::in_memory().await?;
         let store = SqlAuthStore::create(db).await?;
 
-        let owner1 = OwnerId::new();
-        let owner2 = OwnerId::new();
+        let owner1 = ProjectId::new();
+        let owner2 = ProjectId::new();
 
         let key1 = ApiKey::from_str("sk_key1_secret1").unwrap();
         let key2 = ApiKey::from_str("sk_key2_secret2").unwrap();

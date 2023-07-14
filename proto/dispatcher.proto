@@ -16,12 +16,10 @@ enum DispatchMode {
 
 message DispatchRequest {
   string trigger_id = 1;
-  string owner_id = 2;
+  string project_id = 2;
   repeated trigger_proto.Emit emits = 3;
   trigger_proto.Payload payload = 4;
-  trigger_proto.OnStatusHandler on_success = 5;
-  trigger_proto.OnStatusHandler on_failure = 6;
-  DispatchMode mode = 7;
+  DispatchMode mode = 5;
 }
 
 message DispatchResponse {

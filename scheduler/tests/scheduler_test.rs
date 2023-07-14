@@ -26,10 +26,9 @@ async fn install_trigger_valid_test() {
     let (serve_future, mut client) =
         test_helpers::test_server_and_client(context).await;
     let install_trigger = InstallTriggerRequest {
-        cell_id: 0,
-        owner_id: "asoli".to_owned(),
-        reference_id: None,
-        name: None,
+        project_id: "asoli".to_owned(),
+        reference: None,
+        name: "sample-trigger".to_owned(),
         description: None,
         emit: Vec::default(),
         payload: Some(proto::trigger_proto::Payload {
@@ -61,7 +60,7 @@ async fn install_trigger_valid_test() {
         // No errors. Let's try and get it from server.
         let response = client
             .get_trigger(Request::new(GetTriggerRequest {
-                owner_id: "asoli".to_owned(),
+                project_id: "asoli".to_owned(),
                 id: created_trigger.id.clone().into(),
             }))
             .await

@@ -13,8 +13,8 @@ use lib::types::{
     EmitAttemptLog,
     HttpMethod,
     InvocationId,
-    OwnerId,
     Payload,
+    ProjectId,
     TriggerId,
     Webhook,
     WebhookAttemptDetails,
@@ -41,10 +41,10 @@ fn to_reqwest_http_method(method: &HttpMethod) -> reqwest::Method {
 pub struct WebhookEmitJob {
     pub invocation_id: InvocationId,
     pub trigger_id: TriggerId,
-    pub owner_id: OwnerId,
+    pub project: ProjectId,
 
     pub webhook: Webhook,
-    pub payload: Payload,
+    pub payload: Option<Payload>,
 
     pub attempt_store: Arc<dyn AttemptLogStore + Send + Sync>,
 }
@@ -74,9 +74,12 @@ impl WebhookEmitJob {
 
                         let attempt_start_time = Utc::now().with_timezone(&UTC);
 
-                        let attempt_id = AttemptLogId::new(&self.owner_id);
+                        let attempt_id = AttemptLogId::new(&self.project);
                         let response = dispatch_webhook(
+                            &self.trigger_id,
+                            &self.invocation_id,
                             &attempt_id,
+                            retry_num,
                             &self.webhook,
                             &self.payload,
                         )
@@ -84,9 +87,9 @@ impl WebhookEmitJob {
 
                         let attempt_log = EmitAttemptLog {
                             id: attempt_id.clone(),
-                            invocation_id: self.invocation_id.clone(),
-                            trigger_id: self.trigger_id.clone(),
-                            owner_id: self.owner_id.clone(),
+                            invocation: self.invocation_id.clone(),
+                            trigger: self.trigger_id.clone(),
+                            project: self.project.clone(),
                             status: if response.is_success() {
                                 AttemptStatus::Succeeded
                             } else {
@@ -132,11 +135,14 @@ impl WebhookEmitJob {
     }
 }
 
-#[tracing::instrument(skip_all)]
+#[tracing::instrument(skip(payload))]
 async fn dispatch_webhook(
+    trigger_id: &TriggerId,
+    invocation_id: &InvocationId,
     attempt_id: &AttemptLogId,
+    retry_num: u32,
     webhook: &Webhook,
-    payload: &Payload,
+    payload: &Option<Payload>,
 ) -> WebhookAttemptDetails {
     // It's important to not follow any redirects for security reasons.
     // TODO: Reconsider this by hooking into the redirect hooks and re-running
@@ -147,23 +153,48 @@ async fn dispatch_webhook(
         .unwrap();
 
     let http_method = to_reqwest_http_method(&webhook.http_method);
-    let Ok(mut http_headers)  = reqwest::header::HeaderMap::try_from(&payload.headers) else {
-        return WebhookAttemptDetails::with_error("Bad request: Invalid header map".to_string());
-    };
+    // Custom Cronback headers
+    let mut http_headers = reqwest::header::HeaderMap::new();
+    http_headers
+        .insert("Cronback-Trigger", trigger_id.to_string().parse().unwrap());
+    http_headers.insert(
+        "Cronback-Invocation",
+        invocation_id.to_string().parse().unwrap(),
+    );
+    // TODO: Consider removing this.
+    http_headers
+        .insert("Cronback-Attempt", attempt_id.to_string().parse().unwrap());
 
-    let Ok(content_type) = HeaderValue::from_str(&payload.content_type) else {
-        return WebhookAttemptDetails::with_error("Bad request: Invalid content-type header value".to_string());
-    };
-    http_headers.insert(reqwest::header::CONTENT_TYPE, content_type);
+    http_headers.insert(
+        "Cronback-Delivery-Retry-Counter",
+        retry_num.to_string().parse().unwrap(),
+    );
+
+    if let Some(payload) = payload {
+        let Ok(user_headers)  = reqwest::header::HeaderMap::try_from(&payload.headers) else {
+            return WebhookAttemptDetails::with_error("Bad request: Invalid header map".to_string());
+        };
+        // The user headers take precedence over the cronback headers.
+        http_headers.extend(user_headers);
+
+        let Ok(content_type) = HeaderValue::from_str(&payload.content_type) else {
+            return WebhookAttemptDetails::with_error("Bad request: Invalid content-type header value".to_string());
+        };
+
+        http_headers.insert(reqwest::header::CONTENT_TYPE, content_type);
+    }
 
     let request_start_time = Instant::now();
-    let response = http_client
+    let mut request = http_client
         .request(http_method, webhook.url.clone().unwrap())
         .headers(http_headers)
-        .body(payload.body.clone())
-        .timeout(webhook.timeout_s)
-        .send()
-        .await;
+        .timeout(webhook.timeout_s);
+
+    if let Some(payload) = payload {
+        request = request.body(payload.body.clone());
+    }
+
+    let response = request.send().await;
     let latency = request_start_time.elapsed();
 
     match response {
@@ -198,7 +229,7 @@ async fn dispatch_webhook(
                     .unwrap(),
                 }),
                 response_latency_s: latency,
-                error_msg: None,
+                error_message: None,
             }
         }
         | Err(e) => {

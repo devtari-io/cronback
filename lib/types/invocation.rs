@@ -3,7 +3,7 @@ use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none};
 
-use super::{InvocationId, OwnerId, Payload, TriggerId, Webhook};
+use super::{InvocationId, Payload, ProjectId, TriggerId, Webhook};
 use crate::timeutil::iso8601_dateformat_serde;
 
 #[serde_as]
@@ -12,16 +12,17 @@ use crate::timeutil::iso8601_dateformat_serde;
 #[serde(deny_unknown_fields)]
 pub struct Invocation {
     pub id: InvocationId,
-    pub trigger_id: TriggerId,
-    pub owner_id: OwnerId,
+    pub trigger: TriggerId,
+    pub project: ProjectId,
     #[serde(with = "iso8601_dateformat_serde")]
     pub created_at: DateTime<Tz>,
-    pub payload: Payload,
+    pub payload: Option<Payload>,
     pub status: Vec<InvocationStatus>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
+#[serde(untagged)]
 #[serde(deny_unknown_fields)]
 pub enum InvocationStatus {
     WebhookStatus(WebhookStatus),
@@ -32,12 +33,14 @@ pub enum InvocationStatus {
 #[serde(default)]
 #[serde(deny_unknown_fields)]
 pub struct WebhookStatus {
+    #[serde(flatten)]
     pub webhook: Webhook,
     pub delivery_status: WebhookDeliveryStatus,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
+#[serde(rename_all = "snake_case")]
 pub enum WebhookDeliveryStatus {
     Attempting,
     Succeeded,

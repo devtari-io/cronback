@@ -23,11 +23,10 @@ use lib::database::attempt_log_store::{AttemptLogStore, SqlAttemptLogStore};
 use lib::database::invocation_store::{InvocationStore, SqlInvocationStore};
 use lib::database::trigger_store::{SqlTriggerStore, TriggerStore};
 use lib::database::SqliteDatabase;
-use lib::types::{CellId, OwnerId, TriggerId};
+use lib::types::{ProjectId, Shard, ShardedId};
 use lib::{netutils, service};
 use metrics::{histogram, increment_counter};
 use proto::scheduler_proto::scheduler_client::SchedulerClient as GenSchedulerClient;
-use rand::seq::SliceRandom;
 use thiserror::Error;
 use tokio::select;
 use tower_http::cors::{AllowOrigin, CorsLayer};
@@ -61,59 +60,31 @@ pub struct AppState {
 pub type SchedulerClient = GenSchedulerClient<tonic::transport::Channel>;
 
 impl AppState {
-    pub async fn pick_scheduler(
+    pub async fn get_scheduler(
         &self,
-        _owner_id: String,
-    ) -> Result<(CellId, SchedulerClient), AppStateError> {
-        let (cell_id, address) = self.pick_random_scheduler();
-        Ok((cell_id, SchedulerClient::connect(address).await?))
+        project: &ProjectId,
+    ) -> Result<SchedulerClient, AppStateError> {
+        // For now, we'll assume all triggers are on Cell 0
+        self.scheduler(project.shard()).await
     }
 
     pub async fn scheduler(
         &self,
-        cell_id: CellId,
+        shard: Shard,
     ) -> Result<SchedulerClient, AppStateError> {
         let address = self
             .config
             .api
             .scheduler_cell_map
-            .get(&cell_id.0)
+            // TODO: Map project shards to scheduler cells
+            // For now, we'll assume all triggers are on Cell 0
+            .get(&0)
             .ok_or_else(|| {
                 AppStateError::RoutingError(format!(
-                    "No scheduler with cell_id: {cell_id}"
+                    "No scheduler found for shard {shard}"
                 ))
             })?;
         Ok(SchedulerClient::connect(address.clone()).await?)
-    }
-
-    pub async fn scheduler_for_trigger(
-        &self,
-        _trigger_id: &TriggerId,
-    ) -> Result<SchedulerClient, AppStateError> {
-        // Decide the scheduler cell
-        // TODO: Now, how do we figure which scheduler has this trigger?
-        // For now, we'll assume all triggers are on Cell 0
-        let cell_id = CellId::from(0);
-        self.scheduler(cell_id).await
-    }
-
-    pub async fn scheduler_for_owner(
-        &self,
-        _owner_id: &OwnerId,
-    ) -> Result<SchedulerClient, AppStateError> {
-        // Decide the scheduler cell
-        // For now, we'll assume all triggers are on Cell 0
-        let cell_id = CellId::from(0);
-        self.scheduler(cell_id).await
-    }
-
-    fn pick_random_scheduler(&self) -> (CellId, String) {
-        let mut rng = rand::thread_rng();
-        // // pick random entry from hashmap self.config.api.scheduler_cell_map
-        let keys: Vec<_> = self.config.api.scheduler_cell_map.iter().collect();
-        let (cell_id, address) = keys.choose(&mut rng).unwrap();
-        info!("Picked scheduler cell {} at {}", cell_id, address);
-        (CellId::from(**cell_id), address.to_string())
     }
 }
 

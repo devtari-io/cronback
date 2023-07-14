@@ -5,7 +5,7 @@ use axum::http::header::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
-use lib::types::{OwnerId, Schedule, Trigger};
+use lib::types::{ProjectId, Schedule, Trigger};
 use proto::scheduler_proto::InstallTriggerRequest;
 
 use crate::api_model::InstallTrigger;
@@ -13,11 +13,11 @@ use crate::errors::ApiError;
 use crate::extractors::ValidatedJson;
 use crate::AppState;
 
-#[tracing::instrument(skip_all)]
+#[tracing::instrument(skip(state))]
 #[debug_handler]
 pub(crate) async fn install(
     state: State<Arc<AppState>>,
-    Extension(owner_id): Extension<OwnerId>,
+    Extension(project): Extension<ProjectId>,
     ValidatedJson(mut request): ValidatedJson<InstallTrigger>,
 ) -> Result<impl IntoResponse, ApiError> {
     let mut response_headers = HeaderMap::new();
@@ -26,7 +26,7 @@ pub(crate) async fn install(
 
     // Decide the scheduler cell
     // Pick cell.
-    let (cell_id, mut scheduler) = state.pick_scheduler("".to_string()).await?;
+    let mut scheduler = state.get_scheduler(&project).await?;
     // patch install trigger until we have a better way to do this.
     if let Some(Schedule::Recurring(cron)) = request.schedule.as_mut() {
         if cron.limit > 0 {
@@ -39,8 +39,7 @@ pub(crate) async fn install(
         run_at.remaining = run_at.timepoints.len() as u64;
     };
     // Send the request to the scheduler
-    let install_request: InstallTriggerRequest =
-        request.into_proto(owner_id, cell_id);
+    let install_request: InstallTriggerRequest = request.into_proto(project);
     let trigger = scheduler
         .install_trigger(install_request)
         .await?

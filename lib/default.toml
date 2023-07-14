@@ -4,7 +4,6 @@ prometheus_address = "0.0.0.0"
 prometheus_port = 9000
 
 [api]
-#scheduler_shard_map = { 023 = "127.0.0.1:9811" }
 address = "0.0.0.0"
 port = 8888
 database_uri = "sqlite://database.sqlite?mode=rwc"

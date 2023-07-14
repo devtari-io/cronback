@@ -5,7 +5,7 @@ use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none, DurationSecondsWithFrac};
 
-use super::{AttemptLogId, InvocationId, OwnerId, Payload, TriggerId};
+use super::{AttemptLogId, InvocationId, Payload, ProjectId, TriggerId};
 use crate::timeutil::iso8601_dateformat_serde;
 
 #[serde_as]
@@ -14,9 +14,9 @@ use crate::timeutil::iso8601_dateformat_serde;
 #[serde(deny_unknown_fields)]
 pub struct EmitAttemptLog {
     pub id: AttemptLogId,
-    pub invocation_id: InvocationId,
-    pub trigger_id: TriggerId,
-    pub owner_id: OwnerId,
+    pub invocation: InvocationId,
+    pub trigger: TriggerId,
+    pub project: ProjectId,
     pub status: AttemptStatus,
     pub details: AttemptDetails,
     #[serde(with = "iso8601_dateformat_serde")]
@@ -32,7 +32,7 @@ pub struct WebhookAttemptDetails {
     #[serde_as(as = "DurationSecondsWithFrac")]
     pub response_latency_s: Duration,
     pub response_payload: Option<Payload>,
-    pub error_msg: Option<String>,
+    pub error_message: Option<String>,
 }
 
 impl WebhookAttemptDetails {
@@ -45,7 +45,7 @@ impl WebhookAttemptDetails {
             response_code: None,
             response_latency_s: Duration::default(),
             response_payload: None,
-            error_msg: Some(err),
+            error_message: Some(err),
         }
     }
 }
@@ -53,12 +53,14 @@ impl WebhookAttemptDetails {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 #[serde(deny_unknown_fields)]
+#[serde(untagged)]
 pub enum AttemptDetails {
     WebhookAttemptDetails(WebhookAttemptDetails),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
+#[serde(rename_all = "snake_case")]
 pub enum AttemptStatus {
     Succeeded,
     Failed,

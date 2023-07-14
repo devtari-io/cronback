@@ -26,21 +26,17 @@ impl From<Trigger> for trigger_proto::Trigger {
     fn from(value: Trigger) -> Self {
         Self {
             id: value.id.into(),
-            owner_id: value.owner_id.into(),
+            project_id: value.project.into(),
             name: value.name,
             description: value.description,
             created_at: value.created_at.to_rfc3339(),
-            reference_id: value.reference_id,
-            payload: Some(value.payload.into()),
+            reference: value.reference,
+            payload: value.payload.map(|p| p.into()),
             schedule: value.schedule.map(|s| s.into()),
             emit: value.emit.into_iter().map(|e| e.into()).collect(),
             status: value.status.into(),
             on_success: None,
             on_failure: None,
-            /*
-            on_success: todo!(),
-            on_failure: todo!(),
-            */
         }
     }
 }
@@ -49,11 +45,11 @@ impl From<TriggerManifest> for trigger_proto::TriggerManifest {
     fn from(value: TriggerManifest) -> Self {
         Self {
             id: value.id.into(),
-            owner_id: value.owner_id.into(),
+            project_id: value.project.into(),
             name: value.name,
             description: value.description,
             created_at: value.created_at.to_rfc3339(),
-            reference_id: value.reference_id,
+            reference: value.reference,
             schedule: value.schedule.map(|s| s.into()),
             status: value.status.into(),
             last_invoked_at: value.last_invoked_at.map(|d| d.to_rfc3339()),
@@ -117,6 +113,7 @@ impl From<Emit> for trigger_proto::Emit {
             | Emit::Webhook(webhook) => {
                 trigger_proto::emit::Emit::Webhook(webhook.into())
             }
+            | Emit::Event(_) => unimplemented!(),
         };
         trigger_proto::Emit { emit: Some(emit) }
     }
@@ -231,10 +228,10 @@ impl From<Invocation> for invocation_proto::Invocation {
     fn from(value: Invocation) -> Self {
         Self {
             id: value.id.into(),
-            trigger_id: value.trigger_id.into(),
-            owner_id: value.owner_id.into(),
+            trigger_id: value.trigger.into(),
+            project_id: value.project.into(),
             created_at: to_iso8601(&value.created_at),
-            payload: Some(value.payload.into()),
+            payload: value.payload.map(|p| p.into()),
             status: value.status.into_iter().map(|s| s.into()).collect(),
         }
     }
@@ -246,9 +243,9 @@ impl From<EmitAttemptLog> for attempt_proto::EmitAttemptLog {
     fn from(value: EmitAttemptLog) -> Self {
         Self {
             id: value.id.into(),
-            invocation_id: value.invocation_id.into(),
-            trigger_id: value.trigger_id.into(),
-            owner_id: value.owner_id.into(),
+            invocation_id: value.invocation.into(),
+            trigger_id: value.trigger.into(),
+            project_id: value.project.into(),
             status: value.status.into(),
             details: Some(value.details.into()),
             created_at: to_iso8601(&value.created_at),
@@ -269,7 +266,7 @@ impl From<AttemptDetails> for attempt_proto::AttemptDetails {
                         response_payload: webhook_details
                             .response_payload
                             .map(|p| p.into()),
-                        error_msg: webhook_details.error_msg,
+                        error_msg: webhook_details.error_message,
                     },
                 )
             }

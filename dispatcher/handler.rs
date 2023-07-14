@@ -6,7 +6,7 @@ use lib::types::{
     Invocation,
     InvocationId,
     InvocationStatus,
-    OwnerId,
+    ProjectId,
     WebhookStatus,
 };
 use metrics::counter;
@@ -43,15 +43,15 @@ impl Dispatcher for DispatcherAPIHandler {
         let (_metadata, _extensions, request) = request.into_parts();
 
         let dispatch_mode = request.mode();
-        let owner_id = OwnerId::from(request.owner_id);
-        let invocation_id = InvocationId::new(&owner_id);
+        let project = ProjectId::from(request.project_id);
+        let invocation_id = InvocationId::new(&project);
 
         let invocation = Invocation {
             id: invocation_id.clone(),
-            trigger_id: request.trigger_id.into(),
-            owner_id,
+            trigger: request.trigger_id.into(),
+            project,
             created_at: Utc::now().with_timezone(&UTC),
-            payload: request.payload.unwrap().into(),
+            payload: request.payload.map(|p| p.into()),
             status: request
                 .emits
                 .into_iter()
@@ -62,7 +62,8 @@ impl Dispatcher for DispatcherAPIHandler {
                                 webhook,
                                 delivery_status: lib::types::WebhookDeliveryStatus::Attempting,
                             })
-                        }
+                        },
+                            Emit::Event(_) => unimplemented!(),
                     }
                 )
                 .collect(),

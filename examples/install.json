@@ -1,9 +1,7 @@
 {
   "name": "asoli",
   "schedule": {
-    "run_at": {
-      "timepoints": [ "PT1M", "PT2M" ]
-    }
+    "timepoints": [ "PT1M", "PT2M" ]
   },
   "payload": {
     "content_type": "application/json",
@@ -12,10 +10,11 @@
     },
     "body": "{ \"name\": \"asoli\"}"
   },
-  "emit": [{
-    "webhook": {
+  "emit": [
+    {
+    "type": "webhook",
       "url": "http://localhost:3000/emit",
       "timeout_s": 25.5
     }
-  }]
+  ]
 }

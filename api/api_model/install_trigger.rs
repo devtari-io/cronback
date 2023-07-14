@@ -1,4 +1,5 @@
 use lib::types::*;
+use names::Generator;
 use proto::scheduler_proto;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none};
@@ -19,9 +20,9 @@ pub struct InstallTrigger {
 
     pub description: Option<String>,
 
-    pub reference_id: Option<String>,
+    pub reference: Option<String>,
 
-    pub payload: Payload,
+    pub payload: Option<Payload>,
 
     #[validate]
     pub schedule: Option<Schedule>,
@@ -32,22 +33,24 @@ pub struct InstallTrigger {
     ))]
     // Necessary to perform nested validation.
     #[validate]
+    #[serde_as(
+        as = "serde_with::OneOrMany<_, serde_with::formats::PreferMany>"
+    )]
     pub emit: Vec<Emit>,
 }
 
 impl InstallTrigger {
     pub fn into_proto(
         self,
-        owner_id: OwnerId,
-        cell_id: CellId,
+        project: ProjectId,
     ) -> scheduler_proto::InstallTriggerRequest {
+        let mut generator = Generator::default();
         scheduler_proto::InstallTriggerRequest {
-            owner_id: owner_id.into(),
-            cell_id: cell_id.into(),
-            name: self.name,
+            project_id: project.into(),
+            name: self.name.unwrap_or_else(|| generator.next().unwrap()),
             description: self.description,
-            reference_id: self.reference_id,
-            payload: Some(self.payload.into()),
+            reference: self.reference,
+            payload: self.payload.map(|p| p.into()),
             emit: self.emit.into_iter().map(|e| e.into()).collect(),
             schedule: self.schedule.map(|s| s.into()),
         }

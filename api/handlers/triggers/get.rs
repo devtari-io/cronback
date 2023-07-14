@@ -5,9 +5,8 @@ use axum::http::header::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
-use lib::types::{OwnerId, Trigger, TriggerId, TriggerManifest, ValidId};
+use lib::types::{ProjectId, Trigger, TriggerId, TriggerManifest, ValidId};
 use proto::scheduler_proto::{GetTriggerRequest, ListTriggersRequest};
-use tracing::info;
 use validator::Validate;
 
 use crate::api_model::{paginate, Pagination};
@@ -19,7 +18,7 @@ use crate::AppState;
 pub(crate) async fn get(
     state: State<Arc<AppState>>,
     Path(id): Path<TriggerId>,
-    Extension(owner_id): Extension<OwnerId>,
+    Extension(project): Extension<ProjectId>,
 ) -> Result<impl IntoResponse, ApiError> {
     let mut response_headers = HeaderMap::new();
     response_headers
@@ -33,12 +32,10 @@ pub(crate) async fn get(
         )
             .into_response());
     }
-    info!("Get trigger {} for owner {}", id, owner_id);
-
-    let mut scheduler = state.scheduler_for_trigger(&id).await?;
+    let mut scheduler = state.get_scheduler(&project).await?;
     let trigger = scheduler
         .get_trigger(GetTriggerRequest {
-            owner_id: owner_id.0.clone(),
+            project_id: project.0.clone(),
             id: id.0,
         })
         .await?
@@ -48,7 +45,7 @@ pub(crate) async fn get(
 
     let trigger: Trigger = trigger.into();
 
-    if trigger.owner_id != owner_id {
+    if trigger.project != project {
         return Ok(StatusCode::FORBIDDEN.into_response());
     }
 
@@ -60,22 +57,21 @@ pub(crate) async fn get(
 pub(crate) async fn list(
     pagination: Option<Query<Pagination<TriggerId>>>,
     state: State<Arc<AppState>>,
-    Extension(owner_id): Extension<OwnerId>,
+    Extension(project): Extension<ProjectId>,
 ) -> Result<impl IntoResponse, ApiError> {
     let mut response_headers = HeaderMap::new();
     response_headers
         .insert("cronback-trace-id", "SOMETHING SOMETHING".parse().unwrap());
-    info!("Get all trigger for owner {}", owner_id);
     let Query(pagination) = pagination.unwrap_or_default();
     pagination.validate()?;
 
     // Trick. We want to know if there is a next page, so we ask for one more
     let limit = pagination.limit() + 1;
 
-    let mut scheduler = state.scheduler_for_owner(&owner_id).await?;
+    let mut scheduler = state.get_scheduler(&project).await?;
     let triggers = scheduler
         .list_triggers(ListTriggersRequest {
-            owner_id: owner_id.0.clone(),
+            project_id: project.0.clone(),
             limit: limit as u64,
             before: pagination.before.clone().map(Into::into),
             after: pagination.after.clone().map(Into::into),

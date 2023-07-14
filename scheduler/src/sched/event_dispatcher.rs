@@ -41,15 +41,13 @@ impl DispatchJob {
         Self {
             dispatch_request: DispatchRequest {
                 trigger_id: trigger.id.to_string(),
-                owner_id: trigger.owner_id.to_string(),
+                project_id: trigger.project.to_string(),
                 emits: trigger
                     .emit
                     .into_iter()
                     .map(|e| e.into())
                     .collect::<Vec<_>>(),
-                payload: Some(trigger.payload.into()),
-                on_success: None, // TODO
-                on_failure: None, // TODO
+                payload: trigger.payload.map(|p| p.into()),
                 mode: dispatcher_proto::DispatchMode::from(mode).into(),
             },
             dispatcher_client_provider,

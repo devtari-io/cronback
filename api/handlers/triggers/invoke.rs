@@ -5,7 +5,7 @@ use axum::http::header::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
-use lib::types::{Invocation, OwnerId, TriggerId, ValidId};
+use lib::types::{Invocation, ProjectId, TriggerId, ValidId};
 use proto::scheduler_proto::InvokeTriggerRequest;
 
 use crate::errors::ApiError;
@@ -15,7 +15,7 @@ use crate::AppState;
 #[debug_handler]
 pub(crate) async fn invoke(
     state: State<Arc<AppState>>,
-    Extension(owner_id): Extension<OwnerId>,
+    Extension(project): Extension<ProjectId>,
     Path(id): Path<TriggerId>,
 ) -> Result<impl IntoResponse, ApiError> {
     let mut response_headers = HeaderMap::new();
@@ -31,10 +31,10 @@ pub(crate) async fn invoke(
             .into_response());
     }
 
-    let mut scheduler = state.scheduler_for_trigger(&id).await?;
+    let mut scheduler = state.get_scheduler(&project).await?;
     // Send the request to the scheduler
     let invoke_request = InvokeTriggerRequest {
-        owner_id: owner_id.0.clone(),
+        project_id: project.0.clone(),
         id: id.into(),
     };
     let invocation = scheduler

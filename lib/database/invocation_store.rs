@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use super::errors::DatabaseError;
 use super::helpers::{get_by_id_query, insert_query, paginated_query};
 use crate::database::SqliteDatabase;
-use crate::types::{Invocation, InvocationId, OwnerId, TriggerId, ValidId};
+use crate::types::{Invocation, InvocationId, ProjectId, ShardedId, TriggerId};
 
 pub type InvocationStoreError = DatabaseError;
 
@@ -29,7 +29,7 @@ pub trait InvocationStore {
 
     async fn get_invocations_by_owner(
         &self,
-        owner_id: &OwnerId,
+        owner_id: &ProjectId,
         before: Option<InvocationId>,
         after: Option<InvocationId>,
         limit: usize,
@@ -91,7 +91,7 @@ impl InvocationStore for SqlInvocationStore {
         paginated_query(
             &self.db.pool,
             "invocations",
-            "trigger_id",
+            "trigger",
             trigger_id.value(),
             &before,
             &after,
@@ -102,7 +102,7 @@ impl InvocationStore for SqlInvocationStore {
 
     async fn get_invocations_by_owner(
         &self,
-        owner_id: &OwnerId,
+        project: &ProjectId,
         before: Option<InvocationId>,
         after: Option<InvocationId>,
         limit: usize,
@@ -110,8 +110,8 @@ impl InvocationStore for SqlInvocationStore {
         paginated_query(
             &self.db.pool,
             "invocations",
-            "owner_id",
-            owner_id.value(),
+            "project",
+            project.value(),
             &before,
             &after,
             limit,
@@ -133,8 +133,7 @@ mod tests {
         Invocation,
         InvocationId,
         InvocationStatus,
-        OwnerId,
-        Payload,
+        ProjectId,
         TriggerId,
         Webhook,
         WebhookDeliveryStatus,
@@ -143,19 +142,20 @@ mod tests {
 
     fn build_invocation(
         trigger_id: TriggerId,
-        owner_id: OwnerId,
+        project: ProjectId,
     ) -> Invocation {
         // Serialization drops nanoseconds, so to let's zero it here for easier
         // equality comparisons
         let now = Utc::now().with_timezone(&UTC).with_nanosecond(0).unwrap();
 
         Invocation {
-            id: InvocationId::new(&owner_id),
-            trigger_id,
-            owner_id,
+            id: InvocationId::new(&project),
+            trigger: trigger_id,
+            project: project,
             created_at: now,
             status: vec![InvocationStatus::WebhookStatus(WebhookStatus {
                 webhook: Webhook {
+                    _kind: Default::default(),
                     url: Some("http://test".to_string()),
                     http_method: crate::types::HttpMethod::GET,
                     timeout_s: Duration::from_secs(5),
@@ -163,7 +163,7 @@ mod tests {
                 },
                 delivery_status: WebhookDeliveryStatus::Attempting,
             })],
-            payload: Payload::default(),
+            payload: None,
         }
     }
 
@@ -172,8 +172,8 @@ mod tests {
         let db = SqliteDatabase::in_memory().await?;
         let store = SqlInvocationStore::create(db).await?;
 
-        let owner1 = OwnerId::new();
-        let owner2 = OwnerId::new();
+        let owner1 = ProjectId::new();
+        let owner2 = ProjectId::new();
         let t1 = TriggerId::new(&owner1);
         let t2 = TriggerId::new(&owner2);
 
@@ -217,6 +217,7 @@ mod tests {
 
         i1.status = vec![InvocationStatus::WebhookStatus(WebhookStatus {
             webhook: Webhook {
+                _kind: Default::default(),
                 url: Some("http://test".to_string()),
                 http_method: crate::types::HttpMethod::GET,
                 timeout_s: Duration::from_secs(5),

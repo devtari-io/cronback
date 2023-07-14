@@ -7,7 +7,7 @@ use lib::grpc_client_provider::DispatcherClientProvider;
 use lib::service::ServiceContext;
 use lib::types::{
     Invocation,
-    OwnerId,
+    ProjectId,
     Status,
     Trigger,
     TriggerId,
@@ -178,17 +178,17 @@ impl EventScheduler {
         &self,
         install_trigger: InstallTriggerRequest,
     ) -> Result<Trigger, TriggerError> {
-        let id = TriggerId::new(&OwnerId(install_trigger.owner_id.clone()));
+        let id = TriggerId::new(&ProjectId(install_trigger.project_id.clone()));
 
         let trigger = Trigger {
             id,
-            owner_id: install_trigger.owner_id.into(),
-            reference_id: install_trigger.reference_id,
+            project: install_trigger.project_id.into(),
+            reference: install_trigger.reference,
             name: install_trigger.name,
             description: install_trigger.description,
             created_at: Utc::now(),
             emit: install_trigger.emit.into_iter().map(|e| e.into()).collect(),
-            payload: install_trigger.payload.unwrap().into(),
+            payload: install_trigger.payload.map(|p| p.into()),
             schedule: install_trigger.schedule.map(|s| s.into()),
             status: Status::Active,
             last_invoked_at: None,
@@ -207,7 +207,7 @@ impl EventScheduler {
     #[tracing::instrument(skip_all, fields(trigger_id = %id))]
     pub async fn get_trigger(
         &self,
-        owner_id: OwnerId,
+        project: ProjectId,
         id: TriggerId,
     ) -> Result<Trigger, TriggerError> {
         let triggers = self.triggers.clone();
@@ -221,7 +221,7 @@ impl EventScheduler {
         .await?;
         // Get from the database if this is not an active trigger.
         match trigger_res {
-            | Ok(trigger) if trigger.owner_id == owner_id => Ok(trigger),
+            | Ok(trigger) if trigger.project == project => Ok(trigger),
             // The trigger was found but owned by a different user!
             | Ok(_) => Err(TriggerError::NotFound(id.clone())),
             | Err(TriggerError::NotFound(_)) => {
@@ -237,7 +237,7 @@ impl EventScheduler {
     #[tracing::instrument(skip(self))]
     pub async fn list_triggers(
         &self,
-        owner_id: OwnerId,
+        project: ProjectId,
         limit: usize,
         before: Option<TriggerId>,
         after: Option<TriggerId>,
@@ -246,7 +246,7 @@ impl EventScheduler {
         // from database instead of fetching the entire trigger.
         let triggers = self
             .store
-            .get_triggers_by_owner(&owner_id, before, after, limit)
+            .get_triggers_by_owner(&project, before, after, limit)
             .await?;
 
         let (alive, dead): (Vec<_>, Vec<_>) =
@@ -279,10 +279,10 @@ impl EventScheduler {
     #[tracing::instrument(skip_all, fields(trigger_id = %id))]
     pub async fn invoke_trigger(
         &self,
-        owner_id: OwnerId,
+        project: ProjectId,
         id: TriggerId,
     ) -> Result<Invocation, TriggerError> {
-        let trigger = self.get_trigger(owner_id, id).await?;
+        let trigger = self.get_trigger(project, id).await?;
         let invocation = dispatch(
             trigger,
             self.dispatcher_client_provider.clone(),
@@ -295,11 +295,11 @@ impl EventScheduler {
     #[tracing::instrument(skip_all, fields(trigger_id = %id))]
     pub async fn pause_trigger(
         &self,
-        owner_id: OwnerId,
+        project: ProjectId,
         id: TriggerId,
     ) -> Result<Trigger, TriggerError> {
         let triggers = self.triggers.clone();
-        let status = self.get_trigger_status(&owner_id, &id).await?;
+        let status = self.get_trigger_status(&project, &id).await?;
         // if value, check that it's alive.
         if !status.alive() {
             return Err(TriggerError::InvalidStatus(
@@ -317,11 +317,11 @@ impl EventScheduler {
     #[tracing::instrument(skip_all, fields(trigger_id = %id))]
     pub async fn resume_trigger(
         &self,
-        owner_id: OwnerId,
+        project: ProjectId,
         id: TriggerId,
     ) -> Result<Trigger, TriggerError> {
         let triggers = self.triggers.clone();
-        let status = self.get_trigger_status(&owner_id, &id).await?;
+        let status = self.get_trigger_status(&project, &id).await?;
         // if value, check that it's alive.
         if !status.alive() {
             return Err(TriggerError::InvalidStatus(
@@ -339,11 +339,11 @@ impl EventScheduler {
     #[tracing::instrument(skip_all, fields(trigger_id = %id))]
     pub async fn cancel_trigger(
         &self,
-        owner_id: OwnerId,
+        project: ProjectId,
         id: TriggerId,
     ) -> Result<Trigger, TriggerError> {
         let triggers = self.triggers.clone();
-        let status = self.get_trigger_status(&owner_id, &id).await?;
+        let status = self.get_trigger_status(&project, &id).await?;
         // if value, check that it's alive.
         if !status.alive() {
             return Err(TriggerError::InvalidStatus(
@@ -356,7 +356,7 @@ impl EventScheduler {
         tokio::task::spawn_blocking(move || {
             let mut w = triggers.write().unwrap();
             // We blindly cancel here since we have checked earlier that this
-            // trigger is owned by the right owner. Otherwise, we won't reach
+            // trigger is owned by the right project. Otherwise, we won't reach
             // this line.
             w.cancel(&inner_id)
                 .map(|_| w.get(&inner_id).unwrap().clone())
@@ -403,10 +403,10 @@ impl EventScheduler {
 
     async fn get_trigger_status(
         &self,
-        owner_id: &OwnerId,
+        project: &ProjectId,
         trigger_id: &TriggerId,
     ) -> Result<Status, TriggerError> {
-        let status = self.store.get_status(owner_id, trigger_id).await?;
+        let status = self.store.get_status(project, trigger_id).await?;
         // if None -> Trigger doesn't exist
         status.ok_or_else(|| TriggerError::NotFound(trigger_id.clone()))
     }

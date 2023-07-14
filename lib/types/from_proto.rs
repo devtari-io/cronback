@@ -30,14 +30,14 @@ impl From<trigger_proto::Trigger> for Trigger {
     fn from(value: trigger_proto::Trigger) -> Self {
         Self {
             id: value.id.into(),
-            owner_id: value.owner_id.into(),
+            project: value.project_id.into(),
             name: value.name,
             description: value.description,
             created_at: DateTime::parse_from_rfc3339(&value.created_at)
                 .unwrap()
                 .with_timezone(&Utc),
-            reference_id: value.reference_id,
-            payload: value.payload.unwrap().into(),
+            reference: value.reference,
+            payload: value.payload.map(|p| p.into()),
             schedule: value.schedule.map(|s| s.into()),
             emit: value.emit.into_iter().map(|e| e.into()).collect(),
             status: value.status.into(),
@@ -52,13 +52,13 @@ impl From<trigger_proto::TriggerManifest> for TriggerManifest {
     fn from(value: trigger_proto::TriggerManifest) -> Self {
         Self {
             id: value.id.into(),
-            owner_id: value.owner_id.into(),
+            project: value.project_id.into(),
             name: value.name,
             description: value.description,
             created_at: DateTime::parse_from_rfc3339(&value.created_at)
                 .unwrap()
                 .with_timezone(&Utc),
-            reference_id: value.reference_id,
+            reference: value.reference,
             schedule: value.schedule.map(|s| s.into()),
             status: value.status.into(),
             // We are not supposed to send this to other services, it is
@@ -75,6 +75,7 @@ impl From<trigger_proto::TriggerManifest> for TriggerManifest {
 impl From<webhook_proto::Webhook> for Webhook {
     fn from(webhook: webhook_proto::Webhook) -> Self {
         Self {
+            _kind: Default::default(),
             http_method: webhook.http_method.into(),
             url: Some(webhook.url),
             timeout_s: Duration::from_secs_f64(webhook.timeout_s),
@@ -188,6 +189,7 @@ impl From<webhook_proto::RetryConfig> for RetryConfig {
 impl From<webhook_proto::SimpleRetry> for SimpleRetry {
     fn from(retry: webhook_proto::SimpleRetry) -> Self {
         Self {
+            _kind: Default::default(),
             max_num_attempts: retry.max_num_attempts,
             delay_s: Duration::from_secs_f64(retry.delay_s),
         }
@@ -197,6 +199,7 @@ impl From<webhook_proto::SimpleRetry> for SimpleRetry {
 impl From<webhook_proto::ExponentialBackoffRetry> for ExponentialBackoffRetry {
     fn from(retry: webhook_proto::ExponentialBackoffRetry) -> Self {
         Self {
+            _kind: Default::default(),
             max_num_attempts: retry.max_num_attempts,
             delay_s: Duration::from_secs_f64(retry.delay_s),
             max_delay_s: Duration::from_secs_f64(retry.max_delay_s),
@@ -225,9 +228,9 @@ impl From<attempt_proto::EmitAttemptLog> for EmitAttemptLog {
     fn from(value: attempt_proto::EmitAttemptLog) -> Self {
         Self {
             id: value.id.into(),
-            invocation_id: value.invocation_id.into(),
-            trigger_id: value.trigger_id.into(),
-            owner_id: value.owner_id.into(),
+            invocation: value.invocation_id.into(),
+            trigger: value.trigger_id.into(),
+            project: value.project_id.into(),
             status: value.status.into(),
             details: value.details.unwrap().into(),
             created_at: parse_iso8601(&value.created_at).unwrap(),
@@ -243,7 +246,7 @@ impl From<attempt_proto::WebhookAttemptDetails> for WebhookAttemptDetails {
                 value.response_latency_s,
             ),
             response_payload: value.response_payload.map(|p| p.into()),
-            error_msg: value.error_msg,
+            error_message: value.error_msg,
         }
     }
 }
@@ -262,10 +265,10 @@ impl From<invocation_proto::Invocation> for Invocation {
     fn from(value: invocation_proto::Invocation) -> Self {
         Self {
             id: value.id.into(),
-            trigger_id: value.trigger_id.into(),
-            owner_id: value.owner_id.into(),
+            trigger: value.trigger_id.into(),
+            project: value.project_id.into(),
             created_at: parse_iso8601(&value.created_at).unwrap(),
-            payload: value.payload.unwrap().into(),
+            payload: value.payload.map(|p| p.into()),
             status: value.status.into_iter().map(|v| v.into()).collect(),
         }
     }

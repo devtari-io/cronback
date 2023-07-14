@@ -1,12 +1,13 @@
 use derive_more::{Display, From, Into};
 use serde::{Deserialize, Serialize};
 
-use crate::model_util::{generate_model_id, generate_owner_id};
-
-pub trait ValidId {
-    fn is_valid(&self) -> bool;
-    fn value(&self) -> &str;
-}
+use super::ShardedId;
+use crate::model::{
+    generate_model_id,
+    generate_project_id,
+    shard_from_raw_project_id,
+    ValidId,
+};
 
 #[derive(
     Debug,
@@ -23,11 +24,11 @@ pub trait ValidId {
     Into,
 )]
 #[serde(transparent)]
-pub struct OwnerId(pub String);
+pub struct ProjectId(pub String);
 
-impl OwnerId {
+impl ProjectId {
     pub fn new() -> Self {
-        Self(generate_owner_id("acc"))
+        Self(generate_project_id("prj"))
     }
 
     pub fn from(value: String) -> Self {
@@ -35,9 +36,17 @@ impl OwnerId {
     }
 }
 
-impl ValidId for OwnerId {
+impl ValidId for ProjectId {
     fn is_valid(&self) -> bool {
-        self.0.starts_with("acc_")
+        self.0.starts_with("prj_")
+    }
+}
+
+impl ShardedId for ProjectId {
+    // Project ids are special, we don't prefix the value with the shard Id,
+    // instead, the shard Id is calculated from the raw value.
+    fn shard(&self) -> crate::model::Shard {
+        shard_from_raw_project_id(&self.0)
     }
 
     fn value(&self) -> &str {
@@ -63,8 +72,8 @@ impl ValidId for OwnerId {
 #[serde(transparent)]
 pub struct TriggerId(pub String);
 impl TriggerId {
-    pub fn new(OwnerId(owner): &OwnerId) -> Self {
-        Self(generate_model_id("trig", owner))
+    pub fn new(project: &ProjectId) -> Self {
+        Self(generate_model_id("trig", project))
     }
 
     pub fn from(value: String) -> Self {
@@ -76,59 +85,11 @@ impl ValidId for TriggerId {
     fn is_valid(&self) -> bool {
         self.0.starts_with("trig_")
     }
+}
 
+impl ShardedId for TriggerId {
     fn value(&self) -> &str {
         &self.0
-    }
-}
-
-#[derive(
-    Debug,
-    Clone,
-    Default,
-    Serialize,
-    Deserialize,
-    Eq,
-    PartialEq,
-    PartialOrd,
-    Ord,
-    Display,
-    From,
-    Into,
-)]
-#[serde(transparent)]
-pub struct EventId(pub String);
-impl EventId {
-    pub fn new(OwnerId(owner): &OwnerId) -> Self {
-        Self(generate_model_id("evt", owner))
-    }
-
-    pub fn from(value: String) -> Self {
-        Self(value)
-    }
-}
-
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    Default,
-    Serialize,
-    Deserialize,
-    Eq,
-    PartialEq,
-    PartialOrd,
-    Ord,
-    Display,
-    From,
-    Into,
-)]
-#[serde(transparent)]
-pub struct CellId(pub u64);
-
-impl CellId {
-    pub fn from(value: u64) -> Self {
-        Self(value)
     }
 }
 
@@ -150,8 +111,8 @@ impl CellId {
 #[serde(transparent)]
 pub struct InvocationId(pub String);
 impl InvocationId {
-    pub fn new(OwnerId(owner): &OwnerId) -> Self {
-        Self(generate_model_id("inv", owner))
+    pub fn new(project: &ProjectId) -> Self {
+        Self(generate_model_id("inv", project))
     }
 }
 
@@ -159,7 +120,9 @@ impl ValidId for InvocationId {
     fn is_valid(&self) -> bool {
         self.0.starts_with("inv_")
     }
+}
 
+impl ShardedId for InvocationId {
     fn value(&self) -> &str {
         &self.0
     }
@@ -183,8 +146,8 @@ impl ValidId for InvocationId {
 #[serde(transparent)]
 pub struct AttemptLogId(pub String);
 impl AttemptLogId {
-    pub fn new(OwnerId(owner): &OwnerId) -> Self {
-        Self(generate_model_id("att", owner))
+    pub fn new(project: &ProjectId) -> Self {
+        Self(generate_model_id("att", project))
     }
 
     pub fn from(value: String) -> Self {
@@ -196,8 +159,24 @@ impl ValidId for AttemptLogId {
     fn is_valid(&self) -> bool {
         self.0.starts_with("att")
     }
+}
 
+impl ShardedId for AttemptLogId {
     fn value(&self) -> &str {
         &self.0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_id_sharding() {
+        let project = ProjectId::new();
+        let project_shard = project.shard();
+
+        let trigger = TriggerId::new(&project);
+        assert_eq!(trigger.shard(), project_shard);
     }
 }
