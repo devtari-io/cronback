@@ -71,6 +71,7 @@ pub async fn start_api_server(
         netutils::parse_addr(&config.api.address, config.api.port).unwrap();
 
     let db = Database::connect(&config.api.database_uri).await?;
+    db.migrate().await?;
 
     // Only the auth store needs to be prep-ed as it's owned by the API layer.
     // The other stores will be prep-ed by their owner component.

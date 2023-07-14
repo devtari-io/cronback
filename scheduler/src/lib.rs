@@ -20,6 +20,7 @@ pub async fn start_scheduler_server(
     let config = context.load_config();
 
     let db = Database::connect(&config.scheduler.database_uri).await?;
+    db.migrate().await?;
     let trigger_store = SqlTriggerStore::new(db);
 
     let dispatcher_clients = Arc::new(GrpcClientProvider::new(context.clone()));

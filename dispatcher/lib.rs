@@ -26,6 +26,7 @@ pub async fn start_dispatcher_server(
     .unwrap();
 
     let db = Database::connect(&config.dispatcher.database_uri).await?;
+    db.migrate().await?;
     let attempt_store: Arc<dyn AttemptLogStore + Send + Sync> =
         Arc::new(SqlAttemptLogStore::new(db.clone()));
 

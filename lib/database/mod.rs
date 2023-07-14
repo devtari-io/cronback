@@ -7,6 +7,7 @@ pub mod trigger_store;
 
 pub use errors::DatabaseError;
 use migration::{Migrator, MigratorTrait};
+use sea_orm::TransactionTrait;
 
 #[derive(Clone)]
 pub struct Database {
@@ -14,15 +15,22 @@ pub struct Database {
 }
 
 impl Database {
-    pub async fn connect(conn_string: &str) -> Result<Self, anyhow::Error> {
+    pub async fn connect(conn_string: &str) -> Result<Self, sea_orm::DbErr> {
         Ok(Self {
             orm: sea_orm::Database::connect(conn_string).await?,
         })
     }
 
-    pub async fn in_memory() -> Result<Self, anyhow::Error> {
+    pub async fn in_memory() -> Result<Self, sea_orm::DbErr> {
         let conn = Self::connect("sqlite::memory:").await?;
-        Migrator::up(&conn.orm, None).await?;
+        conn.migrate().await?;
         Ok(conn)
+    }
+
+    pub async fn migrate(&self) -> Result<(), sea_orm::DbErr> {
+        let conn = self.orm.begin().await?;
+        Migrator::up(&conn, None).await?;
+        conn.commit().await?;
+        Ok(())
     }
 }
