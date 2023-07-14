@@ -62,7 +62,7 @@ pub struct Trigger {
     #[cfg(feature = "dto")]
     pub id: Option<lib::types::TriggerId>,
     #[cfg_attr(
-        feature = "validate",
+        feature = "validation",
         validate(length(
             min = 2,
             max = 64,
@@ -74,13 +74,13 @@ pub struct Trigger {
     pub description: Option<String>,
     pub created_at: Option<DateTime<Utc>>,
     pub updated_at: Option<DateTime<Utc>>,
-    #[cfg_attr(feature = "validate", validate)]
+    #[cfg_attr(feature = "validation", validate)]
     pub action: Option<Action>,
-    #[cfg_attr(feature = "validate", validate)]
+    #[cfg_attr(feature = "validation", validate)]
     pub schedule: Option<Schedule>,
     pub status: Option<TriggerStatus>,
     pub last_ran_at: Option<DateTime<Utc>>,
-    #[cfg_attr(feature = "validate", validate)]
+    #[cfg_attr(feature = "validation", validate)]
     pub payload: Option<Payload>,
 }
 

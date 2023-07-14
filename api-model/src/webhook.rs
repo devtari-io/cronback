@@ -123,6 +123,7 @@ pub enum RetryConfig {
 pub struct SimpleRetry {
     #[serde(rename = "type")]
     _kind: MustBe!("simple"),
+    #[cfg_attr(feature = "validation", validate(range(min = 1, max = 10)))]
     pub max_num_attempts: u32,
     #[serde_as(as = "DurationSecondsWithFrac")]
     #[cfg_attr(
@@ -132,6 +133,10 @@ pub struct SimpleRetry {
             map_into_by_ref,
             map_from_proto = "Duration::from_secs_f64"
         )
+    )]
+    #[cfg_attr(
+        feature = "validation",
+        validate(custom = "validate_retry_delay")
     )]
     pub delay_s: Duration,
 }
@@ -160,6 +165,7 @@ impl Default for SimpleRetry {
 pub struct ExponentialBackoffRetry {
     #[serde(rename = "type")]
     _kind: MustBe!("exponential_backoff"),
+    #[cfg_attr(feature = "validation", validate(range(min = 1, max = 10)))]
     pub max_num_attempts: u32,
     #[serde_as(as = "DurationSecondsWithFrac")]
     #[cfg_attr(
@@ -169,6 +175,10 @@ pub struct ExponentialBackoffRetry {
             map_into_by_ref,
             map_from_proto = "Duration::from_secs_f64"
         )
+    )]
+    #[cfg_attr(
+        feature = "validation",
+        validate(custom = "validate_retry_delay")
     )]
     pub delay_s: Duration,
     #[serde_as(as = "DurationSecondsWithFrac")]
@@ -180,6 +190,10 @@ pub struct ExponentialBackoffRetry {
             map_from_proto = "Duration::from_secs_f64"
         )
     )]
+    #[cfg_attr(
+        feature = "validation",
+        validate(custom = "validate_retry_delay")
+    )]
     pub max_delay_s: Duration,
 }
 
@@ -189,6 +203,17 @@ fn validate_timeout(timeout: &Duration) -> Result<(), ValidationError> {
         return Err(validation_error(
             "invalid_timeout",
             "Timeout must be between 1.0 and 30.0 seconds".to_string(),
+        ));
+    };
+    Ok(())
+}
+
+#[cfg(feature = "validation")]
+fn validate_retry_delay(delay: &Duration) -> Result<(), ValidationError> {
+    if delay.as_secs_f64() < 5.0 || delay.as_secs_f64() > 300.0 {
+        return Err(validation_error(
+            "invalid_delay",
+            "Retry delay must be between 5.0 and 300.0 seconds".to_string(),
         ));
     };
     Ok(())

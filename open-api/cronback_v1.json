@@ -1,5 +1,15 @@
 {
   "openapi": "3.1.0",
+  "tags": [
+    {
+      "name": "Triggers",
+      "description": "Operations controlling trigger resources"
+    },
+    {
+      "name": "Runs",
+      "description": "Operations on runs of a specific trigger"
+    }
+  ],
   "x-stoplight": {
     "id": "k35idp3ucv89r"
   },
@@ -12,7 +22,7 @@
       "email": "support@cronback.me"
     },
     "termsOfService": "https://cronback.me/terms",
-    "description": "> pre-alpha release\n\n[Cronback](https://cronback.me) is a powerful, feature-rich API service designed for developers who need a reliable and flexible solution to schedule one-time, recurring cron, and on-demand webhooks. The service aims to streamline the process of integrating and automating webhook events into your applications or services, enabling seamless communication between various systems.\n\nKey Features:\n\n- One-Time Webhooks: Schedule a single webhook to be triggered at a specific time in the future, perfect for one-off events or reminders.\n\n- Recurring Cron Webhooks: Set up cron expressions to define custom recurring schedules for webhooks, allowing you to automate tasks such as daily reports, weekly updates, or monthly data synchronization.\n\n- On-Demand Webhooks: Trigger webhooks manually or programmatically at any time with the Cronback API, giving you full control over when your webhook events are executed.\n\n- Secure & Scalable Infrastructure: Built on a secure, high-performance infrastructure, Cronback is designed to handle large-scale webhook scheduling and execution, ensuring your webhooks are delivered promptly and consistently.\n\n- Robust Timezone Support: Schedule webhooks in any timezone to accommodate global operations, ensuring accurate timing of events for distributed teams and systems.\n\n\nWith [https://Cronback.me](https://cronback.me), you can say goodbye to the hassles of manual scheduling and tedious cron job management. Simply integrate Cronback into your applications and services, and let our API handle the rest.",
+    "description": "> Alpha release. Cronback is currently in alpha stage, a small set of alpha users have access to the API.\n\n[Cronback](https://cronback.me) is a powerful, feature-rich API service designed for developers who need a reliable and flexible solution to schedule one-time, recurring cron, and on-demand webhooks. The service aims to streamline the process of integrating and automating webhook events into your applications or services, enabling seamless communication between various systems.\n\nKey Features:\n\n- One-Time Webhooks: Schedule a single webhook to be triggered at a specific time in the future, perfect for one-off events or reminders.\n\n- Recurring Cron Webhooks: Set up cron expressions to define custom recurring schedules for webhooks, allowing you to automate tasks such as daily reports, weekly updates, or monthly data synchronization.\n\n- On-Demand Webhooks: Trigger webhooks manually or programmatically at any time with the Cronback API, giving you full control over when your webhook events are executed.\n\n- Secure & Scalable Infrastructure: Built on a secure, high-performance infrastructure, Cronback is designed to handle large-scale webhook scheduling and execution, ensuring your webhooks are delivered promptly and consistently.\n\n- Robust Timezone Support: Schedule webhooks in any timezone to accommodate global operations, ensuring accurate timing of events for distributed teams and systems.\n\n\nWith [https://Cronback.me](https://cronback.me), you can say goodbye to the hassles of manual scheduling and tedious cron job management. Simply integrate Cronback into your applications and services, and let our API handle the rest.",
     "summary": "Scheduled, recurring, or on-demand triggers at scale"
   },
   "servers": [
@@ -34,129 +44,6 @@
     }
   ],
   "paths": {
-    "/triggers/{trigger_id}": {
-      "parameters": [
-        {
-          "schema": {
-            "type": "string"
-          },
-          "name": "trigger_id",
-          "in": "path",
-          "description": "Trigger token",
-          "required": true
-        }
-      ],
-      "get": {
-        "summary": "Get trigger",
-        "responses": {
-          "200": {
-            "description": "Trigger exists",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Trigger"
-                },
-                "examples": {
-                  "Example 1": {
-                    "value": {
-                      "id": "trig_ab1.01GWCXWB869BXW8Q2XZGE0JBQ6",
-                      "owner_id": "acc_0FGWCXWB869BXWSQ2XZGE0JBA3",
-                      "name": "my example trigger",
-                      "created_at": "2023-03-25T17:43:23.654278298Z",
-                      "reference_id": "string",
-                      "description": "Periodically ping healthcheck.io",
-                      "action": [
-                        {
-                          "webhook": {
-                            "url": "https://example.com/my-own-endpoint",
-                            "http_method": "POST",
-                            "timeout_s": 6.2,
-                            "retry": {
-                              "simple_retry": {
-                                "max_num_attempts": 0,
-                                "delay_s": 1
-                              }
-                            }
-                          }
-                        }
-                      ],
-                      "payload": {
-                        "body": "{\"key\": \"value\"}",
-                        "content_type": "application/json; charset=utf-8",
-                        "headers": {}
-                      },
-                      "schedule": {
-                        "recurring": {
-                          "cron": "15 35 * * * *",
-                          "timezone": "Europe/London",
-                          "limit": 4,
-                          "remaining": 0
-                        }
-                      },
-                      "status": "scheduled"
-                    }
-                  }
-                }
-              }
-            },
-            "headers": {
-              "cronback-trace-id": {
-                "schema": {
-                  "type": "string"
-                },
-                "description": "A random trace id generated by cronback for debugging"
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error"
-          },
-          "422": {
-            "$ref": "#/components/responses/Error"
-          }
-        },
-        "operationId": "get-trigger",
-        "description": "Retrieve information about an existing installed trigger",
-        "x-internal": false,
-        "parameters": [],
-        "tags": [
-          "Triggers"
-        ]
-      },
-      "put": {
-        "summary": "Update trigger",
-        "operationId": "put-triggers-trigger_id",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Trigger"
-                }
-              }
-            }
-          }
-        },
-        "description": "Update an existing trigger",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/Trigger"
-              }
-            }
-          },
-          "description": ""
-        },
-        "tags": [
-          "Triggers"
-        ]
-      }
-    },
     "/triggers": {
       "get": {
         "summary": "List triggers",
@@ -179,24 +66,8 @@
               "type": "string"
             },
             "in": "query",
-            "description": "A cursor for use in pagination. `before` is an object ID that defines your place in the list.",
-            "name": "before"
-          },
-          {
-            "schema": {
-              "type": "string"
-            },
-            "in": "query",
-            "name": "after",
-            "description": "A cursor for use in pagination. `after` is an object ID that defines your place in the list."
-          },
-          {
-            "schema": {
-              "type": "string"
-            },
-            "in": "query",
-            "name": "reference",
-            "description": "Filter the returned triggers by `reference`"
+            "name": "cursor",
+            "description": "A cursor for use in pagination. `cursor` defines your place in the list."
           },
           {
             "schema": {
@@ -209,7 +80,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Returns a hash with `data` property that contains an array of up to `limit` Triggers, starting triggers specified in `after` or before triggers specified in `before`.\n\nObjects returned are sorted in reverse chronological orders (most recently created comes first).\n\nThis API will not fail (unless for authentication, or internal errors).",
+            "description": "Returns a hash with `data` property that contains an array of up to `limit` Triggers. The `cursor` parameter defines the starting point for the returned _page_.\n\nObjects returned are sorted in reverse chronological orders (most recently created comes first).\n\nThis API will not fail (unless for authentication, or internal errors).",
             "content": {
               "application/json": {
                 "schema": {
@@ -218,14 +89,136 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/TriggerManifest"
+                        "$ref": "#/components/schemas/Trigger"
                       }
                     },
                     "has_more": {
                       "type": "boolean",
                       "description": "`has_more` is true if limit was reached before returning all results."
+                    },
+                    "next_cursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The `cursor` string that can be used to fetch the next page in this iterator."
                     }
                   }
+                },
+                "examples": {
+                  "Example 1": {
+                    "value": {
+                      "next_cursor": "trig_063001H1RS765SBWCY6294XSSMCGDT",
+                      "has_more": true,
+                      "data": [
+                        {
+                          "name": "lowly-seashore-9407",
+                          "created_at": "2023-06-02T14:40:13.918868Z",
+                          "action": {
+                            "type": "webhook",
+                            "url": "http://localhost:3000/action",
+                            "http_method": "POST",
+                            "timeout_s": 30
+                          },
+                          "schedule": {
+                            "type": "timepoints",
+                            "timepoints": [
+                              "2023-09-22T16:58:02+07:00",
+                              "2023-09-23T16:58:02+07:00",
+                              "2023-09-24T16:58:02+07:00",
+                              "2023-09-25T16:58:02+07:00",
+                              "2023-09-26T16:58:02+07:00",
+                              "2023-09-27T16:58:02+07:00",
+                              "2023-09-28T16:58:02+07:00",
+                              "2023-09-29T16:58:02+07:00",
+                              "2023-09-30T16:58:02+07:00",
+                              "2023-10-01T16:58:02+07:00",
+                              "2023-10-02T16:58:02+07:00",
+                              "2023-10-03T16:58:02+07:00",
+                              "2023-10-04T16:58:02+07:00",
+                              "2023-10-05T16:58:02+07:00",
+                              "2023-10-06T16:58:02+07:00",
+                              "2023-10-07T16:58:02+07:00",
+                              "2023-10-08T16:58:02+07:00",
+                              "2023-10-09T16:58:02+07:00",
+                              "2023-10-10T16:58:02+07:00"
+                            ],
+                            "remaining": 21
+                          },
+                          "status": "cancelled",
+                          "payload": {
+                            "headers": {
+                              "X-My-Header": "my-header-value"
+                            },
+                            "content_type": "application/json",
+                            "body": "{ \"name\": \"Steve\"}"
+                          }
+                        },
+                        {
+                          "name": "numberless-grass-8684",
+                          "created_at": "2023-06-02T14:37:20.045969Z",
+                          "action": {
+                            "type": "webhook",
+                            "url": "http://localhost:3000/action",
+                            "http_method": "POST",
+                            "timeout_s": 5
+                          },
+                          "schedule": {
+                            "type": "recurring",
+                            "cron": "*/15 * * * * *",
+                            "timezone": "Etc/UTC",
+                            "limit": 50,
+                            "remaining": 0
+                          },
+                          "status": "expired",
+                          "last_ran_at": "2023-06-02T14:49:45.129965Z",
+                          "payload": {
+                            "headers": {},
+                            "content_type": "text/plain",
+                            "body": "Hello, World!"
+                          }
+                        },
+                        {
+                          "name": "hulking-lawyer-1657",
+                          "created_at": "2023-06-02T14:36:39.010568Z",
+                          "action": {
+                            "type": "webhook",
+                            "url": "http://localhost:3000/action",
+                            "http_method": "POST",
+                            "timeout_s": 30
+                          },
+                          "schedule": {
+                            "type": "timepoints",
+                            "timepoints": [
+                              "2023-10-01T16:58:02+07:00",
+                              "2023-09-22T16:58:02+07:00"
+                            ],
+                            "remaining": 2
+                          },
+                          "status": "scheduled",
+                          "payload": {
+                            "headers": {
+                              "X-My-Header": "my-header-value"
+                            },
+                            "content_type": "application/json",
+                            "body": "{ \"name\": \"Jack\"}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "x-cronback-request-id": {
+                "schema": {
+                  "$ref": "#/components/parameters/request-id"
+                }
+              },
+              "x-cronback-project-id": {
+                "schema": {
+                  "$ref": "#/components/parameters/project-id"
                 }
               }
             }
@@ -241,27 +234,56 @@
         ]
       },
       "post": {
-        "summary": "Install a new trigger",
-        "operationId": "install-triggers",
+        "summary": "Create a new trigger",
+        "operationId": "create-trigger",
         "responses": {
-          "200": {
-            "description": "An existing Trigger has been updated (only possible if an existing trigger matches the supplied `reference`)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Trigger"
-                }
-              }
-            }
-          },
           "201": {
-            "description": "A new Trigger has been installed (see 200 if an existing trigger matches the supplied `reference`)",
+            "description": "A new Trigger has been created",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Trigger"
                 },
-                "examples": {}
+                "examples": {
+                  "Example 1": {
+                    "value": {
+                      "name": "my-example-trigger-01",
+                      "description": "A reminder to sign-up to our promotion",
+                      "created_at": "2023-06-06T14:35:38.924552Z",
+                      "action": {
+                        "type": "webhook",
+                        "url": "https://api.cronback.me/test/success",
+                        "http_method": "POST",
+                        "timeout_s": 5,
+                        "retry": {
+                          "type": "simple",
+                          "max_num_attempts": 5,
+                          "delay_s": 10
+                        }
+                      },
+                      "schedule": {
+                        "type": "recurring",
+                        "cron": "@hourly",
+                        "timezone": "Etc/UTC",
+                        "limit": 24,
+                        "remaining": 24
+                      },
+                      "status": "scheduled"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "x-cronback-request-id": {
+                "schema": {
+                  "$ref": "#/components/parameters/request-id"
+                }
+              },
+              "x-cronback-project-id": {
+                "schema": {
+                  "$ref": "#/components/parameters/project-id"
+                }
               }
             }
           },
@@ -278,77 +300,136 @@
             "$ref": "#/components/responses/Error"
           }
         },
-        "description": "Install a new trigger to cronback scheduler",
+        "description": "Adds a new trigger to cronback scheduling system",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/Trigger"
               },
-              "examples": {}
+              "examples": {
+                "Example 1": {
+                  "value": {
+                    "name": "my-example-trigger-01",
+                    "description": "A reminder to sign-up to our promotion",
+                    "action": {
+                      "url": "https://api.cronback.me/test/success",
+                      "type": "webhook",
+                      "retry": {
+                        "max_num_attempts": 5,
+                        "delay_s": 10,
+                        "type": "simple"
+                      }
+                    },
+                    "schedule": {
+                      "cron": "@hourly",
+                      "limit": 24,
+                      "type": "recurring"
+                    }
+                  }
+                }
+              }
             }
-          }
+          },
+          "description": "The specification of the trigger you'd like to create. Note that if the `name` is not specified, the server will generate a _unique_ random human-readable value for you. The server returns `409 Conflict` if there exists a trigger with the same name already."
         },
         "tags": [
-          "triggers"
+          "Triggers"
         ]
       },
       "parameters": []
     },
-    "/runs": {
-      "get": {
-        "summary": "List Runs",
-        "responses": {},
-        "operationId": "get-runs",
-        "tags": [
-          "Runs"
-        ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "integer"
-            },
-            "in": "query",
-            "name": "limit",
-            "description": "A limit on the number of triggers to be returned. Limit can be a number between 1 and 100. Default limit is 20."
-          },
-          {
-            "schema": {
-              "type": "string"
-            },
-            "in": "query",
-            "description": "A cursor for use in pagination. `before` is an object ID that defines your place in the list.",
-            "name": "before"
-          },
-          {
-            "schema": {
-              "type": "string"
-            },
-            "in": "query",
-            "name": "after",
-            "description": "A cursor for use in pagination. `after` is an object ID that defines your place in the list."
-          }
-        ],
-        "description": ""
-      }
-    },
-    "/triggers/{trigger_id}/runs": {
+    "/triggers/{trigger-name}": {
       "parameters": [
         {
-          "schema": {
-            "type": "string"
-          },
-          "name": "trigger_id",
-          "in": "path",
-          "required": true,
-          "description": "Identifier of the trigger"
+          "$ref": "#/components/parameters/trigger-name"
         }
       ],
       "get": {
-        "summary": "Get runs for a trigger",
+        "summary": "Get trigger",
         "responses": {
           "200": {
-            "description": "OK",
+            "description": "Trigger exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Trigger"
+                },
+                "examples": {
+                  "Example 1": {
+                    "value": {
+                      "action": {
+                        "http_method": "POST",
+                        "timeout_s": 30,
+                        "type": "webhook",
+                        "url": "https://example.com/action"
+                      },
+                      "created_at": "2023-06-02T14:36:39.010568Z",
+                      "name": "hulking-lawyer-1657",
+                      "payload": {
+                        "body": "{ \"name\": \"value\"}",
+                        "content_type": "application/json",
+                        "headers": {
+                          "X-My-Header": "my-header-value"
+                        }
+                      },
+                      "schedule": {
+                        "remaining": 2,
+                        "timepoints": [
+                          "2023-10-01T16:58:02+07:00",
+                          "2023-09-22T16:58:02+07:00"
+                        ],
+                        "type": "timepoints"
+                      },
+                      "status": "scheduled"
+                    }
+                  }
+                }
+              }
+            },
+            "headers": {
+              "x-cronback-request-id": {
+                "schema": {
+                  "$ref": "#/components/parameters/request-id"
+                }
+              },
+              "x-cronback-project-id": {
+                "schema": {
+                  "$ref": "#/components/parameters/project-id"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "operationId": "get-trigger",
+        "description": "Retrieve information about an existing trigger",
+        "x-internal": false,
+        "parameters": [],
+        "tags": [
+          "Triggers"
+        ]
+      }
+    },
+    "/triggers/{trigger-name}/runs": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/trigger-name"
+        }
+      ],
+      "get": {
+        "summary": "List recent runs for a trigger",
+        "responses": {
+          "200": {
+            "description": "Returns a hash with `data` property that contains an array of up to `limit` runs of a particular trigger. The `cursor` parameter defines the starting point for the returned _page_.\n\nObjects returned are sorted in reverse chronological orders (most recently created comes first).\n\nThis API will not fail with `404` if the trigger does not exist.",
             "content": {
               "application/json": {
                 "schema": {
@@ -363,87 +444,38 @@
                     "has_more": {
                       "type": "boolean",
                       "default": false,
+                      "description": "`has_more` is true if limit was reached before returning all results.",
                       "readOnly": true
+                    },
+                    "next_cursor": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The `cursor` string that can be used to fetch the next page in this iterator."
                     }
                   }
+                }
+              }
+            },
+            "headers": {
+              "x-cronback-request-id": {
+                "schema": {
+                  "$ref": "#/components/parameters/request-id"
+                }
+              },
+              "x-cronback-project-id": {
+                "schema": {
+                  "$ref": "#/components/parameters/project-id"
                 }
               }
             }
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
           }
         },
-        "operationId": "get-triggers-trigger_id-runs",
-        "tags": [
-          "Triggers",
-          "Runs"
-        ],
-        "parameters": [
-          {
-            "schema": {
-              "type": "integer"
-            },
-            "in": "query",
-            "name": "limit",
-            "description": "A limit on the number of triggers to be returned. Limit can be a number between 1 and 100. Default limit is 20."
-          },
-          {
-            "schema": {
-              "type": "string"
-            },
-            "in": "query",
-            "description": "A cursor for use in pagination. `before` is an object ID that defines your place in the list.",
-            "name": "before"
-          },
-          {
-            "schema": {
-              "type": "string"
-            },
-            "in": "query",
-            "name": "after",
-            "description": "A cursor for use in pagination. `after` is an object ID that defines your place in the list."
-          }
-        ]
-      }
-    },
-    "/runs/{run_id}/attempts": {
-      "parameters": [
-        {
-          "schema": {
-            "type": "string"
-          },
-          "name": "run_id",
-          "in": "path",
-          "required": true
-        }
-      ],
-      "get": {
-        "summary": "List attempts for a run",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/WebhookAttempt"
-                      }
-                    },
-                    "has_more": {
-                      "type": "boolean",
-                      "default": false,
-                      "readOnly": true
-                    }
-                  }
-                }
-              }
-            },
-            "headers": {}
-          }
-        },
-        "operationId": "get-runs-run_id-attempts",
+        "operationId": "get-trigger-runs",
         "tags": [
           "Runs"
         ],
@@ -454,68 +486,48 @@
             },
             "in": "query",
             "name": "limit",
-            "description": "A limit on the number of triggers to be returned. Limit can be a number between 1 and 100. Default limit is 20."
+            "description": "A limit on the number of runs to be returned. Limit can be a number between 1 and 100. Default limit is 20."
           },
           {
             "schema": {
               "type": "string"
             },
             "in": "query",
-            "description": "A cursor for use in pagination. `before` is an object ID that defines your place in the list.",
-            "name": "before"
-          },
-          {
-            "schema": {
-              "type": "string"
-            },
-            "in": "query",
-            "name": "after",
-            "description": "A cursor for use in pagination. `after` is an object ID that defines your place in the list."
+            "name": "cursor",
+            "description": "A cursor for use in pagination. `cursor` defines your place in the list."
           }
-        ]
+        ],
+        "description": "Returns a list of of the recent runs for a given trigger\n"
       }
     },
-    "/runs/{run_id}": {
+    "/triggers/{trigger-name}/cancel": {
       "parameters": [
         {
-          "schema": {
-            "type": "string"
-          },
-          "name": "run_id",
-          "in": "path",
-          "required": true
-        }
-      ],
-      "get": {
-        "summary": "Get a run",
-        "responses": {},
-        "operationId": "get-runs-run_id",
-        "tags": [
-          "Runs"
-        ]
-      }
-    },
-    "/triggers/{trigger_id}/cancel": {
-      "parameters": [
-        {
-          "schema": {
-            "type": "string"
-          },
-          "name": "trigger_id",
-          "in": "path",
-          "required": true
+          "$ref": "#/components/parameters/trigger-name"
         }
       ],
       "post": {
         "summary": "Cancel trigger",
-        "operationId": "post-triggers-trigger_id-cancel",
+        "operationId": "post-trigger-cancel",
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TriggerManifest"
+                  "$ref": "#/components/schemas/Trigger"
+                }
+              }
+            },
+            "headers": {
+              "x-cronback-request-id": {
+                "schema": {
+                  "$ref": "#/components/parameters/request-id"
+                }
+              },
+              "x-cronback-project-id": {
+                "schema": {
+                  "$ref": "#/components/parameters/project-id"
                 }
               }
             }
@@ -533,30 +545,40 @@
         "description": "Cancels a live trigger. The trigger must be in either `scheduled` or `paused`"
       }
     },
-    "/triggers/{trigger_id}/resume": {
+    "/triggers/{trigger-name}/resume": {
       "parameters": [
         {
-          "schema": {
-            "type": "string"
-          },
-          "name": "trigger_id",
-          "in": "path",
-          "required": true
+          "$ref": "#/components/parameters/trigger-name"
         }
       ],
       "post": {
         "summary": "Resume a paused trigger",
-        "operationId": "post-triggers-trigger_id-resume",
+        "operationId": "post-trigger-resume",
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TriggerManifest"
+                  "$ref": "#/components/schemas/Trigger"
+                }
+              }
+            },
+            "headers": {
+              "x-cronback-request-id": {
+                "schema": {
+                  "$ref": "#/components/parameters/request-id"
+                }
+              },
+              "x-cronback-project-id": {
+                "schema": {
+                  "$ref": "#/components/parameters/project-id"
                 }
               }
             }
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
           }
         },
         "tags": [
@@ -565,20 +587,15 @@
         "description": "Resumes a `paused` trigger."
       }
     },
-    "/triggers/{trigger_id}/run": {
+    "/triggers/{trigger-name}/run": {
       "parameters": [
         {
-          "schema": {
-            "type": "string"
-          },
-          "name": "trigger_id",
-          "in": "path",
-          "required": true
+          "$ref": "#/components/parameters/trigger-name"
         }
       ],
       "post": {
         "summary": "Manually run a trigger",
-        "operationId": "post-triggers-trigger_id-run",
+        "operationId": "post-trigger-run",
         "responses": {
           "200": {
             "description": "OK",
@@ -588,11 +605,29 @@
                   "$ref": "#/components/schemas/Run"
                 }
               }
+            },
+            "headers": {
+              "x-cronback-request-id": {
+                "schema": {
+                  "$ref": "#/components/parameters/request-id"
+                }
+              },
+              "x-cronback-project-id": {
+                "schema": {
+                  "$ref": "#/components/parameters/project-id"
+                }
+              }
             }
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "422": {
+            "$ref": "#/components/responses/Error"
           }
         },
         "tags": [
-          "Triggers"
+          "Runs"
         ],
         "description": "Creates an ad hoc run of the trigger. You can run triggers that are _not_ in the `cancelled` state.",
         "requestBody": {
@@ -607,13 +642,120 @@
                       "sync",
                       "async"
                     ],
-                    "default": "async"
+                    "default": "async",
+                    "example": "sync"
                   }
                 }
               }
             }
-          }
+          },
+          "description": "Specifies whether the server will wait for the run to complete before returning a response or not."
         }
+      }
+    },
+    "/triggers/{trigger-name}/pause": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/trigger-name"
+        }
+      ],
+      "get": {
+        "summary": "Pause a scheduled trigger",
+        "tags": [
+          "Triggers"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Trigger"
+                }
+              }
+            },
+            "headers": {
+              "x-cronback-request-id": {
+                "schema": {
+                  "$ref": "#/components/parameters/request-id"
+                }
+              },
+              "x-cronback-project-id": {
+                "schema": {
+                  "$ref": "#/components/parameters/project-id"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "operationId": "trigger-pause",
+        "description": "Pauses an _alive_ trigger. A can be `paused` if it's in `scheduled` state. A `paused` trigger has a schedule but is currently paused. When time is due for it to run, it will not create the run but will account for the skipped run as if it was executed (remaining is reduced if schedule has limit)"
+      }
+    },
+    "/triggers/{trigger-name}/runs/{run-id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/trigger-name"
+        },
+        {
+          "schema": {
+            "type": "string"
+          },
+          "name": "run-id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "get": {
+        "summary": "Get a trigger run",
+        "tags": [
+          "Runs"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "x-cronback-request-id": {
+                "schema": {
+                  "$ref": "#/components/parameters/request-id"
+                }
+              },
+              "x-cronback-project-id": {
+                "schema": {
+                  "$ref": "#/components/parameters/project-id"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Run"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "latest_attempts": {
+                          "type": "array",
+                          "description": "The last 5 webhook delivery attempts in this run.",
+                          "items": {
+                            "$ref": "#/components/schemas/WebhookAttempt"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "operationId": "get-trigger-run",
+        "description": "Retrieve details about a specific trigger run. `{trigger-name}` can be replaced with wildcard `-` if you only know the `run-id`."
       }
     }
   },
@@ -663,54 +805,42 @@
         },
         "examples": [],
         "properties": {
-          "id": {
-            "type": "string",
-            "example": "trig_ab1.01GWCXWB869BXW8Q2XZGE0JBQ6",
-            "description": "A unique identifier for the trigger",
-            "readOnly": true
-          },
-          "project": {
-            "type": "string",
-            "example": "acc_0FGWCXWB869BXWSQ2XZGE0JBA3",
-            "description": "The account owning this trigger",
-            "readOnly": true
-          },
           "name": {
             "type": "string",
             "example": "my example trigger",
-            "description": "A human-readable name to identify the trigger. We will generate a name if this is not supplied."
+            "description": "A human-readable name to identify the trigger. The server generates a name if this is not supplied. This has to be unique within a project.",
+            "default": "hulking-lawyer-1657",
+            "maxLength": 64,
+            "minLength": 2
+          },
+          "description": {
+            "type": "string",
+            "description": "A human-readable description of the trigger. This can be helpful to identify the purpose of the trigger.",
+            "example": "A reminder to sign-up to our promotion"
           },
           "created_at": {
             "type": "string",
             "format": "date-time",
             "example": "2023-03-25T17:43:23.654278298Z",
-            "description": "ISO8601 datetime when this trigger was installed",
+            "description": "RFC3339 Datetime when this trigger was created",
             "readOnly": true
           },
           "updated_at": {
             "type": "string",
             "format": "date-time",
             "example": "2023-03-25T17:43:23.654278298Z",
-            "description": "ISO8601 datetime when this trigger was updated",
+            "description": "RFC3339 datetime when this trigger was updated",
             "readOnly": true
           },
-          "reference": {
-            "type": "string",
-            "description": "Unique user-supplied identified for this trigger. This can be used as an idempotency key when creating triggers. Must be unique if set."
-          },
-          "description": {
-            "type": "string",
-            "example": "Periodically ping healthcheck.io",
-            "description": "A human-readable description."
-          },
           "action": {
-            "$ref": "#/components/schemas/WebhookTarget"
+            "$ref": "#/components/schemas/WebhookTarget",
+            "description": "The action this trigger will perform, the current version only supports sending Webhooks but future versions will allow more types."
           },
           "payload": {
             "$ref": "#/components/schemas/Payload"
           },
           "schedule": {
-            "oneOf": [
+            "anyOf": [
               {
                 "$ref": "#/components/schemas/Cron"
               },
@@ -728,8 +858,14 @@
               "expired",
               "cancelled"
             ],
-            "description": "Status of the trigger. \n- `scheduled` trigger will be rund according to their `trigger.schedule`\n- `on_demand` trigger can only be rund manually, those do not have a schedule associated.\n- `paused` triggers will be rund but will not do anything.\n- `expired` triggers are scheduled triggers that exhausted their runs or have no future timepoints.\n- `cancelled` triggers cannot be rund. Those have been cancelled manually via the `/triggers/{trigger_id}/cancel` API.",
+            "description": "Status of the trigger. \n- `scheduled` trigger will run according to their `trigger.schedule`\n- `on_demand` trigger is not configured to run on a schedule, it can only run manually.\n- `paused` trigger has a schedule but is currently paused. When time is due for it to run, it will not create the run but will account for the skipped run as if it was executed (remaining is reduced if schedule has limit)\n- `expired` triggers are scheduled triggers that exhausted their runs or have no future timepoints.\n- `cancelled` triggers cannot be rund. Those have been cancelled manually via the `/triggers/{trigger-name}/cancel` API.",
             "example": "scheduled",
+            "readOnly": true
+          },
+          "last_ran_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "RFC3339 datetime of the latest run of this trigger.",
             "readOnly": true
           }
         },
@@ -744,38 +880,44 @@
         },
         "type": "object",
         "x-internal": true,
+        "examples": [
+          {
+            "body": "My Message Payload",
+            "content_type": "application/json; charset=utf-8",
+            "headers": {
+              "X-Custom-Header": "Custom-Value"
+            }
+          }
+        ],
+        "description": "Details of the payload that will be sent out by cronback when a trigger is run.",
         "properties": {
           "body": {
             "type": "string",
             "x-stoplight": {
               "id": "u9dsnyz7t32li"
             },
-            "description": "The body of the payload is sent as is when a trigger is run.",
-            "example": "{\"key\": \"value\"}"
+            "description": "The body of the payload is sent as is when a trigger is run",
+            "example": "{\"key\": \"value\"}",
+            "maxLength": 102400
           },
           "content_type": {
             "type": "string",
             "x-stoplight": {
               "id": "nxz1bp0pppsm8"
             },
-            "default": "application/json; charset=utf-8"
+            "default": "application/json; charset=utf-8",
+            "description": "Sets the `Content-Type` header for the webhook request."
           },
           "headers": {
             "type": "object",
             "x-stoplight": {
               "id": "qsuqhdb5olzux"
-            }
+            },
+            "maxProperties": 30,
+            "minProperties": 0,
+            "description": "Additional headers that will be sent when the trigger runs."
           }
-        },
-        "examples": [
-          {
-            "body": "{\"key\": \"value\"}",
-            "content_type": "application/json; charset=utf-8",
-            "headers": {
-              "X-Custom-Header": "Custom-Value"
-            }
-          }
-        ]
+        }
       },
       "Cron": {
         "title": "Recurring",
@@ -783,7 +925,7 @@
           "id": "gaeky3l62bqwt"
         },
         "type": "object",
-        "description": "Defines the recurring schedule",
+        "description": "A cron-like pattern to setup a recurring trigger",
         "x-internal": true,
         "properties": {
           "cron": {
@@ -792,10 +934,13 @@
               "id": "i4c7adqqo0h26"
             },
             "example": "*/30 * * * * *",
-            "description": "A cron-like string to specify when the trigger will be rund. The cron pattern uses this format: `sec  min   hour   day-of-month   month   day-of-week   year`"
+            "description": "A cron-like string to specify when the trigger will run. The cron pattern supports per-second granularity. The full cron pattern supports up to 7 fields in this order: `sec  min   hour   day-of-month   month   day-of-week   year`\n\nThe first 6 are mandatory with support for sort hand syntax like `@hourly`, `@daily`, `@weekly`, `@monthly`, `@yearly`.\n\nFor instance, if you want to run the trigger evern 30 seconds, use this pattern `*/30 * * * * *`. For a trigger every minute, use this pattern `0 * * * * *`."
           },
           "timezone": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "x-stoplight": {
               "id": "p9al0cie3y72r"
             },
@@ -804,33 +949,113 @@
             "description": "A valid [IANA TZ Identifier](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) to qualify the cron pattern with"
           },
           "limit": {
-            "type": "integer",
+            "type": [
+              "integer",
+              "null"
+            ],
             "x-stoplight": {
               "id": "mfadwrgzmqo8q"
             },
             "default": 0,
             "format": "int64",
-            "minimum": 0,
             "example": 4,
-            "description": "The maximum number of runs. The trigger's status will transition to `expired` automatically when no more runs are left"
+            "description": "The maximum number of runs. The trigger's status will transition to `expired` automatically when no more runs are left. Note that the limit does not affect manual runs via the API."
+          },
+          "remaining": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "x-stoplight": {
+              "id": "2d3nwf30r6s2h"
+            },
+            "description": "If limit is set, this will be set by the server to indicate how many future runs this trigger still has before expiring.",
+            "readOnly": true
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "recurring"
+            ]
+          }
+        },
+        "required": [
+          "cron",
+          "type"
+        ],
+        "examples": [
+          {
+            "cron": "*/30 * * * * *",
+            "timezone": "Etc/UTC",
+            "type": "recurring"
+          },
+          {
+            "cron": "*/30 * * * * *",
+            "timezone": "Europe/London",
+            "limit": 4,
+            "remaining": 2,
+            "type": "recurring"
+          }
+        ]
+      },
+      "RunAt": {
+        "title": "Time Points",
+        "x-stoplight": {
+          "id": "gwoegy0bco96d"
+        },
+        "type": "object",
+        "examples": [],
+        "x-internal": true,
+        "properties": {
+          "timepoints": {
+            "type": "array",
+            "x-stoplight": {
+              "id": "pwbg3osqehonh"
+            },
+            "minItems": 1,
+            "uniqueItems": true,
+            "maxItems": 5000,
+            "description": "RFC3339 datetime time points values indicating the absolute times the trigger need to run.",
+            "items": {
+              "x-stoplight": {
+                "id": "7ig7mb74opass"
+              },
+              "type": "string",
+              "format": "date-time",
+              "example": "2028-03-26T12:49:41+00:00"
+            }
           },
           "remaining": {
             "type": "integer",
             "x-stoplight": {
-              "id": "2d3nwf30r6s2h"
+              "id": "c85h4py9obh4r"
             },
-            "default": 0,
-            "description": "If limit is set, this will indicate how many future runs this trigger still has before expiring",
+            "format": "int64",
+            "description": "Set by the server to show how many time points left before this trigger is marked as `expired`",
+            "minimum": 0,
+            "example": 1,
             "readOnly": true
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "timepoints"
+            ]
           }
-        }
+        },
+        "required": [
+          "timepoints",
+          "type"
+        ],
+        "description": "Defines a trigger that will run at discrete time points"
       },
       "WebhookTarget": {
-        "title": "WebhookTarget",
+        "title": "Webhook Action",
         "x-stoplight": {
           "id": "cvqbxrub68rym"
         },
         "type": "object",
+        "x-internal": true,
         "properties": {
           "url": {
             "type": "string",
@@ -838,7 +1063,8 @@
               "id": "hplwwhhbgujsf"
             },
             "format": "uri",
-            "example": "https://example.com/my-own-endpoint"
+            "example": "https://example.com/my-own-endpoint",
+            "description": "The URL of the webhook end point that cronback will send the request to when the trigger runs. The URL **must** be publicly accessible. Cronback will reject URLs that resolve to IP addresses within [Private Networks](https://en.wikipedia.org/wiki/Private_network). "
           },
           "http_method": {
             "type": "string",
@@ -853,7 +1079,8 @@
               "DELETE",
               "POST"
             ],
-            "default": "POST"
+            "default": "POST",
+            "description": "Defines the [HTTP request method](https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods) that cronback will use to invoke the webhook."
           },
           "timeout_s": {
             "type": "number",
@@ -864,89 +1091,81 @@
             "default": 5,
             "example": 6.2,
             "minimum": 1,
-            "exclusiveMaximum": 30,
-            "description": "The number of seconds (use fractions for millis) to wait before considering the webhook attempt as `failed`"
+            "description": "The number of seconds (use fractions for millis) to wait before considering the webhook attempt as `failed`. This timeout is inclusive of DNS resolution, network, and any other latency incurred during the call.",
+            "maximum": 30
+          },
+          "type": {
+            "type": "string",
+            "default": "webhook",
+            "enum": [
+              "webhook"
+            ],
+            "description": "An optional string to indicate the type of action. The only supported type is `webhook` at the moment."
           },
           "retry": {
-            "x-stoplight": {
-              "id": "nfrhe59pnh9v8"
-            },
-            "description": "The retry policy to use if attempts to execute this webhook fail",
             "oneOf": [
               {
                 "$ref": "#/components/schemas/SimplyRetry"
               },
               {
-                "$ref": "#/components/schemas/ExponentialBackoffRetry",
-                "x-stoplight": {
-                  "id": "nd1qrafgotilf"
-                }
+                "$ref": "#/components/schemas/ExponentialBackoffRetry"
               }
             ]
           }
         },
         "required": [
           "url"
-        ],
-        "x-internal": true
+        ]
       },
-      "RunAt": {
-        "title": "RunAt",
+      "SimplyRetry": {
+        "title": "Simply Retry Configuration",
         "x-stoplight": {
-          "id": "gwoegy0bco96d"
+          "id": "svb1o16ieshm2"
         },
         "type": "object",
-        "examples": [
-          {
-            "timepoints": [
-              "2023-03-26T12:49:41+00:00",
-              "2023-03-26T12:49:41+00:00"
-            ],
-            "remaining": 1
-          },
-          {
-            "timepoints": [
-              "PT5M"
-            ]
-          }
-        ],
+        "description": "You can choose between a simple retry policy (every X seconds) or an exponential backoff retry policy. Setting `retry: null` (default) means that no retries will take place, if a request to the webhook target fails, the run will immediately be marked as `failed`. Note that runs can run concurrently, new runs will still get created according to schedule even if one of more existing runs are still retrying (in `attempting` state).\n",
         "x-internal": true,
         "properties": {
-          "timepoints": {
-            "type": "array",
-            "x-stoplight": {
-              "id": "pwbg3osqehonh"
-            },
-            "minItems": 1,
-            "uniqueItems": true,
-            "maxItems": 5000,
-            "description": "ISO8601 datetime values (also accepts ISO8601 duration format as inpu, e.g. PT5M)",
-            "items": {
-              "x-stoplight": {
-                "id": "7ig7mb74opass"
-              },
-              "type": "string",
-              "format": "date-time",
-              "example": "2023-03-26T12:49:41+00:00"
-            }
-          },
-          "remaining": {
+          "max_num_attempts": {
             "type": "integer",
             "x-stoplight": {
-              "id": "c85h4py9obh4r"
+              "id": "uxi4p9ug8m52q"
             },
-            "format": "int64",
-            "readOnly": true
+            "format": "int32",
+            "description": "The maximum number of attempts before giving up",
+            "minimum": 1,
+            "maximum": 10,
+            "example": 5,
+            "default": 5
+          },
+          "delay_s": {
+            "type": "number",
+            "x-stoplight": {
+              "id": "a94kssf1bzlb4"
+            },
+            "format": "float",
+            "minimum": 5,
+            "description": "The delay in seconds between every attempt",
+            "maximum": 300,
+            "example": 10,
+            "default": 60
+          },
+          "type": {
+            "type": "string",
+            "default": "simple"
           }
-        }
+        },
+        "required": [
+          "type"
+        ]
       },
       "ExponentialBackoffRetry": {
-        "title": "ExponentialBackoffRetry",
+        "title": "Exponential Backoff Retry Configuration",
         "x-stoplight": {
           "id": "cmnjvelmfykfa"
         },
         "type": "object",
-        "description": "An exponential backoff retry policy",
+        "description": "You can choose between a simple retry policy (every X seconds) or an exponential backoff retry policy. Setting `retry: null` (default) means that no retries will take place, if a request to the webhook target fails, the run will immediately be marked as `failed`. Note that runs can run concurrently, new runs will still get created according to schedule even if one of more existing runs are still retrying (in `attempting` state).\n",
         "x-internal": true,
         "properties": {
           "max_num_attempts": {
@@ -956,8 +1175,9 @@
             },
             "format": "int64",
             "minimum": 1,
-            "description": "The maximum number of attempts before giving up",
-            "example": 20
+            "description": "The maximum number of attempts before giving upon that particular run.",
+            "maximum": 10,
+            "example": 3
           },
           "delay_s": {
             "type": "number",
@@ -965,169 +1185,33 @@
               "id": "c7cuc75am2ewg"
             },
             "format": "double",
-            "minimum": 1,
             "description": "The initial delay in seconds between attempts. This value is doubled on every subsequent attempt",
-            "example": 30.3
+            "example": 5,
+            "minimum": 5,
+            "maximum": 300
           },
           "max_delay_s": {
             "type": "number",
             "x-stoplight": {
               "id": "bsvj0ygpn9nqv"
             },
-            "format": "double",
-            "minimum": 1,
+            "minimum": 5,
             "description": "The upper cap for the delay. Delays are doubled on each attempt until it reaches `max_delay_s`",
-            "example": 600
+            "example": 60,
+            "maximum": 300,
+            "format": "double"
           },
           "type": {
             "type": "string",
             "default": "exponential_backoff"
           }
-        }
-      },
-      "SimplyRetry": {
-        "title": "SimplyRetry",
-        "x-stoplight": {
-          "id": "svb1o16ieshm2"
         },
-        "type": "object",
-        "description": "A simple retry policy (every X seconds)",
-        "x-internal": true,
-        "properties": {
-          "max_num_attempts": {
-            "type": "integer",
-            "x-stoplight": {
-              "id": "uxi4p9ug8m52q"
-            },
-            "format": "int32",
-            "description": "The maximum number of attempts before giving up"
-          },
-          "delay_s": {
-            "type": "number",
-            "x-stoplight": {
-              "id": "a94kssf1bzlb4"
-            },
-            "format": "float",
-            "minimum": 1,
-            "description": "The delay in seconds between every attempt",
-            "example": 30.5
-          },
-          "type": {
-            "type": "string",
-            "default": "simple"
-          }
-        }
-      },
-      "TriggerManifest": {
-        "title": "TriggerManifest",
-        "x-stoplight": {
-          "id": "crf0j8v9wzj63"
-        },
-        "type": "object",
-        "x-examples": {
-          "Example 1": {
-            "created_at": "2023-03-25T17:43:23.654278298Z",
-            "description": "Periodically ping healthcheck.io",
-            "action": [
-              {
-                "webhook": {
-                  "http_method": "GET",
-                  "retry": null,
-                  "timeout_s": 5,
-                  "url": "https://hc-ping.com/812aaa48-08a5-45b7-a74c-e5baebc10ec1"
-                }
-              }
-            ],
-            "hidden_last_ran_at": "2023-03-25T21:35:00.057112087Z",
-            "id": "trig_ab1.01GWCXWB869BXW8Q2XZGE0JBQ6",
-            "name": "Healthchecks.io",
-            "owner_id": "ab1",
-            "payload": {
-              "body": "{}",
-              "content_type": "application/json",
-              "headers": {
-                "test-header": "test-value"
-              }
-            },
-            "schedule": {
-              "recurring": {
-                "cron": "0 35 * * * *",
-                "limit": 0,
-                "remaining": 0,
-                "timezone": "Etc/UTC"
-              }
-            },
-            "status": "scheduled"
-          }
-        },
-        "description": "Defines a scheduled or on-demand trigger.",
-        "examples": [],
-        "properties": {
-          "id": {
-            "type": "string",
-            "example": "trig_ab1.01GWCXWB869BXW8Q2XZGE0JBQ6",
-            "description": "A unique identifier for the trigger",
-            "readOnly": true
-          },
-          "project": {
-            "type": "string",
-            "example": "prj_0FGWCXWB869BXWSQ2XZGE0JBA3",
-            "description": "The account owning this trigger",
-            "readOnly": true
-          },
-          "name": {
-            "type": "string",
-            "example": "my example trigger",
-            "description": "A human-readable name to identify the trigger. This doesn't need to be unique but we recommend picking unique names to avoid confusion"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "example": "2023-03-25T17:43:23.654278298Z",
-            "description": "ISO8601 datetime when this trigger was installed",
-            "readOnly": true
-          },
-          "reference": {
-            "type": "string",
-            "description": "Unique user-supplied identified for this trigger. This can be used as an idempotency key when creating triggers. Must be unique if set.",
-            "example": "my-own-trigger"
-          },
-          "description": {
-            "type": "string",
-            "example": "Periodically ping healthcheck.io",
-            "description": "A human-readable description."
-          },
-          "action": {
-            "$ref": "#/components/schemas/WebhookTarget"
-          },
-          "schedule": {
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/Cron"
-              },
-              {
-                "$ref": "#/components/schemas/RunAt"
-              }
-            ]
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "scheduled",
-              "paused",
-              "expired",
-              "cancelled"
-            ],
-            "description": "Status of the trigger. \n- `scheduled` trigger will be rund according to their `trigger.schedule`\n- `paused` triggers will be rund but will not do anything.\n- `expired` triggers are scheduled triggers that exhausted their runs or have no future timepoints.\n- `cancelled` triggers cannot be rund. Those have been cancelled manually via the `/triggers/{trigger_id}/cancel` API.",
-            "example": "scheduled",
-            "readOnly": true
-          },
-          "last_ran_at": {
-            "type": "string",
-            "description": "ISO8601 datetime when this trigger was last rund",
-            "example": "2023-03-25T17:43:23.654278298Z"
-          }
-        }
+        "required": [
+          "max_num_attempts",
+          "delay_s",
+          "max_delay_s",
+          "type"
+        ]
       },
       "Run": {
         "title": "Run",
@@ -1135,39 +1219,67 @@
           "id": "mcl1jeypmouci"
         },
         "type": "object",
-        "examples": [],
+        "examples": [
+          {
+            "id": "run_063001H1Y9BH9FJNHZNHGH4NVD1RXQ",
+            "created_at": "2023-03-25T17:43:23.654278298Z",
+            "action": {
+              "url": "https://example.com/my-own-endpoint",
+              "http_method": "POST",
+              "timeout_s": 6.2,
+              "type": "webhook",
+              "retry": {
+                "max_num_attempts": 5,
+                "delay_s": 10,
+                "type": "simple"
+              }
+            },
+            "status": "succeeded",
+            "payload": {
+              "body": "My Message Payload",
+              "content_type": "application/json; charset=utf-8",
+              "headers": {
+                "X-Custom-Header": "Custom-Value"
+              }
+            }
+          }
+        ],
         "properties": {
           "id": {
             "type": "string",
-            "example": "inv_054001GXGVN9PHG2ZHNF28A7F81NYG",
-            "readOnly": true
-          },
-          "trigger": {
-            "type": "string",
-            "example": "trig_054001GXGVMVJDS09N9TQK37TB95B5",
-            "readOnly": true
-          },
-          "project": {
-            "type": "string",
-            "example": "prj_0FGWCXWB869BXWSQ2XZGE0JBA3",
+            "example": "run_063001H1Y9BH9FJNHZNHGH4NVD1RXQ",
+            "description": "A unique identifier generated by the server to identify a particular run of the trigger.",
             "readOnly": true
           },
           "created_at": {
             "type": "string",
             "example": "2023-03-25T17:43:23.654278298Z",
             "format": "date-time",
+            "description": "RFC3339 datetime indicating when the run was created.",
             "readOnly": true
           },
           "action": {
             "$ref": "#/components/schemas/WebhookTarget"
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "attempting",
+              "succeeded",
+              "failed"
+            ],
+            "example": "succeeded",
+            "description": "The status of the run. An `attempting` run means that it's still in-progress, there are possibly one or more delivery attempts linked to this run. Both `succeeded` and `failed` are terminal states.",
+            "readOnly": true
+          },
+          "payload": {
+            "$ref": "#/components/schemas/Payload"
           }
-        }
+        },
+        "description": "Defines a single run for a trigger. A run is an \"instance\" of a trigger that was created at a given point in time to execute an action (e.g. deliver a webhook)"
       },
       "WebhookAttempt": {
-        "title": "RunAttempt",
+        "title": "Webhook Delivery Attempt",
         "x-stoplight": {
           "id": "9s68v5iiffjv7"
         },
@@ -1176,21 +1288,7 @@
           "id": {
             "type": "string",
             "example": "att_054001GXBF3E9MDBACQVCCY6D5E3MN",
-            "readOnly": true
-          },
-          "run": {
-            "type": "string",
-            "example": "inv_054001GXBF2FAYW9S8N8Y4Y3E4R4N9",
-            "readOnly": true
-          },
-          "trigger": {
-            "type": "string",
-            "example": "trig_054001GXBF2A0BMDXEVB6GF4FF4BQN",
-            "readOnly": true
-          },
-          "project": {
-            "type": "string",
-            "example": "prj_054001GXBF3E9MDBACQVCCY6D5E3MN",
+            "description": "An internal unique server-generated identifier for this particular attempt.",
             "readOnly": true
           },
           "status": {
@@ -1200,6 +1298,7 @@
               "failed"
             ],
             "example": "succeeded",
+            "description": "The status of this particular webhook delivery attempt. Note that if a run has `retry` configured, each retry will generate a separate attempt object.",
             "readOnly": true
           },
           "details": {
@@ -1207,18 +1306,21 @@
             "properties": {
               "response_code": {
                 "type": "integer",
-                "example": 200
+                "example": 200,
+                "description": "The http status code returned from the webhook end point."
               },
               "response_latency_s": {
                 "type": "number",
                 "format": "double",
-                "example": 0.4
+                "example": 0.4,
+                "description": "The total latency for this webhook delivery attempt. This measures how fast the webhook end point responded to cronback."
               },
               "error_message": {
                 "type": [
                   "string",
                   "null"
-                ]
+                ],
+                "description": "If delivery was not successful, this will hold a human readable error message."
               }
             }
           },
@@ -1226,9 +1328,11 @@
             "type": "string",
             "example": "2023-03-25T17:43:23.654278298Z",
             "format": "date-time",
+            "description": "RFC3339 datetime indicating the time this attempt was created.",
             "readOnly": true
           }
-        }
+        },
+        "x-internal": true
       }
     },
     "securitySchemes": {
@@ -1294,8 +1398,43 @@
               "type": "string"
             },
             "description": "A request Id that can be used to debug errors through support channels."
+          },
+          "x-cronback-project-id": {
+            "schema": {
+              "type": "string"
+            },
+            "description": "The project identifier that owns this trigger"
           }
         }
+      }
+    },
+    "parameters": {
+      "request-id": {
+        "name": "x-cronback-request-id",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "A random trace id generated by cronback for debugging"
+      },
+      "project-id": {
+        "name": "x-cronback-project-id",
+        "in": "header",
+        "required": false,
+        "schema": {
+          "type": "string"
+        },
+        "description": "The project identifier that owns this trigger"
+      },
+      "trigger-name": {
+        "name": "trigger-name",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "The unique name identifying a trigger"
       }
     }
   },

@@ -24,7 +24,7 @@ use validator::Validate;
 )]
 pub struct Payload {
     #[cfg_attr(
-        feature = "validate",
+        feature = "validation",
         validate(length(
             max = 30,
             message = "Max number of headers reached (>=30)"
@@ -34,11 +34,11 @@ pub struct Payload {
     #[cfg_attr(feature = "server", serde(default = "default_content_type"))]
     pub content_type: String,
     #[cfg_attr(
-        feature = "validate",
+        feature = "validation",
         validate(length(
             min = 0,
-            max = 1048576,
-            message = "Payload must be under 1MiB"
+            max = 102400,
+            message = "Payload body size limit reached (>=102400)"
         ))
     )]
     #[cfg_attr(feature = "dto", proto(map_from_proto = "string_from_bytes"))]
