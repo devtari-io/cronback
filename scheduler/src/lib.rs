@@ -1,7 +1,7 @@
 pub(crate) mod db_model;
 pub(crate) mod error;
 pub(crate) mod handler;
-pub(crate) mod sched;
+pub(crate) mod spinner;
 pub(crate) mod trigger_store;
 
 use std::sync::Arc;
@@ -12,8 +12,8 @@ use lib::database::Database;
 use lib::grpc_client_provider::GrpcClientProvider;
 use lib::{netutils, service};
 use proto::scheduler_proto::scheduler_server::SchedulerServer;
-use sched::event_scheduler::EventScheduler;
 
+use crate::spinner::controller::SpinnerController;
 use crate::trigger_store::SqlTriggerStore;
 
 #[tracing::instrument(skip_all, fields(service = context.service_name()))]
@@ -28,7 +28,7 @@ pub async fn start_scheduler_server(
 
     let dispatcher_clients = Arc::new(GrpcClientProvider::new(context.clone()));
 
-    let event_scheduler = Arc::new(EventScheduler::new(
+    let controller = Arc::new(SpinnerController::new(
         context.clone(),
         Box::new(trigger_store),
         dispatcher_clients,
@@ -37,9 +37,9 @@ pub async fn start_scheduler_server(
     let addr =
         netutils::parse_addr(&config.scheduler.address, config.scheduler.port)
             .unwrap();
-    event_scheduler.start().await?;
+    controller.start().await?;
 
-    let async_es = event_scheduler.clone();
+    let async_es = controller.clone();
     let db_flush_s = config.scheduler.db_flush_s;
     tokio::spawn(async move {
         let sleep = Duration::from_secs(db_flush_s);
@@ -49,8 +49,7 @@ pub async fn start_scheduler_server(
         }
     });
 
-    let handler =
-        SchedulerAPIHandler::new(context.clone(), event_scheduler.clone());
+    let handler = SchedulerAPIHandler::new(context.clone(), controller.clone());
     let svc = SchedulerServer::new(handler);
 
     // grpc server
@@ -62,7 +61,7 @@ pub async fn start_scheduler_server(
     )
     .await;
 
-    event_scheduler.shutdown().await;
+    controller.shutdown().await;
     Ok(())
 }
 
@@ -79,7 +78,7 @@ pub mod test_helpers {
     use tokio::task::JoinHandle;
 
     use crate::handler::SchedulerAPIHandler;
-    use crate::sched::event_scheduler::EventScheduler;
+    use crate::spinner::controller::SpinnerController;
     use crate::trigger_store::SqlTriggerStore;
 
     pub async fn test_server_and_client(
@@ -97,15 +96,15 @@ pub mod test_helpers {
 
         let db = Database::in_memory().await.unwrap();
         let trigger_store = SqlTriggerStore::new(db);
-        let event_scheduler = Arc::new(EventScheduler::new(
+        let controller = Arc::new(SpinnerController::new(
             context.clone(),
             Box::new(trigger_store),
             dispatcher_client_provider,
         ));
-        event_scheduler.start().await.unwrap();
+        controller.start().await.unwrap();
 
         let handler =
-            SchedulerAPIHandler::new(context.clone(), event_scheduler.clone());
+            SchedulerAPIHandler::new(context.clone(), controller.clone());
         let svc = SchedulerServer::new(handler);
 
         let cloned_socket = Arc::clone(&socket);

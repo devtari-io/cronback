@@ -87,7 +87,9 @@ impl Authenticator {
 
         let Some(key_model) = key_model else {
             // key_id doesn't exist in the database
-            return Err(AuthError::AuthFailed("key_id doesn't exist".to_string()));
+            return Err(AuthError::AuthFailed(
+                "key_id doesn't exist".to_string(),
+            ));
         };
 
         let hash_version = key_model.hash_version;
@@ -169,7 +171,10 @@ impl FromStr for SecretApiKey {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let Some(s) = s.strip_prefix(API_KEY_PREFIX) else {
-            return Err(format!("API key doesn't start with {}", API_KEY_PREFIX))
+            return Err(format!(
+                "API key doesn't start with {}",
+                API_KEY_PREFIX
+            ));
         };
 
         match s.split_once('_') {

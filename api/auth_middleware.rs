@@ -118,7 +118,8 @@ pub async fn auth<B>(
         return Ok(next.run(req).await);
     }
 
-    let Ok(user_provided_secret) = auth_key.to_string().parse::<SecretApiKey>() else {
+    let Ok(user_provided_secret) = auth_key.to_string().parse::<SecretApiKey>()
+    else {
         return Err(ApiError::Unauthorized);
     };
 

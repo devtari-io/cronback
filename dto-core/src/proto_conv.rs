@@ -42,7 +42,8 @@ fn expand_struct(
     let mut acc = darling::Error::accumulator();
     let mut field_tokens = Vec::with_capacity(struct_data.fields.len());
     for field in struct_data.fields {
-        let Some(field_info) = acc.handle(ProtoFieldInfo::from_field(&field)) else {
+        let Some(field_info) = acc.handle(ProtoFieldInfo::from_field(&field))
+        else {
             continue;
         };
         // direction-wise #[direction_proto(..)] attributes
@@ -167,12 +168,15 @@ fn expand_non_unit_enum(
 
     for variant in enum_data.variants {
         // general #[proto(..)] attributes
-        let Some(variant_info) = acc.handle(ProtoVariantInfo::from_variant(&variant)) else {
+        let Some(variant_info) =
+            acc.handle(ProtoVariantInfo::from_variant(&variant))
+        else {
             continue;
         };
 
         // direction-wise #[direction_proto(..)] attributes
-        let Some(direction) = acc.handle(direction.with_variant(&variant)) else {
+        let Some(direction) = acc.handle(direction.with_variant(&variant))
+        else {
             continue;
         };
 
@@ -260,11 +264,14 @@ fn expand_unit_only_enum(
     };
 
     for variant in enum_data.variants {
-        let Some(variant_info) = acc.handle(ProtoVariantInfo::from_variant(&variant)) else {
+        let Some(variant_info) =
+            acc.handle(ProtoVariantInfo::from_variant(&variant))
+        else {
             continue;
         };
         // direction-wise #[direction_proto(..)] attributes
-        let Some(direction) = acc.handle(direction.with_variant(&variant)) else {
+        let Some(direction) = acc.handle(direction.with_variant(&variant))
+        else {
             continue;
         };
         let variant_tok = acc

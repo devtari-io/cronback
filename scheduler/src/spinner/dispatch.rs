@@ -7,12 +7,26 @@ use lib::grpc_client_provider::{
     GrpcClientFactory,
     GrpcClientProvider,
 };
-use lib::prelude::*;
+use lib::prelude::{RequestContext, *};
 use proto::dispatcher_proto::{self, DispatchRequest};
 use proto::run_proto::Run;
 use thiserror::Error;
+use tracing::info;
 
 use crate::db_model::Trigger;
+
+#[tracing::instrument(skip_all, fields(trigger_id = %trigger.id))]
+pub(crate) async fn dispatch(
+    context: RequestContext,
+    trigger: Trigger,
+    dispatch_clients: Arc<GrpcClientProvider<ScopedDispatcherClient>>,
+    mode: DispatchMode,
+) -> Result<Run, DispatchError> {
+    let mut job =
+        DispatchJob::from_trigger(context, trigger, dispatch_clients, mode);
+    info!(trigger = job.trigger_id(), "async-dispatch");
+    job.run().await
+}
 
 #[derive(Error, Debug)]
 pub enum DispatchError {

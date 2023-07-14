@@ -234,7 +234,7 @@ impl ActiveTriggerMap {
         ran_at: DateTime<Utc>,
     ) {
         let Some(trigger) = self.state.get_mut(trigger_id) else {
-             return;
+            return;
         };
         // Keep the last known run time (if set) unless we are seeing
         // a more recent one.

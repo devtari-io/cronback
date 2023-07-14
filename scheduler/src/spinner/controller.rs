@@ -17,46 +17,41 @@ use proto::run_proto::Run;
 use proto::scheduler_proto::{UpsertTriggerRequest, UpsertTriggerResponse};
 use tracing::{debug, error, info, trace, warn};
 
-use super::dispatch::dispatch;
-use super::event_dispatcher::DispatchMode;
+use super::active_triggers::{ActiveTrigger, ActiveTriggerMap};
+use super::dispatch::{dispatch, DispatchMode};
 use super::spinner::{Spinner, SpinnerHandle};
-use super::triggers::ActiveTriggerMap;
 use crate::db_model::triggers::Status;
 use crate::db_model::Trigger;
 use crate::error::TriggerError;
-use crate::sched::triggers::ActiveTrigger;
 use crate::trigger_store::{TriggerStore, TriggerStoreError};
 
-/**
- *
- * EventScheduler is the gateway to the scheduling and dispatch thread
- * (spinner) It's designed to be easily shared with inner mutability and
- * minimal locking to reduce contention.
- *
- *
- * Event Scheduler also wraps the database. I'll load and store triggers
- * from the database as needed. Installing a new trigger happens on two
- * steps:
- * - Inserting the trigger in the database
- * - Adding the trigger to the ActiveTriggerMap (while holding a write lock)
- *
- * This is designed like this to minimise locking the ActiveTriggerMap (vs.
- * making database queries from the TriggerMap while holding the write lock
- * unnecessarily)
- *
- * EventScheduler owns
- *   - Active TriggerMap
- *   - The SpinnerHandle
- *   - Database Handle
- * Provides:
- *   - API to install/remove/update/query triggers
- *   - Start/pause the spinner.
- *
- * Needs to take care of:
- *   - Compaction/eviction: remove expired triggers.
- *   - Flushes active triggers map into the database periodically.
- */
-pub(crate) struct EventScheduler {
+///  SpinnerController is the gateway to the scheduling and dispatch thread
+///  (spinner) It's designed to be easily shared with inner mutability and
+///  minimal locking to reduce contention.
+///
+///
+///  SpinnerController also wraps the database. I'll load and store triggers
+///  from the database as needed. Installing a new trigger happens on two
+///  steps:
+///  - Inserting the trigger in the database
+///  - Adding the trigger to the ActiveTriggerMap (while holding a write lock)
+///
+///  This is designed like this to minimise locking the ActiveTriggerMap (vs.
+///  making database queries from the TriggerMap while holding the write lock
+///  unnecessarily)
+///
+///  SpinnerController owns
+///  - Active TriggerMap
+///  - The SpinnerHandle
+///  - Database Handle
+///  Provides:
+///  - API to install/remove/update/query triggers
+///  - Start/pause the spinner.
+///
+///  Needs to take care of:
+///  - Compaction/eviction: remove expired triggers.
+///  - Flushes active triggers map into the database periodically.
+pub(crate) struct SpinnerController {
     context: ServiceContext,
     triggers: Arc<RwLock<ActiveTriggerMap>>,
     spinner: Mutex<Option<SpinnerHandle>>,
@@ -65,7 +60,7 @@ pub(crate) struct EventScheduler {
     dispatcher_clients: Arc<GrpcClientProvider<ScopedDispatcherClient>>,
 }
 
-impl EventScheduler {
+impl SpinnerController {
     pub fn new(
         context: ServiceContext,
         store: Box<dyn TriggerStore + Send + Sync>,
@@ -85,7 +80,7 @@ impl EventScheduler {
         {
             let mut spinner = self.spinner.lock().unwrap();
             if spinner.is_some() {
-                info!("EventScheduler has already started!");
+                info!("SpinnerController has already started!");
                 return Ok(());
             }
             *spinner = Some(
@@ -101,7 +96,7 @@ impl EventScheduler {
         self.load_triggers_from_database().await
     }
 
-    // Do things like compaction and checkpointing.
+    /// Checkpointing flushes the dirty active triggers to the database
     pub async fn perform_checkpoint(&self) {
         trace!("Attempting to checkpoint triggers");
         // Persist active triggers to database
@@ -125,9 +120,8 @@ impl EventScheduler {
                 let Some(trigger) = w.get(&trigger_id) else {
                     continue;
                 };
-                // We can't hold the lock in async
-                // scope so we need to collect the triggers to
-                // save and then save them outside the lock.
+                // We can't hold the lock in async scope so we need to collect
+                // the triggers to save and then save them outside the lock.
                 triggers_to_save.push(trigger.clone());
                 // A trigger can be removed from the active map if it is
                 // expired/cancelled
@@ -177,8 +171,6 @@ impl EventScheduler {
                 w.add_to_awaiting_db_flush(trigger_id);
             }
         }
-
-        // TODO: Expired triggers should be removed from active map.
     }
 
     pub async fn get_trigger_id_opt(
@@ -675,7 +667,7 @@ impl EventScheduler {
             if let Some(spinner) = spinner.take() {
                 spinner.shutdown();
             } else {
-                info!("EventScheduler has already been shutdown!");
+                info!("SpinnerController has already been shutdown!");
             }
         }
         self.perform_checkpoint().await;

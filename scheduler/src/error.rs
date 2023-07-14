@@ -2,7 +2,7 @@ use lib::types::TriggerId;
 use thiserror::Error;
 
 use crate::db_model::triggers::Status;
-use crate::sched::event_dispatcher::DispatchError;
+use crate::spinner::dispatch::DispatchError;
 use crate::trigger_store::TriggerStoreError;
 
 #[allow(unused)]

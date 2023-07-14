@@ -15,10 +15,10 @@ use metrics::{counter, gauge, histogram};
 use tokio::runtime::Handle;
 use tracing::{debug, info, trace, warn, Instrument};
 
-use super::event_dispatcher::DispatchError;
-use super::triggers::{ActiveTriggerMap, TriggerTemporalState};
+use super::active_triggers::{ActiveTriggerMap, TriggerTemporalState};
+use super::dispatch::{DispatchError, DispatchMode};
 use crate::db_model::triggers::Status;
-use crate::sched::dispatch;
+use crate::spinner::dispatch;
 
 pub(crate) struct Spinner {
     tokio_handle: Handle,
@@ -52,47 +52,50 @@ impl SpinnerHandle {
     }
 }
 
-/*
- * Design thoughts:
- * - Spinner is not responsible for retries. The async dispatch logic will
- *   need to take care of this if the RPC call failed.
- * - The spinner will only consider triggers already installed in TriggerMap.
- * - Short sweet locking of TriggerMap to reduce contention. Write-locking
- *   TriggerMap for too long will cause grpc handlers to block.
- * - The design needs to handles wall clock time shifts nicely (forwards or
- *   backwards)
- * - Spinner will pop as many triggers from the min-heap as long as the
- *   next_tick is smaller or equal to the current timestamp. The rest is kept
- *   for the next tick.
- * - We don't need to drop the tail of the min-heap (after drain) if no
- *   change happened to triggers map.
- *
- *   ** Shared State & Concurrency Control **
- *   Because we want to reduce lock contention and freezing the spinner as
- * much   as possible, the design calls for the following requirements:
- *      - We maintain a shared Trigger Map behind a read-write lock that can
- *        be accessed from the EventScheduler API, SchedulerAPIHandler, and
- *        more.
- *      - The EventScheduler owns the spinner exclusively. The spinner is
- *        self contained and has a well defined job.
- *      - Spinner runs on its own dedicated thread and delegates IO work
- *        (dispatch) via `tokio_handle`.
- *      - EventScheduler is the only entry point for adding/removing/querying
- *       information about triggers. The EventScheduler will performing
- * database       writes to persist changes, but for the purposes of this
- * component, our       in-memory state (TriggerMap) is the source-of-truth.
- *      - The Spinner maintains the `TemporalState` locally. Each installed
- *        trigger will have a corresponding TemporalState that tells the
- *        spinner the time point to trigger the next event. We keep
- *        TemporalState(s) in a min-heap sorted by the next tick for
- *        installed triggers. This state is created from the TriggerMap and
- *        is checked/updated on each iteration of the loop.
- *      - EventScheduler will only edit the trigger map as it receives API
- *        calls.
- *      - TriggerMap maintains a set a dirty trigger Ids to let the Spinner
- *        know which triggers require TemporalState rebuilding.
- *
- */
+///  **Design thoughts:**
+///   - [Spinner] is not responsible for dispatch retries. The async dispatch
+///     logic will need to take care of this if the RPC call failed.
+///   - The spinner will only consider triggers already installed in
+///     [ActiveTriggerMap].
+///   - Short sweet locking of [ActiveTriggerMap] to reduce contention.
+///     Write-locking [ActiveTriggerMap] for too long will cause grpc handlers
+///     to block.
+///   - The design needs to handles wall clock time shifts nicely (forwards or
+///     backwards)
+///   - Spinner will pop as many triggers from the min-heap as long as the
+///     next_tick is smaller or equal to the current timestamp. The rest is kept
+///     for the next tick.
+///   - We don't need to drop the tail of the min-heap (after drain) if no
+///     change happened to triggers map.
+///
+///  **Shared State & Concurrency Control**
+///   Because we want to reduce lock contention and freezing the spinner as
+///   much as possible, the design calls for the following requirements:
+///   - We maintain a shared Trigger Map behind a read-write lock that can be
+///     accessed from the [SpinnerController] API, [SchedulerAPIHandler], and
+///     more.
+///   - The [SpinnerController] owns the spinner exclusively. The spinner is
+///     self contained and has a well defined job.
+///   - Spinner runs on its own dedicated thread and delegates IO work
+///     (dispatch) via `tokio_handle`.
+///   - [SpinnerController] is the only entry point for adding/removing/querying
+///     information about triggers. The [SpinnerController] will performing
+///     database writes to persist changes, but for the purposes of this
+///     component, our in-memory state ([ActiveTriggerMap]) is the
+///     source-of-truth.
+///   - The [Spinner] maintains the [TriggerTemporalState] locally. Each
+///     installed trigger will have a corresponding TemporalState that tells the
+///     spinner the time point to trigger the next event. We keep
+///     TemporalState(s) in a min-heap sorted by the next tick for installed
+///     triggers. This state is created from the [ActiveTriggerMap] and is
+///     checked/updated on each iteration of the loop.
+///   - [SpinnerController] will only edit the trigger map as it receives API
+///     calls.
+///   - The [ActiveTriggerMap] maintains a set a dirty trigger Ids to let the
+///     Spinner know which triggers require [TriggerTemporalState] rebuilding.
+///
+///     [SpinnerController]: super::controller::SpinnerController
+///     [SchedulerAPIHandler]: crate::handler::SchedulerAPIHandler
 impl Spinner {
     pub fn new(
         context: ServiceContext,
@@ -181,8 +184,6 @@ impl Spinner {
             );
 
             /*
-             * The rough plan:
-             *
              * 1. Go over all installed triggers that have next_tick <= now()
              * Those are removed from the min-heap. Keep the list of removed
              * triggers until we finish up the loop.
@@ -190,7 +191,9 @@ impl Spinner {
              */
             let mut dispatch_queue = vec![];
             for _ in 0..max_triggers_per_tick {
-                let Some(temporal_state) = temporal_states.peek() else { break };
+                let Some(temporal_state) = temporal_states.peek() else {
+                    break;
+                };
                 if temporal_state.0.next_tick <= Utc::now() {
                     let temporal_state = temporal_states.pop().unwrap().0;
                     trace!(
@@ -246,9 +249,9 @@ impl Spinner {
                 }
             }
             /*
-             * 3. Write-Lock TriggerMap
+             * 3. Write-Lock ActiveTriggerMap
              * 4. Calculate temporal state for the removed triggers and
-             * re-insert.
+             *    re-insert.
              */
             if !dispatch_queue.is_empty() {
                 // Maybe individual triggers need to be advanced.
@@ -273,15 +276,13 @@ impl Spinner {
                 }
             }
             /*
-             * 5. Check if we have dirty triggers,
-             * fetch their contents.
-             * 6. Rebuild temporal state if
-             * needed.
+             * 5. Check if we have dirty triggers, fetch their contents.
+             * 6. Rebuild temporal state if needed.
              */
             // Is the state dirty?
             if self.triggers.read().unwrap().is_dirty() {
                 trace!("Triggers updated, reloading...");
-                // TODO reload the triggers that has been updated. Or
+                // TODO only reload the triggers that has been updated. Or
                 // re-construct the entire temporal state.
                 let mut w = self.triggers.write().unwrap();
                 temporal_states = w.build_temporal_state();
@@ -317,8 +318,8 @@ impl Spinner {
         let trigger = {
             let r = self.triggers.read().unwrap();
             let Some(trigger) = r.get(trigger_id) else {
-                // The trigger could have been removed from the active trigger maps, let's just
-                // ignore it.
+                // The trigger could have been removed from the active trigger
+                // maps, let's just ignore it.
                 return None;
             };
             trigger.clone()
@@ -327,8 +328,7 @@ impl Spinner {
         if trigger.status == Status::Paused {
             let handle = self.tokio_handle.spawn(
                 async move {
-                    // We probably should persist this fake run
-                    // somewhere.
+                    // We probably should persist this fake run somewhere.
                     debug!(
                         "Skipping dispatch of PAUSED trigger {}",
                         trigger.id
@@ -363,7 +363,7 @@ impl Spinner {
                     ),
                     trigger,
                     provider,
-                    super::event_dispatcher::DispatchMode::Async,
+                    DispatchMode::Async,
                 )
                 .await
                 .map(|_| ())

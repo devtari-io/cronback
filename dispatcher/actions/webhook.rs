@@ -217,14 +217,21 @@ async fn dispatch_webhook(
     );
 
     if let Some(payload) = payload {
-        let Ok(user_headers)  = reqwest::header::HeaderMap::try_from(&payload.headers) else {
-            return WebhookAttemptDetails::with_error("Bad request: Invalid header map".to_string());
+        let Ok(user_headers) =
+            reqwest::header::HeaderMap::try_from(&payload.headers)
+        else {
+            return WebhookAttemptDetails::with_error(
+                "Bad request: Invalid header map".to_string(),
+            );
         };
         // The user headers take precedence over the cronback headers.
         http_headers.extend(user_headers);
 
-        let Ok(content_type) = HeaderValue::from_str(&payload.content_type) else {
-            return WebhookAttemptDetails::with_error("Bad request: Invalid content-type header value".to_string());
+        let Ok(content_type) = HeaderValue::from_str(&payload.content_type)
+        else {
+            return WebhookAttemptDetails::with_error(
+                "Bad request: Invalid content-type header value".to_string(),
+            );
         };
 
         http_headers.insert(reqwest::header::CONTENT_TYPE, content_type);

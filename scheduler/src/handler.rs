@@ -27,17 +27,17 @@ use proto::scheduler_proto::{
 use tonic::{Request, Response, Status};
 
 use crate::db_model::triggers;
-use crate::sched::event_scheduler::EventScheduler;
+use crate::spinner::controller::SpinnerController;
 
 pub(crate) struct SchedulerAPIHandler {
     #[allow(unused)]
     context: ServiceContext,
-    scheduler: Arc<EventScheduler>,
+    scheduler: Arc<SpinnerController>,
 }
 impl SchedulerAPIHandler {
     pub(crate) fn new(
         context: ServiceContext,
-        scheduler: Arc<EventScheduler>,
+        scheduler: Arc<SpinnerController>,
     ) -> Self {
         Self { context, scheduler }
     }
@@ -63,11 +63,7 @@ impl Scheduler for SchedulerAPIHandler {
         request: Request<RunTriggerRequest>,
     ) -> Result<Response<RunTriggerResponse>, Status> {
         let ctx = request.context()?;
-        // check if trigger exists
-        // A trigger that exists will run regardless of its state
-        // manual run has nothing to do with the spinner or event
-        // scheduler
-        //
+        // A trigger that exists can run regardless of its state.
         let request = request.into_inner();
         let mode = request.mode.into();
         let run = self.scheduler.run_trigger(ctx, request.name, mode).await?;
