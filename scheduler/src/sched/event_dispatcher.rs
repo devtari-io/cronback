@@ -15,7 +15,7 @@ use thiserror::Error;
 use crate::db_model::Trigger;
 
 #[derive(Error, Debug)]
-pub(crate) enum DispatchError {
+pub enum DispatchError {
     #[error("Failed while attempting to communicate with dispatcher")]
     Transport(#[from] tonic::transport::Error),
     #[error("Dispatcher returned an error, this is unexpected!")]
@@ -26,12 +26,12 @@ pub(crate) enum DispatchError {
 
 #[derive(Debug, FromProto, IntoProto)]
 #[proto(target = "proto::dispatcher_proto::DispatchMode")]
-pub(crate) enum DispatchMode {
+pub enum DispatchMode {
     Sync,
     Async,
 }
 
-pub(crate) struct DispatchJob {
+pub struct DispatchJob {
     context: RequestContext,
     dispatch_request: DispatchRequest,
     dispatcher_clients: Arc<GrpcClientProvider<ScopedDispatcherClient>>,

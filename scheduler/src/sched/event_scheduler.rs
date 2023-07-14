@@ -20,9 +20,10 @@ use tracing::{debug, error, info, trace, warn};
 use super::dispatch::dispatch;
 use super::event_dispatcher::DispatchMode;
 use super::spinner::{Spinner, SpinnerHandle};
-use super::triggers::{ActiveTriggerMap, TriggerError};
+use super::triggers::ActiveTriggerMap;
 use crate::db_model::triggers::Status;
 use crate::db_model::Trigger;
+use crate::error::TriggerError;
 use crate::sched::triggers::ActiveTrigger;
 use crate::trigger_store::{TriggerStore, TriggerStoreError};
 

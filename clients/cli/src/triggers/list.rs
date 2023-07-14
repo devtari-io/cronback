@@ -1,5 +1,8 @@
+use std::fmt::Write;
+
 use anyhow::Result;
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use clap::Parser;
 use colored::Colorize;
 use cronback::{
@@ -82,7 +85,7 @@ impl Command for List {
                 "Name",
                 "Status",
                 "Schedule",
-                "Latest Run At",
+                "Runs",
                 "End Point",
                 "Payload Size",
                 "Created At",
@@ -97,10 +100,10 @@ impl Command for List {
                     trigger.name.expect("name should be present"),
                     trigger.status.fancy(),
                     trigger.schedule.map(fancy_schedule).unwrap_or_default(),
-                    trigger
-                        .last_ran_at
-                        .map(|x| x.to_rfc2822())
-                        .unwrap_or_default(),
+                    fancy_runs(
+                        trigger.last_ran_at,
+                        trigger.estimated_future_runs
+                    ),
                     endpoint,
                     trigger
                         .payload
@@ -132,9 +135,33 @@ impl Command for List {
     }
 }
 
-fn fancy_schedule(schedule: Schedule) -> String {
-    use std::fmt::Write;
+fn fancy_runs(
+    last_ran_at: Option<DateTime<Utc>>,
+    estimated_future_runs: Vec<DateTime<Utc>>,
+) -> String {
+    let mut runs = String::new();
 
+    let last_ran_at = last_ran_at.map(|x| x.to_rfc2822());
+    if let Some(last_ran_at) = last_ran_at {
+        writeln!(&mut runs, "Last run was at:").unwrap();
+        writeln!(&mut runs, " - {}", last_ran_at).unwrap();
+    };
+    let future_runs: Vec<_> = estimated_future_runs
+        .into_iter()
+        .map(|x| x.to_rfc2822())
+        .collect();
+
+    if !future_runs.is_empty() {
+        writeln!(&mut runs, "Next runs:").unwrap();
+        for run in future_runs {
+            writeln!(&mut runs, " - {}", run).unwrap();
+        }
+    };
+
+    runs
+}
+
+fn fancy_schedule(schedule: Schedule) -> String {
     fn fancy_recurring(r: Recurring) -> String {
         let mut buf = String::new();
         writeln!(buf, "{}", r.cron.unwrap_or_default()).unwrap();

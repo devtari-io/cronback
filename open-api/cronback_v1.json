@@ -870,6 +870,17 @@
             "format": "date-time",
             "description": "RFC3339 datetime of the latest run of this trigger.",
             "readOnly": true
+          },
+          "estimated_future_runs": {
+            "type": "array",
+            "description": "The list of estimated future run timestamps of this trigger (clipped at 5 points _or_ the number of remaining runs, whichever smaller).",
+            "items": {
+              "type": "string",
+              "format": "date-time",
+              "example": "2023-06-22T18:00:00Z",
+              "readOnly": true
+            },
+            "readOnly": true
           }
         },
         "required": [

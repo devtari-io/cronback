@@ -82,29 +82,9 @@ pub struct Trigger {
     pub last_ran_at: Option<DateTime<Utc>>,
     #[cfg_attr(feature = "validation", validate)]
     pub payload: Option<Payload>,
-    // Estimate of timepoints of the next runs (up to 5 runs)
-    #[cfg_attr(
-        feature = "dto",
-        proto(required),
-        from_proto(map = "vec_datetime_from"),
-        into_proto(map = "vec_datetime_into")
-    )]
-    pub estimated_future_runs: Option<Vec<DateTime<Utc>>>,
-}
-
-#[cfg(feature = "dto")]
-// Quick-n-dirty hack because `dto` doesn't properly handle Option<Vec<_>>
-fn vec_datetime_from(
-    input: Vec<proto::common::DateTime>,
-) -> Vec<chrono::DateTime<Utc>> {
-    input.into_iter().map(Into::into).collect()
-}
-
-#[cfg(feature = "dto")]
-fn vec_datetime_into(
-    input: Vec<chrono::DateTime<Utc>>,
-) -> Vec<proto::common::DateTime> {
-    input.into_iter().map(Into::into).collect()
+    // Estimate of timepoints of the next runs (up to 5 runs).
+    #[serde(default)]
+    pub estimated_future_runs: Vec<DateTime<Utc>>,
 }
 
 impl Trigger {

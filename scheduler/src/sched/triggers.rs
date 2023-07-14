@@ -1,48 +1,15 @@
 use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashMap, HashSet};
-use std::iter::Peekable;
-use std::str::FromStr;
 
-use chrono::{DateTime, FixedOffset, Utc};
-use chrono_tz::{Tz, UTC};
-use cron::{OwnedScheduleIterator, Schedule as CronSchedule};
+use chrono::{DateTime, Utc};
+use chrono_tz::Tz;
 use lib::types::TriggerId;
-use thiserror::Error;
 use tracing::{info, trace};
 
-use super::event_dispatcher::DispatchError;
-use crate::db_model::triggers::{Schedule, Status};
+use crate::db_model::schedule::ScheduleIter;
+use crate::db_model::triggers::Status;
 use crate::db_model::Trigger;
-use crate::trigger_store::TriggerStoreError;
-
-#[allow(unused)]
-#[derive(Error, Debug)]
-pub(crate) enum TriggerError {
-    #[error("Cannot parse cron expression")]
-    CronParse(#[from] cron::error::Error),
-    #[error(
-        "Unrecognized timezone '{0}' was supplied, are you sure this is an \
-         IANA timezone?"
-    )]
-    InvalidTimezone(String),
-    #[error("Trigger '{0}' has no schedule!")]
-    NotScheduled(TriggerId),
-    #[error("Trigger '{0}' is unknown to this scheduler!")]
-    NotFound(String),
-    #[error("Cannot {0} on a trigger with status {1}")]
-    InvalidStatus(String, Status),
-    //join error
-    #[error("Internal async processing failure!")]
-    JoinError(#[from] tokio::task::JoinError),
-    #[error("Operation on underlying trigger store failed: {0}")]
-    TriggerStore(#[from] TriggerStoreError),
-    #[error("Cannot dispatch a run for this trigger")]
-    Run(#[from] DispatchError),
-    #[error("Trigger '{0}' already exists")]
-    AlreadyExists(/* name */ String),
-    #[error("{0}")]
-    PreconditionFailed(String),
-}
+use crate::error::TriggerError;
 
 ///
 /// Maintains the set of `active` triggers in memory. Expired triggers are
@@ -342,128 +309,10 @@ impl PartialEq for TriggerTemporalState {
 }
 impl Eq for TriggerTemporalState {}
 
-/// A type that abstracts the generator for future ticks, whether it's backed
-/// by a cron patter, or a list of time points.
-pub(crate) enum TriggerFutureTicks {
-    CronPattern {
-        next_ticks: Peekable<OwnedScheduleIterator<Tz>>,
-        remaining: Option<u64>,
-    },
-    RunAt {
-        run_at: BinaryHeap<Reverse<DateTime<FixedOffset>>>,
-        remaining: u64,
-    },
-}
-
-impl TriggerFutureTicks {
-    pub fn from_schedule(
-        schedule_raw: &Schedule,
-        last_ran_at: Option<DateTime<Utc>>,
-    ) -> Result<Self, TriggerError> {
-        match schedule_raw {
-            | Schedule::Recurring(cron) => {
-                let raw_pattern = cron.cron.clone();
-                let cron_schedule = CronSchedule::from_str(&raw_pattern)?;
-                let tz: Tz = cron.timezone.parse().map_err(|_| {
-                    TriggerError::InvalidTimezone(cron.timezone.clone())
-                })?;
-                let next_ticks = if let Some(last_ran_at) = last_ran_at {
-                    cron_schedule
-                        .after_owned(last_ran_at.with_timezone(&UTC))
-                        .peekable()
-                } else {
-                    cron_schedule.upcoming_owned(tz).peekable()
-                };
-                let remaining = cron.remaining.or(cron.limit);
-                Ok(TriggerFutureTicks::CronPattern {
-                    next_ticks,
-                    remaining,
-                })
-            }
-            | Schedule::RunAt(run_at) => {
-                let mut ticks = BinaryHeap::new();
-                let last_ran_at =
-                    last_ran_at.unwrap_or(Utc::now()).with_timezone(&UTC);
-                let mut remaining = 0;
-
-                for ts in run_at.timepoints.iter() {
-                    if *ts > last_ran_at {
-                        remaining += 1;
-                        // Reversed to make this min-heap
-                        ticks.push(Reverse(*ts));
-                    }
-                }
-                Ok(TriggerFutureTicks::RunAt {
-                    run_at: ticks,
-                    remaining,
-                })
-            }
-        }
-    }
-
-    // Advances the iterator and peeks the following item
-    pub fn advance_and_peek(&mut self) -> Option<DateTime<Tz>> {
-        let _ = self.peek_or_next(true);
-        self.peek_or_next(false)
-    }
-
-    // Looks at the next tick.
-    pub fn peek(&mut self) -> Option<DateTime<Tz>> {
-        self.peek_or_next(false)
-    }
-
-    pub fn remaining(&self) -> Option<u64> {
-        match self {
-            | Self::CronPattern { remaining, .. } => *remaining,
-            | Self::RunAt { remaining, .. } => Some(*remaining),
-        }
-    }
-
-    fn peek_or_next(&mut self, next: bool) -> Option<DateTime<Tz>> {
-        match self {
-            // We hit the run limit.
-            | Self::CronPattern {
-                remaining: Some(events_limit),
-                ..
-            } if *events_limit == 0 => None,
-            // We might have more runs
-            | Self::CronPattern {
-                next_ticks,
-                remaining: remaining_events_limit,
-                ..
-            } => {
-                if next {
-                    let n = next_ticks.next();
-                    if n.is_some() {
-                        if let Some(events_limit) = remaining_events_limit {
-                            // consume events.
-                            *events_limit -= 1;
-                        }
-                    }
-                    n
-                } else {
-                    next_ticks.peek().cloned()
-                }
-            }
-            | Self::RunAt { run_at, remaining } => {
-                let next_point = if next {
-                    let res = run_at.pop().map(|f| f.0);
-                    *remaining -= 1;
-                    res
-                } else {
-                    run_at.peek().map(|f| f.0)
-                };
-                // Internally, we convert everything to UTC.
-                next_point.map(|f| f.with_timezone(&UTC))
-            }
-        }
-    }
-}
-
 // A wrapper around Trigger suitable for scheduler operations.
 pub(crate) struct ActiveTrigger {
     inner: Trigger,
-    ticks: TriggerFutureTicks,
+    ticks: ScheduleIter,
 }
 
 impl ActiveTrigger {
@@ -482,7 +331,7 @@ impl ActiveTrigger {
         } else {
             trigger.last_ran_at
         };
-        let ticks = TriggerFutureTicks::from_schedule(k, last_ran_at)?;
+        let ticks = ScheduleIter::from_schedule(k, last_ran_at)?;
         // We assume that Trigger.schedule is never None
         Ok(Self {
             inner: trigger,
@@ -506,16 +355,11 @@ impl ActiveTrigger {
     }
 
     pub fn advance(&mut self) -> Option<DateTime<Tz>> {
-        let res = self.ticks.advance_and_peek();
+        // Advances the iterator and peeks the following item
+        let _ = self.ticks.next();
+        let res = self.ticks.peek();
         let schedule = self.inner.schedule.as_mut().unwrap();
-        match schedule {
-            | Schedule::Recurring(cron) => {
-                cron.remaining = self.ticks.remaining();
-            }
-            | Schedule::RunAt(run_at) => {
-                run_at.remaining = self.ticks.remaining();
-            }
-        };
+        schedule.set_remaining(self.ticks.remaining());
         res
     }
 
@@ -541,7 +385,7 @@ mod tests {
     use lib::types::{Action, HttpMethod, ProjectId, TriggerId, Webhook};
 
     use super::*;
-    use crate::db_model::triggers::{Recurring, RunAt};
+    use crate::db_model::schedule::{Recurring, Schedule};
     use crate::db_model::Trigger;
 
     fn create_cron_schedule(
@@ -552,13 +396,6 @@ mod tests {
             cron: pattern.to_string(),
             timezone: "Europe/London".into(),
             limit: cron_events_limit,
-            remaining: None,
-        })
-    }
-
-    fn create_run_at(timepoints: Vec<DateTime<FixedOffset>>) -> Schedule {
-        Schedule::RunAt(RunAt {
-            timepoints,
             remaining: None,
         })
     }
@@ -584,85 +421,6 @@ mod tests {
             schedule: Some(sched),
             last_ran_at: None,
         }
-    }
-
-    #[test]
-    fn future_ticks_parsing_cron() -> Result<(), TriggerError> {
-        let cron_pattern = "0 5 * * * *"; // fifth minute of every hour
-        let schedule = create_cron_schedule(cron_pattern, None);
-
-        let mut result = TriggerFutureTicks::from_schedule(&schedule, None)?;
-        assert!(matches!(result, TriggerFutureTicks::CronPattern { .. }));
-
-        assert!(result.peek().is_some());
-        let TriggerFutureTicks::CronPattern {
-            mut next_ticks,
-            remaining: remaining_events_limit,
-        } = result else {
-            panic!("Should never get here!");
-        };
-
-        assert_eq!(remaining_events_limit, None);
-
-        assert!(next_ticks.peek().unwrap() > &Utc::now());
-        Ok(())
-    }
-
-    #[test]
-    fn future_ticks_parsing_cron_with_limits() -> Result<(), TriggerError> {
-        //  sec  min   hour   day of month   month   day of week   year
-        //  A specific second in the future, this should yield exactly one time
-        // point.
-        let cron_pattern = "0 5 4 20 3 * 2040"; // fifth minute of every hour
-        let schedule = create_cron_schedule(cron_pattern, Some(4));
-
-        let mut result = TriggerFutureTicks::from_schedule(&schedule, None)?;
-        assert!(matches!(result, TriggerFutureTicks::CronPattern { .. }));
-
-        if let TriggerFutureTicks::CronPattern {
-            remaining: remaining_events_limit,
-            ..
-        } = result
-        {
-            assert_eq!(remaining_events_limit, Some(4));
-        } else {
-            panic!("Should never get here!");
-        }
-
-        assert!(result.peek().is_some());
-        assert!(result.advance_and_peek().is_none());
-        assert!(result.peek().is_none());
-        Ok(())
-    }
-
-    #[test]
-    fn future_ticks_parsing_run_at() -> Result<(), TriggerError> {
-        // generating some time points, one in the past, and three in the
-        // future.
-        let now = Utc::now().fixed_offset();
-        let past_1m = now - chrono::Duration::minutes(1);
-        let future_2m = now + chrono::Duration::minutes(2);
-        let future_3m = now + chrono::Duration::minutes(3);
-        let timepoints = vec![past_1m, future_2m, future_3m];
-
-        let schedule = create_run_at(timepoints);
-
-        let mut result = TriggerFutureTicks::from_schedule(&schedule, None)?;
-        assert!(matches!(result, TriggerFutureTicks::RunAt { .. }));
-
-        if let TriggerFutureTicks::RunAt { ref run_at, .. } = result {
-            assert_eq!(run_at.len(), 2);
-        } else {
-            panic!("Should never get here!");
-        }
-
-        assert!(result.peek().is_some());
-        assert!(result.advance_and_peek().is_some());
-        assert!(result.peek().is_some());
-        assert!(result.advance_and_peek().is_none());
-        assert!(result.peek().is_none());
-
-        Ok(())
     }
 
     #[test]
