@@ -30,6 +30,7 @@ pub struct MainConfig {
     pub prometheus_port: u16,
     pub dispatcher_cell_map: HashMap<u64, String>,
     pub scheduler_cell_map: HashMap<u64, String>,
+    pub project_store_cell_map: HashMap<u64, String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
