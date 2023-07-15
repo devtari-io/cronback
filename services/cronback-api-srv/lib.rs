@@ -19,6 +19,7 @@ use axum::response::IntoResponse;
 use axum::routing::get;
 use axum::Router;
 use lib::clients::dispatcher_client::ScopedDispatcherClient;
+use lib::clients::project_srv_client::ScopedProjectServiceClient;
 use lib::clients::scheduler_client::ScopedSchedulerClient;
 use lib::config::Config;
 use lib::database::Database;
@@ -55,6 +56,8 @@ pub struct AppState {
         Box<dyn GrpcClientFactory<ClientType = ScopedSchedulerClient>>,
     pub dispatcher_clients:
         Box<dyn GrpcClientFactory<ClientType = ScopedDispatcherClient>>,
+    pub project_srv_clients:
+        Box<dyn GrpcClientFactory<ClientType = ScopedProjectServiceClient>>,
 }
 
 async fn fallback() -> (StatusCode, &'static str) {
@@ -80,6 +83,7 @@ pub async fn start_api_server(
         ))),
         scheduler_clients: Box::new(GrpcClientProvider::new(context.clone())),
         dispatcher_clients: Box::new(GrpcClientProvider::new(context.clone())),
+        project_srv_clients: Box::new(GrpcClientProvider::new(context.clone())),
     });
 
     let service_name = context.service_name().to_string();
