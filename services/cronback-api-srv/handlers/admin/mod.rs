@@ -26,6 +26,9 @@ pub(crate) fn routes(shared_state: Arc<AppState>) -> Router {
             "/projects",
             Router::new()
                 .route("/", axum::routing::post(projects::create))
+                .route("/:id/disable", axum::routing::post(projects::disable))
+                .route("/:id/enable", axum::routing::post(projects::enable))
+                .with_state(Arc::clone(&shared_state))
                 .route_layer(middleware::from_fn_with_state(
                     Arc::clone(&shared_state),
                     admin_only_auth,

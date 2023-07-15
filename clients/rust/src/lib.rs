@@ -4,6 +4,8 @@ pub mod api_keys;
 pub mod client;
 mod constants;
 mod error;
+#[cfg(feature = "admin")]
+pub mod projects;
 pub mod runs;
 pub mod triggers;
 
