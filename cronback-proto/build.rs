@@ -16,6 +16,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "./common.proto",
                 "./scheduler.proto",
                 "./dispatcher.proto",
+                "./project_srv.proto",
                 "./trigger.proto",
                 "./run.proto",
                 "./attempt.proto",
@@ -28,7 +29,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     pbjson_build::Builder::new()
         .register_descriptors(&descriptor_set)?
         // Add more packages here as needed.
-        .build(&[".events", ".common", ".trigger_proto", ".attempt_proto"])?;
+        .build(&[
+            ".events",
+            ".common",
+            ".trigger_proto",
+            ".attempt_proto",
+            ".project_srv_proto",
+        ])?;
 
     Ok(())
 }
