@@ -7,6 +7,7 @@ use crate::args::CommonOptions;
 use crate::client::WrappedClient;
 
 mod api_keys;
+mod projects;
 
 const CRONBACK_PROJECT_ID_VAR: &str = "CRONBACK_PROJECT_ID";
 
@@ -60,6 +61,11 @@ pub enum AdminCommand {
         #[command(subcommand)]
         command: api_keys::ApiKeysCommand,
     },
+
+    Projects {
+        #[command(subcommand)]
+        command: projects::ProjectsCommand,
+    },
 }
 
 #[async_trait]
@@ -76,6 +82,9 @@ impl RunAdminCommand for AdminCommand {
     ) -> Result<()> {
         match self {
             | AdminCommand::ApiKeys { command } => {
+                command.run(out, err, common_options, admin_options).await
+            }
+            | AdminCommand::Projects { command } => {
                 command.run(out, err, common_options, admin_options).await
             }
         }
