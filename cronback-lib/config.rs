@@ -20,6 +20,7 @@ pub enum Role {
     Api,
     Dispatcher,
     Scheduler,
+    ProjectStore,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -55,6 +56,15 @@ pub struct SchedulerConfig {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct ProjectStoreConfig {
+    pub cell_id: u32,
+    pub address: String,
+    pub port: u16,
+    pub request_processing_timeout_s: u64,
+    pub database_uri: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct ApiConfig {
     pub address: String,
     pub port: u16,
@@ -77,6 +87,7 @@ pub struct Config {
     pub api: ApiConfig,
     pub dispatcher: DispatcherConfig,
     pub scheduler: SchedulerConfig,
+    pub project_store: ProjectStoreConfig,
 }
 
 #[derive(Debug)]

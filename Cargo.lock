@@ -860,6 +860,7 @@ dependencies = [
  "cronback-api-srv",
  "cronback-dispatcher-srv",
  "cronback-lib",
+ "cronback-project-srv",
  "cronback-scheduler-srv",
  "dotenvy",
  "metrics",
@@ -1086,6 +1087,32 @@ version = "0.1.0"
 dependencies = [
  "async-std",
  "sea-orm-migration",
+]
+
+[[package]]
+name = "cronback-project-srv"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "chrono-tz",
+ "cronback-dto",
+ "cronback-lib",
+ "cronback-proto",
+ "futures",
+ "metrics",
+ "prost",
+ "rand",
+ "sea-orm",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "thiserror",
+ "tokio",
+ "tonic",
+ "tower",
+ "tracing",
 ]
 
 [[package]]
