@@ -11,6 +11,11 @@ prometheus_port = 9000
 # Maps a cell_id to a scheduler address
 0 = "http://127.0.0.1:9811"
 
+
+[main.project_store_cell_map]
+# Maps a cell_id to a project store address
+0 = "http://127.0.0.1:9998"
+
 [api]
 address = "0.0.0.0"
 port = 8888
