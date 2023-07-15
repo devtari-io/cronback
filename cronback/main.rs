@@ -114,7 +114,7 @@ async fn main() -> Result<()> {
     let _tracing_file_guard =
         setup_logging_subscriber(&opts.log_format, &opts.api_tracing_dir);
 
-    debug!("** {} **", "cronback.me".magenta());
+    debug!("** {} **", "CronBack.me".magenta());
     trace!(config = opts.config, "Loading configuration");
     let config_loader = Arc::new(ConfigLoader::from_path(&opts.config));
 
@@ -211,6 +211,15 @@ async fn spawn_service(
         }
         | Role::Dispatcher => {
             tokio::spawn(dispatcher::start_dispatcher_server(
+                ServiceContext::new(
+                    service_name.clone(),
+                    config_loader,
+                    shutdown.clone(),
+                ),
+            ))
+        }
+        | Role::ProjectStore => {
+            tokio::spawn(project_srv::start_project_store_server(
                 ServiceContext::new(
                     service_name.clone(),
                     config_loader,
