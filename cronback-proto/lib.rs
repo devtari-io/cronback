@@ -71,5 +71,10 @@ pub mod attempt_proto {
     include!(concat!(env!("OUT_DIR"), "/attempt_proto.serde.rs"));
 }
 
+pub mod project_svc_proto {
+    tonic::include_proto!("project_svc_proto");
+    include!(concat!(env!("OUT_DIR"), "/project_svc_proto.serde.rs"));
+}
+
 pub const FILE_DESCRIPTOR_SET: &[u8] =
     tonic::include_file_descriptor_set!("file_descriptor");

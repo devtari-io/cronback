@@ -1,5 +1,5 @@
 [main]
-roles = ["api", "dispatcher", "scheduler"]
+roles = ["api", "dispatcher", "scheduler", "project_srv"]
 prometheus_address = "0.0.0.0"
 prometheus_port = 9000
 
@@ -21,7 +21,6 @@ log_response_body = true
 
 [dispatcher]
 cell_id = 0
-# Localhost only by default
 address = "0.0.0.0"
 port = 9999
 request_processing_timeout_s = 30
@@ -29,7 +28,6 @@ database_uri = "sqlite://database.sqlite?mode=rwc"
 
 [scheduler]
 cell_id = 0
-# Localhost only by default
 address = "0.0.0.0"
 port = 9811
 request_processing_timeout_s = 30
@@ -38,3 +36,10 @@ max_triggers_per_tick = 100000
 database_uri = "sqlite://database.sqlite?mode=rwc"
 db_flush_s = 10
 dangerous_fast_forward = false
+
+[project_srv]
+cell_id = 0
+address = "0.0.0.0"
+port = 9998
+request_processing_timeout_s = 30
+database_uri = "sqlite://database.sqlite?mode=rwc"
