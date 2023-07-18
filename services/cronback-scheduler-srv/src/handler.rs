@@ -6,6 +6,8 @@ use proto::scheduler_proto::scheduler_server::Scheduler;
 use proto::scheduler_proto::{
     CancelTriggerRequest,
     CancelTriggerResponse,
+    DeleteProjectTriggersRequest,
+    DeleteProjectTriggersResponse,
     DeleteTriggerRequest,
     DeleteTriggerResponse,
     GetTriggerIdRequest,
@@ -154,6 +156,15 @@ impl Scheduler for SchedulerAPIHandler {
                 .collect(),
             pagination: Some(paginated_result.pagination),
         }))
+    }
+
+    async fn delete_project_triggers(
+        &self,
+        request: Request<DeleteProjectTriggersRequest>,
+    ) -> Result<Response<DeleteProjectTriggersResponse>, Status> {
+        let ctx = request.context()?;
+        self.scheduler.delete_project_triggers(ctx).await?;
+        Ok(Response::new(DeleteProjectTriggersResponse {}))
     }
 
     async fn get_trigger_id(
