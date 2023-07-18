@@ -4,7 +4,7 @@ use std::collections::{BinaryHeap, HashMap, HashSet};
 use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
 use lib::e;
-use lib::types::TriggerId;
+use lib::types::{ProjectId, TriggerId};
 use tracing::{info, trace};
 
 use crate::db_model::schedule::ScheduleIter;
@@ -44,6 +44,8 @@ impl ActiveTriggerMap {
         Ok(cloned_trigger)
     }
 
+    /// Indicates whether the trigger map has been updated since the last time
+    /// `reset_dirty` was called.
     pub fn is_dirty(&self) -> bool {
         self.dirty
     }
@@ -277,6 +279,21 @@ impl ActiveTriggerMap {
         }
     }
 
+    /// Removes all triggers for a given project from the active map. This
+    /// doesn't mark those triggers as dirty as the controller will execute
+    /// a mass-deletion SQL query instead.
+    pub fn remove_by_project(&mut self, project_id: &ProjectId) {
+        let size_before = self.state.len();
+        self.state.retain(|_, v| v.project() != project_id);
+        let size_after = self.state.len();
+        info!(
+            "Removed {} triggers for project {} from active trigger map",
+            size_before - size_after,
+            project_id,
+        );
+        self.mark_dirty();
+    }
+
     //// PRIVATE
     fn mark_dirty(&mut self) {
         self.dirty = true;
@@ -349,6 +366,10 @@ impl ActiveTrigger {
             inner: trigger,
             ticks,
         })
+    }
+
+    pub fn project(&self) -> &ProjectId {
+        &self.inner.project_id
     }
 
     pub fn get(&self) -> &Trigger {
