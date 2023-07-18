@@ -446,21 +446,20 @@ async fn delete_project_triggers_test() {
     // Project1 triggers exist and correct
     for name in &project1_triggers {
         info!(name = name, "Getting trigger");
-        let get_resp = get_trigger(&client_provider, &project1, &name).await;
+        let get_resp = get_trigger(&client_provider, &project1, name).await;
         assert!(get_resp.is_some());
         let get_resp = get_resp.unwrap();
         assert_eq!("project1", get_resp.trigger.unwrap().description());
     }
 
     // Project2 triggers exist and correct
-    // BUG: https://github.com/devtari-io/cronback/issues/6
-    // for name in &project2_triggers {
-    //     info!("Getting trigger {}", name);
-    //     let get_resp = get_trigger(&client_provider, &project2, &name).await;
-    //     assert!(get_resp.is_some());
-    //     let get_resp = get_resp.unwrap();
-    //     assert_eq!("project2", get_resp.trigger.unwrap().description());
-    // }
+    for name in &project2_triggers {
+        info!("Getting trigger {}", name);
+        let get_resp = get_trigger(&client_provider, &project2, name).await;
+        assert!(get_resp.is_some());
+        let get_resp = get_resp.unwrap();
+        assert_eq!("project2", get_resp.trigger.unwrap().description());
+    }
 
     // Now, delete all triggers for this project
     let list = DeleteProjectTriggersRequest::default();
@@ -480,7 +479,7 @@ async fn delete_project_triggers_test() {
     // even getting individual scheduled triggers should return nothing.
     for name in &project1_triggers {
         info!(name = name, "Getting trigger");
-        let get_resp = get_trigger(&client_provider, &project1, &name).await;
+        let get_resp = get_trigger(&client_provider, &project1, name).await;
         assert_eq!(None, get_resp);
     }
 
@@ -489,7 +488,7 @@ async fn delete_project_triggers_test() {
     assert_eq!(3, list_resp.triggers.len());
     for name in &project2_triggers {
         info!(name = name, "Getting trigger");
-        let get_resp = get_trigger(&client_provider, &project2, &name).await;
+        let get_resp = get_trigger(&client_provider, &project2, name).await;
         assert!(get_resp.is_some());
         let get_resp = get_resp.unwrap();
         assert_eq!("project2", get_resp.trigger.unwrap().description());
