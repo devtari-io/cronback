@@ -24,13 +24,13 @@ pub async fn start_scheduler_server(
 
     let db = Database::connect(&config.scheduler.database_uri).await?;
     db.migrate().await?;
-    let trigger_store = SqlTriggerStore::new(db);
+    let trigger_store = Arc::new(SqlTriggerStore::new(db));
 
     let dispatcher_clients = Arc::new(GrpcClientProvider::new(context.clone()));
 
     let controller = Arc::new(SpinnerController::new(
         context.clone(),
-        Box::new(trigger_store),
+        trigger_store.clone(),
         dispatcher_clients,
     ));
 
@@ -95,10 +95,10 @@ pub mod test_helpers {
             Arc::new(GrpcClientProvider::new(context.clone()));
 
         let db = Database::in_memory().await.unwrap();
-        let trigger_store = SqlTriggerStore::new(db);
+        let trigger_store = Arc::new(SqlTriggerStore::new(db));
         let controller = Arc::new(SpinnerController::new(
             context.clone(),
-            Box::new(trigger_store),
+            trigger_store,
             dispatcher_client_provider,
         ));
         controller.start().await.unwrap();
