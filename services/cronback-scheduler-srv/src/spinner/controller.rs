@@ -21,6 +21,7 @@ use tracing::{debug, error, info, trace, warn};
 
 use super::active_triggers::{ActiveTrigger, ActiveTriggerMap};
 use super::dispatch::{dispatch, DispatchMode};
+use super::name_cache::NameCache;
 use super::spinner::{Spinner, SpinnerHandle};
 use crate::db_model::triggers::Status;
 use crate::db_model::Trigger;
@@ -57,22 +58,34 @@ pub(crate) struct SpinnerController {
     context: ServiceContext,
     triggers: Arc<RwLock<ActiveTriggerMap>>,
     spinner: Mutex<Option<SpinnerHandle>>,
-    store: Box<dyn TriggerStore + Send + Sync>,
-    trigger_name_cache: Arc<RwLock<HashMap<String, TriggerId>>>,
+    store: Arc<dyn TriggerStore + Send + Sync>,
+    name_cache: Arc<NameCache<TriggerStoreError>>,
     dispatcher_clients: Arc<GrpcClientProvider<ScopedDispatcherClient>>,
 }
 
 impl SpinnerController {
     pub fn new(
         context: ServiceContext,
-        store: Box<dyn TriggerStore + Send + Sync>,
+        store: Arc<dyn TriggerStore + Send + Sync>,
         dispatcher_clients: Arc<GrpcClientProvider<ScopedDispatcherClient>>,
     ) -> Self {
+        let name_cacher_fetcher = {
+            let store = store.clone();
+            Box::new(|project_id: ProjectId, name: String| {
+                async move {
+                    let trigger_id = store
+                        .find_trigger_id_for_name(&project_id, &name)
+                        .await?;
+                    Ok(trigger_id)
+                }
+            })
+        };
+
         Self {
             context,
             triggers: Arc::default(),
             spinner: Mutex::default(),
-            trigger_name_cache: Arc::default(),
+            name_cache: Arc::new(NameCache::new(name_cacher_fetcher)),
             store,
             dispatcher_clients,
         }
@@ -175,58 +188,13 @@ impl SpinnerController {
         }
     }
 
-    pub async fn get_trigger_id_opt(
-        &self,
-        project_id: &ProjectId,
-        name: &str,
-    ) -> Result<Option<TriggerId>, TriggerStoreError> {
-        // find the id from the cache, if we can't find it, query from the
-        // database. We only acquire write lock when we update the
-        // cache.
-        {
-            let name_cache = self.trigger_name_cache.read().unwrap();
-            if let Some(trigger_id) = name_cache.get(name) {
-                info!(
-                    trigger_id = ?trigger_id,
-                    project_id = ?project_id,
-                    name = name,
-                    "Found trigger with name cache"
-                );
-                return Ok(Some(trigger_id.clone()));
-            }
-        }
-        // Cache miss.
-        let trigger_id = self
-            .store
-            .find_trigger_id_for_name(project_id, name)
-            .await?;
-        if let Some(trigger_id) = trigger_id {
-            self.trigger_name_cache
-                .write()
-                .unwrap()
-                .insert(name.to_string(), trigger_id.clone());
-            Ok(Some(trigger_id))
-        } else {
-            Ok(None)
-        }
-    }
-
-    fn remove_name_from_cache(&self, name: &str) {
-        let mut name_cache = self.trigger_name_cache.write().unwrap();
-        name_cache.remove(name);
-    }
-
     pub async fn get_trigger_id(
         &self,
         project_id: &ProjectId,
         name: &str,
     ) -> Result<TriggerId, TriggerError> {
-        let id = self.get_trigger_id_opt(project_id, name).await?;
-        if let Some(id) = id {
-            Ok(id)
-        } else {
-            Err(TriggerError::NotFound(name.to_string()))
-        }
+        let maybe_id = self.name_cache.get(project_id, name).await?;
+        maybe_id.ok_or_else(|| TriggerError::NotFound(name.to_string()))
     }
 
     #[tracing::instrument(skip_all)]
@@ -683,7 +651,7 @@ impl SpinnerController {
         self.store
             .delete_trigger(&context.project_id, &trigger_id)
             .await?;
-        self.remove_name_from_cache(&name);
+        self.name_cache.remove(&context.project_id, &name);
         e!(context = context, TriggerDeleted { meta });
         info!("Trigger '{name}' ({trigger_id}) has been deleted!");
         Ok(())
@@ -712,8 +680,7 @@ impl SpinnerController {
         // `perform_checkpoint` which might write in-flight changes before we
         // get a chance to hold the write lock.
         self.store.delete_triggers_by_project(&project_id).await?;
-        // TODO (#6): Remove all names for that particular project.
-        //self.remove_name_from_cache(&name);
+        self.name_cache.remove_project(&project_id);
         info!("All triggers for project {project_id} has been deleted!");
         Ok(())
     }
