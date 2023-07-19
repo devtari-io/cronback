@@ -186,6 +186,12 @@ impl SpinnerController {
         {
             let name_cache = self.trigger_name_cache.read().unwrap();
             if let Some(trigger_id) = name_cache.get(name) {
+                info!(
+                    trigger_id = ?trigger_id,
+                    project_id = ?project_id,
+                    name = name,
+                    "Found trigger with name cache"
+                );
                 return Ok(Some(trigger_id.clone()));
             }
         }
@@ -680,6 +686,35 @@ impl SpinnerController {
         self.remove_name_from_cache(&name);
         e!(context = context, TriggerDeleted { meta });
         info!("Trigger '{name}' ({trigger_id}) has been deleted!");
+        Ok(())
+    }
+
+    #[tracing::instrument(skip_all, fields(project_id = %context.project_id))]
+    pub async fn delete_project_triggers(
+        &self,
+        context: RequestContext,
+    ) -> Result<(), TriggerError> {
+        let project_id = context.project_id.clone();
+        let triggers = self.triggers.clone();
+
+        // NOTE: This will stall the spinner if the list is too big.
+        tokio::task::spawn_blocking({
+            let project_id = project_id.clone();
+            move || {
+                let mut w = triggers.write().unwrap();
+                w.remove_by_project(&project_id)
+            }
+        })
+        .await?;
+
+        // NOTE: We only delete from the database after clearing up the active
+        // trigger map to  ensure that we don't lose the race against
+        // `perform_checkpoint` which might write in-flight changes before we
+        // get a chance to hold the write lock.
+        self.store.delete_triggers_by_project(&project_id).await?;
+        // TODO (#6): Remove all names for that particular project.
+        //self.remove_name_from_cache(&name);
+        info!("All triggers for project {project_id} has been deleted!");
         Ok(())
     }
 

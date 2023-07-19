@@ -63,6 +63,11 @@ pub trait TriggerStore {
         pagination: PaginationIn,
         statuses: Option<Vec<Status>>,
     ) -> Result<PaginatedResponse<Trigger>, TriggerStoreError>;
+
+    async fn delete_triggers_by_project(
+        &self,
+        project: &ProjectId,
+    ) -> Result<(), TriggerStoreError>;
 }
 
 pub struct SqlTriggerStore {
@@ -107,6 +112,17 @@ impl TriggerStore for SqlTriggerStore {
         trigger_id: &TriggerId,
     ) -> Result<(), TriggerStoreError> {
         Triggers::delete_by_id((trigger_id.clone(), project.clone()))
+            .exec(&self.db.orm)
+            .await?;
+        Ok(())
+    }
+
+    async fn delete_triggers_by_project(
+        &self,
+        project: &ProjectId,
+    ) -> Result<(), TriggerStoreError> {
+        Triggers::delete_many()
+            .filter(triggers::Column::ProjectId.eq(project.clone()))
             .exec(&self.db.orm)
             .await?;
         Ok(())
