@@ -45,9 +45,13 @@ impl ProjectServiceAPIHandler {
 impl ProjectService for ProjectServiceAPIHandler {
     async fn create_project(
         &self,
-        _request: Request<CreateProjectRequest>,
+        request: Request<CreateProjectRequest>,
     ) -> Result<Response<CreateProjectResponse>, Status> {
-        let id = ProjectId::generate();
+        let (_, _, req) = request.into_parts();
+        let id: ProjectId = req.id.unwrap().into();
+        let id = id
+            .validated()
+            .map_err(|e| Status::invalid_argument(e.to_string()))?;
         let project = Project {
             id: id.clone(),
             created_at: Utc::now(),
