@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+import "common.proto";
+
+package triggers;
+
+enum TriggerStatus {
+  TriggerStatus_UNKNOWN = 0;
+  // A scheduled trigger thas has future runs
+  SCHEDULED = 1;
+  // A scheduled triggers that skips future runs
+  PAUSED = 3;
+  // Trigger can only run manually 
+  ON_DEMAND = 4;
+  // Scheduled trigger with no future runs
+  EXPIRED = 2;
+  // Trigger that cannot run anymore
+  CANCELLED = 5;
+}
+
+message Recurring {
+  string cron = 1;
+  string timezone = 2;
+  // The number of times this trigger should run. A value of 0, means that it never expires
+  // output only
+  optional uint64 limit = 3;
+  // output only
+  optional uint64 remaining = 4;
+}
+
+
+message RunAt {
+  repeated common.DateTime timepoints = 1;
+  // output only
+  optional uint64 remaining = 2;
+}
+
+message Schedule {
+  oneof schedule {
+    Recurring recurring = 1;
+    // timepoint defined in iso 8601 format
+    RunAt run_at = 2;
+  }
+}
+
+message Trigger {
+  // output only
+  common.TriggerId id = 1;
+  /// User supplied identifier, unique per project
+  string name = 2;
+  optional string description = 3;
+  common.Action action = 4;
+  Schedule schedule = 5;
+  // output only
+  optional TriggerStatus status = 6;
+  // output only
+  common.DateTime created_at = 7;
+  // output only
+  optional common.DateTime last_ran_at = 8;
+  // output only
+  optional common.DateTime updated_at = 9;
+  optional common.Payload payload = 10;
+  repeated common.DateTime estimated_future_runs = 11;
+  // optional string etag = 9;
+  // TODO
+ //optional Run last_run_details = 3;
+}

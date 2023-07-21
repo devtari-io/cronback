@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+import "common.proto";
+import "attempts.proto";
+
+package runs;
+
+message Run {
+  common.RunId id = 1;
+  common.TriggerId trigger_id = 2;
+  common.ProjectId project_id = 3;
+  common.DateTime created_at = 4;
+  common.Payload payload = 5;
+  common.Action action = 6;
+  RunStatus status = 7;
+  optional attempts.Attempt latest_attempt = 8;
+}
+
+enum RunStatus {
+    RunStatus_UNKNOWN = 0;
+    // We are attempting or retrying the action
+    ATTEMPTING = 1;
+    // Action succeeded
+    SUCCEEDED = 2;
+    // Action failed and we gave up.
+    FAILED = 3;
+}

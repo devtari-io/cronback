@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 use derive_more::{Deref, DerefMut};
-use proto::dispatcher_proto::dispatcher_client::DispatcherClient as GenDispatcherClient;
+use proto::dispatcher_svc::dispatcher_svc_client::DispatcherSvcClient as GenDispatcherSvcClient;
 use tonic::codegen::InterceptedService;
 
 use crate::config::MainConfig;
@@ -11,16 +11,16 @@ use crate::grpc_helpers::GrpcRequestInterceptor;
 use crate::prelude::ValidShardedId;
 use crate::types::{ProjectId, RequestId};
 
-type DispatcherClient = GenDispatcherClient<
+type DispatcherSvcClient = GenDispatcherSvcClient<
     InterceptedService<tonic::transport::Channel, GrpcRequestInterceptor>,
 >;
 
 #[derive(Deref, DerefMut)]
-pub struct ScopedDispatcherClient(ScopedGrpcClient<DispatcherClient>);
+pub struct ScopedDispatcherSvcClient(ScopedGrpcClient<DispatcherSvcClient>);
 
 #[async_trait]
-impl GrpcClientType for ScopedDispatcherClient {
-    type RawGrpcClient = DispatcherClient;
+impl GrpcClientType for ScopedDispatcherSvcClient {
+    type RawGrpcClient = DispatcherSvcClient;
 
     fn get_mut(&mut self) -> &mut ScopedGrpcClient<Self::RawGrpcClient> {
         &mut self.0
@@ -37,7 +37,7 @@ impl GrpcClientType for ScopedDispatcherClient {
         interceptor: GrpcRequestInterceptor,
     ) -> Self {
         let client =
-            GenDispatcherClient::with_interceptor(channel, interceptor);
+            GenDispatcherSvcClient::with_interceptor(channel, interceptor);
 
         Self(ScopedGrpcClient::new(project_id, request_id, client))
     }
