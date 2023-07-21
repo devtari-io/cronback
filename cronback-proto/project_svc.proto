@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+import "common.proto";
+
+package project_svc_proto;
+
+service ProjectService {
+  rpc CreateProject (CreateProjectRequest) returns (CreateProjectResponse);
+  rpc GetProjectStatus(GetProjectStatusRequest) returns (GetProjectStatusResponse);
+  rpc SetProjectStatus(SetProjectStatusRequest) returns (SetProjectStatusResponse);
+  rpc ProjectExists(ProjectExistsRequest) returns (ProjectExistsResponse);
+}
+
+message CreateProjectRequest {}
+
+message CreateProjectResponse {
+  common.ProjectId id = 1;
+}
+
+message GetProjectStatusRequest {
+  common.ProjectId id = 1;
+}
+
+message GetProjectStatusResponse {
+  ProjectStatus status = 1;
+}
+
+message SetProjectStatusRequest {
+  common.ProjectId id = 1;
+  ProjectStatus status = 2;
+}
+
+message SetProjectStatusResponse {
+  ProjectStatus old_status = 1;
+}
+
+message ProjectExistsRequest {
+  common.ProjectId id = 1;
+}
+
+message ProjectExistsResponse {
+  bool exists = 1;
+}
+
+enum ProjectStatus {
+    ProjectStatus_UNKNOWN = 0;
+    ENABLED = 1;
+    DISABLED = 2;
+    QUOTA_EXCEEDED = 3;
+    PENDING_DELETION = 4;
+}

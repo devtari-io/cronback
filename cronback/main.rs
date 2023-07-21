@@ -218,6 +218,15 @@ async fn spawn_service(
                 ),
             ))
         }
+        | Role::Projects => {
+            tokio::spawn(project_srv::start_project_store_server(
+                ServiceContext::new(
+                    service_name.clone(),
+                    config_loader,
+                    shutdown.clone(),
+                ),
+            ))
+        }
     };
     match join_handle.await.unwrap() {
         | Ok(_) => info!("Service '{service_name}' terminated!"),

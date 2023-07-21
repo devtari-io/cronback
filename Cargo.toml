@@ -16,6 +16,7 @@ rust-version = "1.68.0"
 api = { path = "services/cronback-api-srv", package = "cronback-api-srv", version = "0.1.0" }
 dispatcher = { path = "services/cronback-dispatcher-srv", package = "cronback-dispatcher-srv", version = "0.1.0" }
 scheduler = { path = "services/cronback-scheduler-srv", package = "cronback-scheduler-srv", version = "0.1.0" }
+project-srv = { path = "services/cronback-project-srv", package = "cronback-project-srv", version = "0.1.0" }
 # Internal Dependences
 cronback-api-model = { path = "cronback-api-model", version = "0.1.0" }
 cronback-client = { path = "clients/rust", package = "cronback-client", version = "0.1.0" }
