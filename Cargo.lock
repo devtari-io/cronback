@@ -857,11 +857,8 @@ dependencies = [
  "anyhow",
  "clap 4.3.12",
  "colored",
- "cronback-api-srv",
- "cronback-dispatcher-srv",
  "cronback-lib",
- "cronback-project-srv",
- "cronback-scheduler-srv",
+ "cronback-services",
  "dotenvy",
  "metrics",
  "metrics-exporter-prometheus",
@@ -894,40 +891,6 @@ dependencies = [
  "strum 0.25.0",
  "thiserror",
  "url",
- "validator",
-]
-
-[[package]]
-name = "cronback-api-srv"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "axum",
- "axum-extra",
- "base64 0.21.2",
- "chrono",
- "cronback-api-model",
- "cronback-dto",
- "cronback-lib",
- "cronback-proto",
- "hyper",
- "metrics",
- "names",
- "rand",
- "sea-orm",
- "serde",
- "serde_json",
- "serde_path_to_error",
- "serde_with",
- "sha2",
- "thiserror",
- "tokio",
- "tonic",
- "tower-http",
- "tracing",
- "ulid",
- "uuid",
  "validator",
 ]
 
@@ -979,32 +942,6 @@ dependencies = [
  "thiserror",
  "tracing",
  "url",
-]
-
-[[package]]
-name = "cronback-dispatcher-srv"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "chrono",
- "chrono-tz",
- "cronback-lib",
- "cronback-proto",
- "futures",
- "metrics",
- "prost",
- "rand",
- "reqwest",
- "serde",
- "serde_json",
- "sqlx",
- "thiserror",
- "tokio",
- "tonic",
- "tower",
- "tracing",
- "validator",
 ]
 
 [[package]]
@@ -1090,32 +1027,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cronback-project-srv"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "chrono",
- "chrono-tz",
- "cronback-dto",
- "cronback-lib",
- "cronback-proto",
- "futures",
- "metrics",
- "prost",
- "rand",
- "sea-orm",
- "serde",
- "serde_json",
- "sqlx",
- "thiserror",
- "tokio",
- "tonic",
- "tower",
- "tracing",
-]
-
-[[package]]
 name = "cronback-proto"
 version = "0.1.0"
 dependencies = [
@@ -1132,26 +1043,38 @@ dependencies = [
 ]
 
 [[package]]
-name = "cronback-scheduler-srv"
+name = "cronback-services"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-recursion",
  "async-trait",
+ "axum",
+ "axum-extra",
+ "base64 0.21.2",
  "chrono",
  "chrono-tz",
  "cron",
+ "cronback-api-model",
  "cronback-dto",
  "cronback-lib",
  "cronback-proto",
  "dashmap",
+ "futures",
+ "hyper",
  "metrics",
+ "names",
  "prost",
+ "rand",
+ "reqwest",
  "sea-orm",
  "sea-query",
  "sea-query-binder",
  "serde",
  "serde_json",
+ "serde_path_to_error",
+ "serde_with",
+ "sha2",
  "sqlx",
  "tempfile",
  "thiserror",
@@ -1159,8 +1082,12 @@ dependencies = [
  "tokio-stream",
  "tonic",
  "tower",
+ "tower-http",
  "tracing",
  "tracing-test",
+ "ulid",
+ "uuid",
+ "validator",
 ]
 
 [[package]]

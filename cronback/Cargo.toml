@@ -12,7 +12,7 @@ license.workspace = true
 homepage.workspace = true
 documentation.workspace = true
 repository.workspace = true
-include = ["../LICENSE"]
+include = ["../LICENSE", "*/**.rs"]
 default-run = "cronbackd"
 
 [[bin]]
@@ -21,11 +21,8 @@ path = "main.rs"
 
 [dependencies]
 # Internal Dependencies
-api = { workspace = true }
-scheduler = { workspace = true }
-dispatcher = { workspace = true }
+cronback-services = { workspace = true }
 lib = { workspace = true }
-project-srv = { workspace = true }
 
 # Dependencies from workspace
 anyhow = { workspace = true }
