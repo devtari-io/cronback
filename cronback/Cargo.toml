@@ -25,6 +25,7 @@ api = { workspace = true }
 scheduler = { workspace = true }
 dispatcher = { workspace = true }
 lib = { workspace = true }
+project-srv = { workspace = true }
 
 # Dependencies from workspace
 anyhow = { workspace = true }

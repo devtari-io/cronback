@@ -3,6 +3,7 @@ syntax = "proto3";
 import "common.proto";
 import "trigger.proto";
 import "attempt.proto";
+import "project_svc.proto";
 
 package events;
 
@@ -23,6 +24,8 @@ message Event {
     WebhookAttemptCreated webhook_attempt_created = 10;
     WebhookAttemptSucceeded webhook_attempt_succeeded = 11;
     WebhookAttemptFailed webhook_attempt_failed = 12;
+    ProjectCreated project_created = 13;
+    ProjectStatusUpdated project_status_updated = 14;
   }
 }
 
@@ -100,4 +103,11 @@ message WebhookAttemptFailed {
   uint32 attempt_limit = 3;
   common.Webhook webhook = 4;
   attempt_proto.WebhookAttemptDetails response_details = 5;
+}
+
+message ProjectCreated {}
+
+message ProjectStatusUpdated {
+  project_svc_proto.ProjectStatus old_status = 1;
+  project_svc_proto.ProjectStatus new_status = 2;
 }

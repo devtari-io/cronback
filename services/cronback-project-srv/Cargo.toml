@@ -1,0 +1,38 @@
+[package]
+name = "cronback-project-srv"
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+license.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+repository.workspace = true
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+# Internal Dependencies
+dto = { workspace = true }
+lib = { workspace = true }
+proto = { workspace = true }
+
+# Dependencies from workspace
+anyhow = { workspace = true }
+metrics = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tonic = { workspace = true }
+prost = { workspace = true }
+thiserror = { workspace = true }
+serde = { workspace = true }
+chrono = { workspace = true }
+chrono-tz = { workspace = true }
+tower = { workspace = true }
+futures = { workspace = true }
+async-trait = { workspace = true }
+sqlx = { workspace = true }
+serde_json = { workspace = true }
+rand = { workspace = true }
+sea-orm = { workspace = true }
