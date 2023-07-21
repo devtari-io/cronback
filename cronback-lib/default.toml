@@ -1,5 +1,5 @@
 [main]
-roles = ["api", "dispatcher", "scheduler", "project_srv"]
+roles = ["api", "dispatcher", "scheduler", "projects"]
 prometheus_address = "0.0.0.0"
 prometheus_port = 9000
 
@@ -37,7 +37,7 @@ database_uri = "sqlite://database.sqlite?mode=rwc"
 db_flush_s = 10
 dangerous_fast_forward = false
 
-[project_srv]
+[projects]
 cell_id = 0
 address = "0.0.0.0"
 port = 9998

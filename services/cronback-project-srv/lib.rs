@@ -15,13 +15,11 @@ pub async fn start_project_store_server(
     mut context: service::ServiceContext,
 ) -> anyhow::Result<()> {
     let config = context.load_config();
-    let addr = netutils::parse_addr(
-        &config.project_srv.address,
-        config.project_srv.port,
-    )
-    .unwrap();
+    let addr =
+        netutils::parse_addr(&config.projects.address, config.projects.port)
+            .unwrap();
 
-    let db = Database::connect(&config.project_srv.database_uri).await?;
+    let db = Database::connect(&config.projects.database_uri).await?;
     db.migrate().await?;
 
     let project_store: Arc<dyn ProjectStore + Send + Sync> =
@@ -32,14 +30,14 @@ pub async fn start_project_store_server(
     let svc = ProjectServiceServer::new(handler);
 
     // grpc server
-    info!("Starting ProjectSrv on {:?}", addr);
+    info!("Starting Projects data service on {:?}", addr);
 
     // The stack of middleware that our service will be wrapped in
     service::grpc_serve_tcp(
         &mut context,
         addr,
         svc,
-        config.project_srv.request_processing_timeout_s,
+        config.projects.request_processing_timeout_s,
     )
     .await;
 

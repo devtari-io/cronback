@@ -218,7 +218,7 @@ async fn spawn_service(
                 ),
             ))
         }
-        | Role::ProjectSrv => {
+        | Role::Projects => {
             tokio::spawn(project_srv::start_project_store_server(
                 ServiceContext::new(
                     service_name.clone(),

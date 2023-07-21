@@ -20,7 +20,7 @@ pub enum Role {
     Api,
     Dispatcher,
     Scheduler,
-    ProjectSrv,
+    Projects,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -56,7 +56,7 @@ pub struct SchedulerConfig {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct ProjectSrvConfig {
+pub struct ProjectsConfig {
     pub cell_id: u32,
     pub address: String,
     pub port: u16,
@@ -82,12 +82,13 @@ pub struct ApiConfig {
 /// * `api`: Configuration of the API server
 /// * `dispatcher`:  Configuration of the dispatcher
 /// * `scheduler`:  Configuration of the scheduler
+/// * `projects`:  Configuration of the project data service
 pub struct Config {
     pub main: MainConfig,
     pub api: ApiConfig,
     pub dispatcher: DispatcherConfig,
     pub scheduler: SchedulerConfig,
-    pub project_srv: ProjectSrvConfig,
+    pub projects: ProjectsConfig,
 }
 
 #[derive(Debug)]
