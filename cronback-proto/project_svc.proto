@@ -11,7 +11,9 @@ service ProjectService {
   rpc ProjectExists(ProjectExistsRequest) returns (ProjectExistsResponse);
 }
 
-message CreateProjectRequest {}
+message CreateProjectRequest {
+  common.ProjectId id = 1;
+}
 
 message CreateProjectResponse {
   common.ProjectId id = 1;
