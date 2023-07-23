@@ -38,6 +38,7 @@ tonic = { workspace = true }
 tower-http = { workspace = true, features = ["cors"] }
 tracing = { workspace = true }
 ulid = { workspace = true }
+once_cell = { workspace = true }
 
 # Unique Dependencies
 axum-extra = { version = "0.7", features = ["query"] }
@@ -47,3 +48,4 @@ sha2 = "0.10.6"
 uuid = { version = "1.2.2", features = ["v4"] }
 validator = { version = "0.16.0", features = ["derive"] }
 hyper = "0.14.26"
+regex = "1.9.1"

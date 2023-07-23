@@ -8,6 +8,7 @@ mod logging;
 mod model;
 mod paginated;
 
+use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -116,7 +117,7 @@ pub async fn start_api_server(
     let server = axum::Server::try_bind(&addr)?;
 
     let server = server
-        .serve(app.into_make_service())
+        .serve(app.into_make_service_with_connect_info::<SocketAddr>())
         .with_graceful_shutdown(context.recv_shutdown_signal());
 
     // Waiting for shutdown signal
