@@ -39,7 +39,7 @@ impl Command for AdminCommand {
                 command.run(out, err, common_options).await
             }
             | AdminCommand::Projects { command } => {
-                command.run(out, err, common_options, admin_options).await
+                command.run(out, err, common_options).await
             }
         }
     }
