@@ -2,8 +2,8 @@ use anyhow::Result;
 use async_trait::async_trait;
 use clap::clap_derive::Parser;
 
-use super::{AdminOptions, RunAdminCommand};
 use crate::args::CommonOptions;
+use crate::Command;
 
 mod create;
 mod list;
@@ -21,7 +21,7 @@ pub enum ApiKeysCommand {
 }
 
 #[async_trait]
-impl RunAdminCommand for ApiKeysCommand {
+impl Command for ApiKeysCommand {
     async fn run<
         A: tokio::io::AsyncWrite + Send + Sync + Unpin,
         B: tokio::io::AsyncWrite + Send + Sync + Unpin,
@@ -30,17 +30,14 @@ impl RunAdminCommand for ApiKeysCommand {
         out: &mut tokio::io::BufWriter<A>,
         err: &mut tokio::io::BufWriter<B>,
         common_options: &CommonOptions,
-        admin_options: &AdminOptions,
     ) -> Result<()> {
         match self {
-            | ApiKeysCommand::List(c) => {
-                c.run(out, err, common_options, admin_options).await
-            }
+            | ApiKeysCommand::List(c) => c.run(out, err, common_options).await,
             | ApiKeysCommand::Create(c) => {
-                c.run(out, err, common_options, admin_options).await
+                c.run(out, err, common_options).await
             }
             | ApiKeysCommand::Revoke(c) => {
-                c.run(out, err, common_options, admin_options).await
+                c.run(out, err, common_options).await
             }
         }
     }
