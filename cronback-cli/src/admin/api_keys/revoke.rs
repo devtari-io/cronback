@@ -2,10 +2,9 @@ use anyhow::Result;
 use async_trait::async_trait;
 use clap::Parser;
 
-use crate::admin::{AdminOptions, RunAdminCommand};
 use crate::args::CommonOptions;
 use crate::confirm::confirm_or_abort;
-use crate::emitln;
+use crate::{emitln, Command};
 
 #[derive(Clone, Debug, Parser)]
 pub struct Revoke {
@@ -18,7 +17,7 @@ pub struct Revoke {
 }
 
 #[async_trait]
-impl RunAdminCommand for Revoke {
+impl Command for Revoke {
     async fn run<
         A: tokio::io::AsyncWrite + Send + Sync + Unpin,
         B: tokio::io::AsyncWrite + Send + Sync + Unpin,
@@ -27,7 +26,6 @@ impl RunAdminCommand for Revoke {
         out: &mut tokio::io::BufWriter<A>,
         _err: &mut tokio::io::BufWriter<B>,
         common_options: &CommonOptions,
-        admin_options: &AdminOptions,
     ) -> Result<()> {
         confirm_or_abort!(
             self,
@@ -35,7 +33,7 @@ impl RunAdminCommand for Revoke {
              this key will start failing.",
             self.id
         );
-        let client = admin_options.new_admin_client(common_options)?;
+        let client = common_options.new_client()?;
 
         let response =
             cronback_client::api_keys::revoke(&client, &self.id).await?;
