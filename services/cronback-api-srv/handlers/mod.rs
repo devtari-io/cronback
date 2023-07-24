@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use axum::{middleware, Router};
 
-use crate::auth_middleware::auth as auth_middleware;
+use crate::auth_middleware::ensure_authenticated;
 use crate::AppState;
 
 pub(crate) mod admin;
@@ -13,11 +13,7 @@ pub(crate) fn routes(shared_state: Arc<AppState>) -> Router {
         .nest("/admin", admin::routes(Arc::clone(&shared_state)))
         .nest(
             "/triggers",
-            triggers::routes(Arc::clone(&shared_state)).route_layer(
-                middleware::from_fn_with_state(
-                    Arc::clone(&shared_state),
-                    auth_middleware,
-                ),
-            ),
+            triggers::routes(Arc::clone(&shared_state))
+                .route_layer(middleware::from_fn(ensure_authenticated)),
         )
 }
