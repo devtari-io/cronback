@@ -109,6 +109,10 @@ pub async fn start_api_server(
             TraceLayer::new_for_http()
                 .make_span_with(ApiMakeSpan::new(service_name)),
         )
+        .layer(middleware::from_fn_with_state(
+            Arc::clone(&shared_state),
+            auth_middleware::authenticate,
+        ))
         .route_layer(middleware::from_fn(inject_request_id))
         .route_layer(middleware::from_fn(track_metrics))
         .fallback(fallback);
