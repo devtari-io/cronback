@@ -2,15 +2,14 @@ use anyhow::Result;
 use async_trait::async_trait;
 use clap::Parser;
 
-use crate::admin::{AdminOptions, RunAdminCommand};
 use crate::args::CommonOptions;
-use crate::emitln;
+use crate::{emitln, Command};
 
 #[derive(Clone, Debug, Parser)]
 pub struct Create;
 
 #[async_trait]
-impl RunAdminCommand for Create {
+impl Command for Create {
     async fn run<
         A: tokio::io::AsyncWrite + Send + Sync + Unpin,
         B: tokio::io::AsyncWrite + Send + Sync + Unpin,
@@ -19,9 +18,8 @@ impl RunAdminCommand for Create {
         out: &mut tokio::io::BufWriter<A>,
         _err: &mut tokio::io::BufWriter<B>,
         common_options: &CommonOptions,
-        admin_options: &AdminOptions,
     ) -> Result<()> {
-        let client = admin_options.new_admin_client(common_options)?;
+        let client = common_options.new_client()?;
 
         let response = cronback_client::projects::create(&client).await?;
 
