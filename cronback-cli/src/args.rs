@@ -12,13 +12,12 @@ use url::Url;
 
 #[cfg(feature = "admin")]
 use crate::admin;
-#[cfg(feature = "admin")]
-use crate::admin::RunAdminCommand;
 use crate::client::WrappedClient;
 use crate::ui::FancyToString;
 use crate::{runs, triggers, whoami, Command};
 
 const CRONBACK_SECRET_TOKEN_VAR: &str = "CRONBACK_SECRET_TOKEN";
+const CRONBACK_PROJECT_ID_VAR: &str = "CRONBACK_PROJECT_ID";
 
 #[derive(Parser, Debug, Clone)]
 /// Command-line utility to manage cronback projects
@@ -51,6 +50,15 @@ pub struct CommonOptions {
     /// variable is not set
     pub secret_token: String,
 
+    #[arg(
+        long,
+        value_name = "PROJECT_ID",
+        env(CRONBACK_PROJECT_ID_VAR),
+        hide = true
+    )]
+    /// The client will act on behalf of this project
+    project_id: Option<String>,
+
     #[arg(long, global = true)]
     /// Displays a table with meta information about the response
     pub show_meta: bool,
@@ -78,8 +86,6 @@ pub enum CliCommand {
     /// Set of commands that require admin privillages.
     #[cfg(feature = "admin")]
     Admin {
-        #[clap(flatten)]
-        admin_options: admin::AdminOptions,
         #[command(subcommand)]
         command: admin::AdminCommand,
     },
@@ -129,11 +135,14 @@ impl CommonOptions {
 
     pub fn new_client(&self) -> Result<WrappedClient> {
         let base_url = self.base_url();
-        let inner = ClientBuilder::new()
+        let mut builder = ClientBuilder::new()
             .base_url(base_url.clone())
             .context("Error while parsing base url")?
-            .secret_token(self.secret_token.clone())
-            .build()?;
+            .secret_token(self.secret_token.clone());
+        if let Some(project_id) = &self.project_id {
+            builder = builder.on_behalf_of(project_id.clone());
+        }
+        let inner = builder.build()?;
         Ok(WrappedClient {
             common_options: self.clone(),
             inner,
@@ -188,10 +197,9 @@ impl Command for CliCommand {
                 command.run(out, err, common_options).await
             }
             #[cfg(feature = "admin")]
-            | CliCommand::Admin {
-                admin_options,
-                command,
-            } => command.run(out, err, common_options, admin_options).await,
+            | CliCommand::Admin { command } => {
+                command.run(out, err, common_options).await
+            }
             | CliCommand::WhoAmI(c) => c.run(out, err, common_options).await,
         }
     }
