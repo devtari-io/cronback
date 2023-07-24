@@ -9,7 +9,8 @@ use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use hyper::header::USER_AGENT;
 use lib::config::Config;
-use lib::types::RequestId;
+use lib::prelude::ValidShardedId;
+use lib::types::{ProjectId, RequestId};
 use tower_http::trace::MakeSpan;
 use tracing::{error_span, info};
 
@@ -41,6 +42,11 @@ impl<B> MakeSpan<B> for ApiMakeSpan {
             .get::<ConnectInfo<SocketAddr>>()
             .map(|a| a.ip().to_string());
 
+        let project_id = request
+            .extensions()
+            .get::<ValidShardedId<ProjectId>>()
+            .map(|p| p.to_string());
+
         error_span!(
             target: "request_response_tracing_metadata",
             "http_request",
@@ -52,6 +58,7 @@ impl<B> MakeSpan<B> for ApiMakeSpan {
              version = ?request.version(),
              user_agent = ?user_agent,
              ip = %ip.unwrap_or_default(),
+             project_id = %project_id.unwrap_or_default(),
         )
     }
 }
