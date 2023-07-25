@@ -2,13 +2,11 @@
 
 use chrono::{DateTime, Utc};
 use dto::{FromProto, IntoProto};
+use lib::prelude::*;
 use proto::events::RunMeta;
 use sea_orm::entity::prelude::*;
 
 use super::attempts;
-use crate::database::pagination::PaginatedEntity;
-use crate::prelude::ValidShardedId;
-use crate::types::{Action, AttemptId, Payload, ProjectId, RunId, TriggerId};
 
 #[derive(
     Clone, Debug, IntoProto, FromProto, PartialEq, DeriveEntityModel, Eq,

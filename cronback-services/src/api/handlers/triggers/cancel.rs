@@ -2,12 +2,11 @@ use std::sync::Arc;
 
 use axum::extract::{Path, State};
 use axum::{Extension, Json};
-use lib::model::ValidShardedId;
-use lib::types::{ProjectId, RequestId};
+use lib::prelude::*;
 use proto::scheduler_svc::CancelTriggerRequest;
 
+use crate::api::api_model::Trigger;
 use crate::api::errors::ApiError;
-use crate::api::model::Trigger;
 use crate::api::AppState;
 
 #[tracing::instrument(skip(state))]

@@ -1,23 +1,32 @@
-pub mod clients;
-pub mod config;
+mod config;
 mod consts;
-pub mod database;
-pub mod grpc_client_provider;
+mod database;
+mod grpc_client_provider;
 mod grpc_helpers;
-pub mod model;
-pub mod netutils;
-pub mod rpc_middleware;
-pub mod service;
-pub mod shutdown;
-pub mod types;
+mod model;
+mod rpc_middleware;
+mod shutdown;
+mod types;
 
+pub mod clients;
 pub mod events;
+pub mod netutils;
+pub mod service;
+
 mod ext;
+
+pub use grpc_client_provider::*;
+pub use rpc_middleware::*;
+pub use shutdown::*;
+
+pub use crate::config::*;
 
 pub mod prelude {
     pub use crate::consts::*;
+    pub use crate::database::*;
     pub use crate::events::e;
     pub use crate::ext::*;
     pub use crate::grpc_helpers::*;
     pub use crate::model::*;
+    pub use crate::types::*;
 }

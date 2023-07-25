@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 #[cfg(feature = "dto")]
 use dto::{FromProto, IntoProto};
 #[cfg(feature = "dto")]
-use lib::types::RunId;
+use lib::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, skip_serializing_none};
 use strum::Display;

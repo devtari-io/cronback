@@ -1,4 +1,3 @@
-pub use proto::events::*;
 ///  e!(context = ctx, TriggerRunCreated { meta: run.meta().into() });
 #[macro_export]
 macro_rules! e {
@@ -31,7 +30,7 @@ macro_rules! e {
 }
 
 /// Emits the event to the current events subscriber
-pub fn log_event(event: Event) {
+pub fn log_event(event: proto::events::Event) {
     // serialize the event to JSON and log it to target `events`
     let event = serde_json::to_string(&event).unwrap();
     tracing::info!(target: "events", "{}", event);

@@ -5,7 +5,7 @@ use axum::extract::rejection::JsonRejection;
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use axum::Json;
-use lib::grpc_client_provider::GrpcClientError;
+use lib::GrpcClientError;
 use serde::Serialize;
 use serde_with::skip_serializing_none;
 use thiserror::Error;

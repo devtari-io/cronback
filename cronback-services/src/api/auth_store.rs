@@ -1,24 +1,19 @@
 use async_trait::async_trait;
-use lib::database::models::api_keys;
-use lib::database::models::prelude::ApiKeys;
-use lib::database::{Database, DatabaseError};
-use lib::model::ValidShardedId;
-use lib::types::ProjectId;
+use lib::prelude::*;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
+
+use crate::api::db_model::{api_keys, ApiKey, ApiKeys};
 
 pub type AuthStoreError = DatabaseError;
 
 #[async_trait]
 pub trait AuthStore {
-    async fn save_key(
-        &self,
-        key: api_keys::Model,
-    ) -> Result<(), AuthStoreError>;
+    async fn save_key(&self, key: ApiKey) -> Result<(), AuthStoreError>;
 
     async fn get_key(
         &self,
         key: &str,
-    ) -> Result<Option<api_keys::Model>, AuthStoreError>;
+    ) -> Result<Option<ApiKey>, AuthStoreError>;
 
     /// Returns true if the key got deleted, false if the key didn't exist
     async fn delete_key(
@@ -30,7 +25,7 @@ pub trait AuthStore {
     async fn list_keys(
         &self,
         project: &ValidShardedId<ProjectId>,
-    ) -> Result<Vec<api_keys::Model>, AuthStoreError>;
+    ) -> Result<Vec<ApiKey>, AuthStoreError>;
 }
 
 pub struct SqlAuthStore {
@@ -45,21 +40,16 @@ impl SqlAuthStore {
 
 #[async_trait]
 impl AuthStore for SqlAuthStore {
-    async fn save_key(
-        &self,
-        key: api_keys::Model,
-    ) -> Result<(), AuthStoreError> {
+    async fn save_key(&self, key: ApiKey) -> Result<(), AuthStoreError> {
         let active_model: api_keys::ActiveModel = key.into();
-        api_keys::Entity::insert(active_model)
-            .exec(&self.db.orm)
-            .await?;
+        ApiKeys::insert(active_model).exec(&self.db.orm).await?;
         Ok(())
     }
 
     async fn get_key(
         &self,
         key_id: &str,
-    ) -> Result<Option<api_keys::Model>, AuthStoreError> {
+    ) -> Result<Option<ApiKey>, AuthStoreError> {
         let res = ApiKeys::find_by_id(key_id).one(&self.db.orm).await?;
         Ok(res)
     }
@@ -80,7 +70,7 @@ impl AuthStore for SqlAuthStore {
     async fn list_keys(
         &self,
         project: &ValidShardedId<ProjectId>,
-    ) -> Result<Vec<api_keys::Model>, AuthStoreError> {
+    ) -> Result<Vec<ApiKey>, AuthStoreError> {
         let results = ApiKeys::find()
             .filter(api_keys::Column::ProjectId.eq(project.clone()))
             .all(&self.db.orm)
@@ -91,27 +81,22 @@ impl AuthStore for SqlAuthStore {
 
 #[cfg(test)]
 mod tests {
-
     use chrono::Utc;
-    use lib::database::models::api_keys::{self, Metadata};
-    use lib::database::Database;
-    use lib::prelude::ValidShardedId;
-    use lib::types::ProjectId;
 
-    use super::{AuthStore, SqlAuthStore};
+    use super::*;
 
     fn build_model(
         key_id: &str,
         project: &ValidShardedId<ProjectId>,
-    ) -> api_keys::Model {
-        api_keys::Model {
+    ) -> ApiKey {
+        ApiKey {
             key_id: key_id.to_string(),
             hash: "hashash".to_string(),
             hash_version: "v1".to_string(),
             project_id: project.clone(),
             name: key_id.to_string(),
             created_at: Utc::now(),
-            metadata: Metadata {
+            metadata: api_keys::Metadata {
                 creator_user_id: None,
             },
         }

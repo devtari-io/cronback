@@ -1,15 +1,9 @@
 use async_trait::async_trait;
+use lib::prelude::*;
 use proto::common::PaginationIn;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter};
 
-use super::errors::DatabaseError;
-use super::models::attempts;
-use super::pagination::{PaginatedResponse, PaginatedSelect};
-use crate::database::models::prelude::Attempts;
-use crate::database::Database;
-use crate::model::ModelId;
-use crate::prelude::ValidShardedId;
-use crate::types::{Attempt, AttemptId, ProjectId, RunId};
+use super::db_model::{attempts, Attempt, Attempts};
 
 pub type AttemptLogStoreError = DatabaseError;
 
@@ -88,19 +82,11 @@ mod tests {
     use std::time::Duration;
 
     use chrono::{Timelike, Utc};
-    use proto::common::PaginationIn;
 
-    use super::{AttemptLogStore, SqlAttemptLogStore};
-    use crate::database::Database;
-    use crate::model::ValidShardedId;
-    use crate::types::{
-        Attempt,
+    use super::*;
+    use crate::dispatcher::db_model::attempts::{
         AttemptDetails,
-        AttemptId,
         AttemptStatus,
-        ProjectId,
-        RunId,
-        TriggerId,
         WebhookAttemptDetails,
     };
 

@@ -1,15 +1,10 @@
 use async_trait::async_trait;
+use lib::prelude::*;
 use proto::common::PaginationIn;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter};
 
-use super::errors::DatabaseError;
-use super::models::runs;
-use super::pagination::{PaginatedResponse, PaginatedSelect};
-use crate::database::models::prelude::Runs;
-use crate::database::Database;
-use crate::model::ModelId;
-use crate::prelude::ValidShardedId;
-use crate::types::{ProjectId, Run, RunId, RunStatus, TriggerId};
+use super::db_model::runs::RunStatus;
+use super::db_model::{runs, Attempts, Run, Runs};
 
 pub type RunStoreError = DatabaseError;
 
@@ -80,7 +75,7 @@ impl RunStore for SqlRunStore {
         id: &RunId,
     ) -> Result<Option<Run>, RunStoreError> {
         let res = Runs::find_by_id((id.clone(), project.clone()))
-            .find_also_related(super::models::attempts::Entity)
+            .find_also_related(Attempts)
             .one(&self.db.orm)
             .await?
             .map(|mut r| {
@@ -97,7 +92,7 @@ impl RunStore for SqlRunStore {
         pagination: PaginationIn,
     ) -> Result<PaginatedResponse<Run>, RunStoreError> {
         let query = Runs::find()
-            .find_also_related(super::models::attempts::Entity)
+            .find_also_related(Attempts)
             .filter(runs::Column::TriggerId.eq(trigger_id.value()))
             .filter(runs::Column::ProjectId.eq(project.value()))
             .with_pagination(&pagination);
@@ -120,7 +115,7 @@ impl RunStore for SqlRunStore {
         pagination: PaginationIn,
     ) -> Result<PaginatedResponse<Run>, RunStoreError> {
         let query = Runs::find()
-            .find_also_related(super::models::attempts::Entity)
+            .find_also_related(Attempts)
             .filter(runs::Column::ProjectId.eq(project.value()))
             .with_pagination(&pagination);
 
@@ -142,7 +137,7 @@ impl RunStore for SqlRunStore {
         status: RunStatus,
     ) -> Result<Vec<Run>, RunStoreError> {
         let result = Runs::find()
-            .find_also_related(super::models::attempts::Entity)
+            .find_also_related(Attempts)
             .filter(runs::Column::Status.eq(status))
             .all(&self.db.orm)
             .await?
@@ -164,19 +159,7 @@ mod tests {
     use proto::common::PaginationIn;
     use sea_orm::DbErr;
 
-    use super::{RunStore, SqlRunStore};
-    use crate::database::errors::DatabaseError;
-    use crate::database::Database;
-    use crate::model::ValidShardedId;
-    use crate::types::{
-        Action,
-        ProjectId,
-        Run,
-        RunId,
-        RunStatus,
-        TriggerId,
-        Webhook,
-    };
+    use super::*;
 
     fn build_run(
         trigger_id: ValidShardedId<TriggerId>,
@@ -193,7 +176,7 @@ mod tests {
             created_at: now,
             action: Action::Webhook(Webhook {
                 url: "http://test".to_string(),
-                http_method: crate::types::HttpMethod::Get,
+                http_method: HttpMethod::Get,
                 timeout_s: Duration::from_secs(5),
                 retry: None,
             }),

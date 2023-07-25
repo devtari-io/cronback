@@ -1,4 +1,4 @@
-use lib::types::TriggerId;
+use lib::prelude::*;
 use thiserror::Error;
 
 use super::db_model::triggers::Status;

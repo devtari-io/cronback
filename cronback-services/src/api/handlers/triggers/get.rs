@@ -5,13 +5,12 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
 use axum_extra::extract::Query;
-use lib::model::ValidShardedId;
-use lib::types::{ProjectId, RequestId};
+use lib::prelude::*;
 use proto::scheduler_svc::{GetTriggerRequest, ListTriggersRequest};
 use validator::Validate;
 
+use crate::api::api_model::{Trigger, TriggersFilter};
 use crate::api::errors::ApiError;
-use crate::api::model::{Trigger, TriggersFilter};
 use crate::api::paginated::{Paginated, Pagination};
 use crate::api::AppState;
 
