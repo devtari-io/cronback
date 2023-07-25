@@ -1,5 +1,4 @@
 use std::debug_assert;
-use std::sync::Arc;
 use std::time::Duration;
 
 use chrono::Utc;
@@ -10,7 +9,7 @@ use proto::dispatcher_svc;
 use thiserror::Error;
 use tracing::{error, info};
 
-use super::attempt_store::AttemptLogStore;
+use super::attempt_store::AttemptStore;
 use super::db_model::runs::RunStatus;
 use super::db_model::Run;
 use super::run_store::{RunStore, RunStoreError};
@@ -24,15 +23,15 @@ pub enum DispatcherManagerError {
 
 pub struct DispatchManager {
     _cell_id: u32,
-    attempt_store: Arc<dyn AttemptLogStore + Send + Sync>,
-    run_store: Arc<dyn RunStore + Send + Sync>,
+    attempt_store: AttemptStore,
+    run_store: RunStore,
 }
 
 impl DispatchManager {
     pub fn new(
         cell_id: u32,
-        run_store: Arc<dyn RunStore + Send + Sync>,
-        attempt_store: Arc<dyn AttemptLogStore + Send + Sync>,
+        run_store: RunStore,
+        attempt_store: AttemptStore,
     ) -> Self {
         Self {
             _cell_id: cell_id,
@@ -57,8 +56,8 @@ impl DispatchManager {
             tokio::spawn(
                 RunJob::from(
                     r,
-                    Arc::clone(&self.run_store),
-                    Arc::clone(&self.attempt_store),
+                    self.run_store.clone(),
+                    self.attempt_store.clone(),
                 )
                 .run(),
             );
@@ -76,8 +75,8 @@ impl DispatchManager {
 
         let run_job = RunJob::from(
             run,
-            Arc::clone(&self.run_store),
-            Arc::clone(&self.attempt_store),
+            self.run_store.clone(),
+            self.attempt_store.clone(),
         );
 
         Ok(match mode {
@@ -97,15 +96,15 @@ impl DispatchManager {
 
 pub struct RunJob {
     pub run: Run,
-    run_store: Arc<dyn RunStore + Send + Sync>,
-    attempt_store: Arc<dyn AttemptLogStore + Send + Sync>,
+    run_store: RunStore,
+    attempt_store: AttemptStore,
 }
 
 impl RunJob {
     fn from(
         run: Run,
-        run_store: Arc<dyn RunStore + Send + Sync>,
-        attempt_store: Arc<dyn AttemptLogStore + Send + Sync>,
+        run_store: RunStore,
+        attempt_store: AttemptStore,
     ) -> Self {
         Self {
             run,

@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use lib::prelude::*;
 use proto::common::PaginationIn;
 use sea_orm::{
@@ -14,72 +13,17 @@ use super::db_model::{Trigger, Triggers};
 
 pub type TriggerStoreError = DatabaseError;
 
-#[async_trait]
-pub trait TriggerStore {
-    async fn install_trigger(
-        &self,
-        trigger: Trigger,
-    ) -> Result<(), TriggerStoreError>;
-
-    async fn update_trigger(
-        &self,
-        trigger: Trigger,
-    ) -> Result<(), TriggerStoreError>;
-
-    async fn delete_trigger(
-        &self,
-        project: &ValidShardedId<ProjectId>,
-        name: &TriggerId,
-    ) -> Result<(), TriggerStoreError>;
-
-    async fn get_all_active_triggers(
-        &self,
-    ) -> Result<Vec<Trigger>, TriggerStoreError>;
-
-    async fn get_trigger_by_name(
-        &self,
-        project: &ProjectId,
-        name: &str,
-    ) -> Result<Option<Trigger>, TriggerStoreError>;
-
-    async fn find_trigger_id_for_name(
-        &self,
-        project: &ProjectId,
-        name: &str,
-    ) -> Result<Option<TriggerId>, TriggerStoreError>;
-
-    async fn get_status(
-        &self,
-        project: &ProjectId,
-        name: &str,
-    ) -> Result<Option<Status>, TriggerStoreError>;
-
-    async fn get_triggers_by_project(
-        &self,
-        project: &ProjectId,
-        pagination: PaginationIn,
-        statuses: Option<Vec<Status>>,
-    ) -> Result<PaginatedResponse<Trigger>, TriggerStoreError>;
-
-    async fn delete_triggers_by_project(
-        &self,
-        project: &ProjectId,
-    ) -> Result<(), TriggerStoreError>;
-}
-
-pub struct SqlTriggerStore {
+#[derive(Clone)]
+pub struct TriggerStore {
     db: Database,
 }
 
-impl SqlTriggerStore {
+impl TriggerStore {
     pub fn new(db: Database) -> Self {
         Self { db }
     }
-}
 
-#[async_trait]
-impl TriggerStore for SqlTriggerStore {
-    async fn install_trigger(
+    pub async fn install_trigger(
         &self,
         trigger: Trigger,
     ) -> Result<(), TriggerStoreError> {
@@ -88,7 +32,7 @@ impl TriggerStore for SqlTriggerStore {
         Ok(())
     }
 
-    async fn update_trigger(
+    pub async fn update_trigger(
         &self,
         trigger: Trigger,
     ) -> Result<(), TriggerStoreError> {
@@ -103,7 +47,7 @@ impl TriggerStore for SqlTriggerStore {
         Ok(())
     }
 
-    async fn delete_trigger(
+    pub async fn delete_trigger(
         &self,
         project: &ValidShardedId<ProjectId>,
         trigger_id: &TriggerId,
@@ -114,7 +58,7 @@ impl TriggerStore for SqlTriggerStore {
         Ok(())
     }
 
-    async fn delete_triggers_by_project(
+    pub async fn delete_triggers_by_project(
         &self,
         project: &ProjectId,
     ) -> Result<(), TriggerStoreError> {
@@ -125,7 +69,7 @@ impl TriggerStore for SqlTriggerStore {
         Ok(())
     }
 
-    async fn get_all_active_triggers(
+    pub async fn get_all_active_triggers(
         &self,
     ) -> Result<Vec<Trigger>, TriggerStoreError> {
         let res = Triggers::find()
@@ -138,7 +82,7 @@ impl TriggerStore for SqlTriggerStore {
         Ok(res)
     }
 
-    async fn get_triggers_by_project(
+    pub async fn get_triggers_by_project(
         &self,
         project: &ProjectId,
         pagination: PaginationIn,
@@ -157,7 +101,7 @@ impl TriggerStore for SqlTriggerStore {
         Ok(PaginatedResponse::paginate(res, &pagination))
     }
 
-    async fn get_trigger_by_name(
+    pub async fn get_trigger_by_name(
         &self,
         project_id: &ProjectId,
         name: &str,
@@ -170,7 +114,7 @@ impl TriggerStore for SqlTriggerStore {
         Ok(res)
     }
 
-    async fn find_trigger_id_for_name(
+    pub async fn find_trigger_id_for_name(
         &self,
         project: &ProjectId,
         name: &str,
@@ -186,7 +130,7 @@ impl TriggerStore for SqlTriggerStore {
         Ok(res)
     }
 
-    async fn get_status(
+    pub async fn get_status(
         &self,
         project: &ProjectId,
         name: &str,
@@ -244,11 +188,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_sql_trigger_store() -> anyhow::Result<()> {
+    async fn test_trigger_store() -> anyhow::Result<()> {
         let db = Database::in_memory().await?;
         migrate_up(&db).await?;
 
-        let store = SqlTriggerStore::new(db);
+        let store = TriggerStore::new(db);
 
         let project1 = ProjectId::generate();
         let project2 = ProjectId::generate();

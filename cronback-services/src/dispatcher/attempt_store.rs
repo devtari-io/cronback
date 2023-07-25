@@ -1,60 +1,43 @@
-use async_trait::async_trait;
 use lib::prelude::*;
+#[cfg(test)]
 use proto::common::PaginationIn;
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter};
+use sea_orm::ActiveModelTrait;
+#[cfg(test)]
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 
-use super::db_model::{attempts, Attempt, Attempts};
+#[cfg(test)]
+use super::db_model::Attempts;
+use super::db_model::{attempts, Attempt};
 
-pub type AttemptLogStoreError = DatabaseError;
+pub type AttemptStoreError = DatabaseError;
 
-#[async_trait]
-pub trait AttemptLogStore {
-    async fn log_attempt(
-        &self,
-        attempt: Attempt,
-    ) -> Result<(), AttemptLogStoreError>;
-
-    async fn get_attempts_for_run(
-        &self,
-        project: &ValidShardedId<ProjectId>,
-        id: &RunId,
-        pagination: PaginationIn,
-    ) -> Result<PaginatedResponse<Attempt>, AttemptLogStoreError>;
-
-    async fn get_attempt(
-        &self,
-        project: &ValidShardedId<ProjectId>,
-        id: &AttemptId,
-    ) -> Result<Option<Attempt>, AttemptLogStoreError>;
-}
-
-pub struct SqlAttemptLogStore {
+#[derive(Clone)]
+pub struct AttemptStore {
     db: Database,
 }
 
-impl SqlAttemptLogStore {
+impl AttemptStore {
     pub fn new(db: Database) -> Self {
         Self { db }
     }
-}
 
-#[async_trait]
-impl AttemptLogStore for SqlAttemptLogStore {
-    async fn log_attempt(
+    pub async fn log_attempt(
         &self,
         attempt: Attempt,
-    ) -> Result<(), AttemptLogStoreError> {
+    ) -> Result<(), AttemptStoreError> {
         let active_model: attempts::ActiveModel = attempt.into();
         active_model.insert(&self.db.orm).await?;
         Ok(())
     }
 
-    async fn get_attempts_for_run(
+    // Leaving this under cfg(test) until someone actually need it.
+    #[cfg(test)]
+    pub async fn get_attempts_for_run(
         &self,
         project: &ValidShardedId<ProjectId>,
         id: &RunId,
         pagination: PaginationIn,
-    ) -> Result<PaginatedResponse<Attempt>, AttemptLogStoreError> {
+    ) -> Result<PaginatedResponse<Attempt>, AttemptStoreError> {
         let query = Attempts::find()
             .filter(attempts::Column::RunId.eq(id.value()))
             .filter(attempts::Column::ProjectId.eq(project.value()))
@@ -65,11 +48,13 @@ impl AttemptLogStore for SqlAttemptLogStore {
         Ok(PaginatedResponse::paginate(res, &pagination))
     }
 
-    async fn get_attempt(
+    // Leaving this under cfg(test) until someone actually need it.
+    #[cfg(test)]
+    pub async fn get_attempt(
         &self,
         project_id: &ValidShardedId<ProjectId>,
         id: &AttemptId,
-    ) -> Result<Option<Attempt>, AttemptLogStoreError> {
+    ) -> Result<Option<Attempt>, AttemptStoreError> {
         let res = Attempts::find_by_id((id.clone(), project_id.clone()))
             .one(&self.db.orm)
             .await?;
@@ -118,10 +103,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_sql_trigger_store() -> anyhow::Result<()> {
+    async fn test_trigger_store() -> anyhow::Result<()> {
         let db = Database::in_memory().await?;
         migrate_up(&db).await?;
-        let store = SqlAttemptLogStore::new(db);
+        let store = AttemptStore::new(db);
 
         let project = ProjectId::generate();
         let project2 = ProjectId::generate();
