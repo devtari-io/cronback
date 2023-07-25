@@ -7,14 +7,12 @@ mod retry;
 mod run_store;
 mod webhook_action;
 
-use std::sync::Arc;
-
-use attempt_store::{AttemptLogStore, SqlAttemptLogStore};
+use attempt_store::AttemptStore;
 use dispatch_manager::DispatchManager;
 use lib::prelude::*;
 use lib::{netutils, service};
 use proto::dispatcher_svc::dispatcher_svc_server::DispatcherSvcServer;
-use run_store::{RunStore, SqlRunStore};
+use run_store::RunStore;
 use sea_orm::TransactionTrait;
 use sea_orm_migration::MigratorTrait;
 use tracing::info;
@@ -41,16 +39,14 @@ pub async fn start_dispatcher_server(
     let db = Database::connect(&config.dispatcher.database_uri).await?;
     migrate_up(&db).await?;
 
-    let attempt_store: Arc<dyn AttemptLogStore + Send + Sync> =
-        Arc::new(SqlAttemptLogStore::new(db.clone()));
+    let attempt_store = AttemptStore::new(db.clone());
 
-    let run_store: Arc<dyn RunStore + Send + Sync> =
-        Arc::new(SqlRunStore::new(db));
+    let run_store = RunStore::new(db);
 
     let dispatch_manager = DispatchManager::new(
         config.dispatcher.cell_id,
         run_store.clone(),
-        attempt_store.clone(),
+        attempt_store,
     );
     dispatch_manager.start().await?;
 

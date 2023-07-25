@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use chrono::Utc;
 use lib::prelude::*;
 use lib::service::ServiceContext;
@@ -23,14 +21,11 @@ use super::metadata_store::MetadataStore;
 pub(crate) struct MetadataSvcHandler {
     #[allow(unused)]
     context: ServiceContext,
-    project_store: Arc<dyn MetadataStore + Send + Sync>,
+    project_store: MetadataStore,
 }
 
 impl MetadataSvcHandler {
-    pub fn new(
-        context: ServiceContext,
-        project_store: Arc<dyn MetadataStore + Send + Sync>,
-    ) -> Self {
+    pub fn new(context: ServiceContext, project_store: MetadataStore) -> Self {
         Self {
             context,
             project_store,

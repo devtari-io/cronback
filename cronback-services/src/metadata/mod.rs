@@ -3,11 +3,9 @@ mod handler;
 mod metadata_store;
 mod migration;
 
-use std::sync::Arc;
-
 use lib::prelude::*;
 use lib::{netutils, service};
-use metadata_store::{MetadataStore, SqlMetadataStore};
+use metadata_store::MetadataStore;
 use proto::metadata_svc::metadata_svc_server::MetadataSvcServer;
 use sea_orm::TransactionTrait;
 use sea_orm_migration::MigratorTrait;
@@ -33,8 +31,7 @@ pub async fn start_metadata_server(
     let db = Database::connect(&config.metadata.database_uri).await?;
     migrate_up(&db).await?;
 
-    let store: Arc<dyn MetadataStore + Send + Sync> =
-        Arc::new(SqlMetadataStore::new(db));
+    let store = MetadataStore::new(db);
 
     let handler = handler::MetadataSvcHandler::new(context.clone(), store);
     let svc = MetadataSvcServer::new(handler);

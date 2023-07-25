@@ -15,7 +15,7 @@ use proto::scheduler_svc::scheduler_svc_server::SchedulerSvcServer;
 use sea_orm::TransactionTrait;
 use sea_orm_migration::MigratorTrait;
 use spinner::controller::SpinnerController;
-use trigger_store::SqlTriggerStore;
+use trigger_store::TriggerStore;
 
 // TODO: Move database migration into a new service trait.
 pub async fn migrate_up(db: &Database) -> Result<(), DatabaseError> {
@@ -34,13 +34,13 @@ pub async fn start_scheduler_server(
     let db = Database::connect(&config.scheduler.database_uri).await?;
     migrate_up(&db).await?;
 
-    let trigger_store = Arc::new(SqlTriggerStore::new(db));
+    let trigger_store = TriggerStore::new(db);
 
     let dispatcher_clients = Arc::new(GrpcClientProvider::new(context.clone()));
 
     let controller = Arc::new(SpinnerController::new(
         context.clone(),
-        trigger_store.clone(),
+        trigger_store,
         dispatcher_clients,
     ));
 
@@ -106,7 +106,7 @@ pub mod test_helpers {
         migration::Migrator::up(&conn, None).await.unwrap();
         conn.commit().await.unwrap();
 
-        let trigger_store = Arc::new(SqlTriggerStore::new(db));
+        let trigger_store = TriggerStore::new(db);
         let controller = Arc::new(SpinnerController::new(
             context.clone(),
             trigger_store,

@@ -45,11 +45,11 @@ impl From<AuthError> for ApiError {
 }
 
 pub struct Authenticator {
-    store: Box<dyn AuthStore + Send + Sync>,
+    store: AuthStore,
 }
 
 impl Authenticator {
-    pub fn new(store: Box<dyn AuthStore + Send + Sync>) -> Self {
+    pub fn new(store: AuthStore) -> Self {
         Self { store }
     }
 
@@ -235,7 +235,6 @@ mod tests {
     use cronback_api_model::admin::CreateAPIkeyRequest;
 
     use super::*;
-    use crate::api::auth_store::SqlAuthStore;
     use crate::api::migrate_up;
 
     #[test]
@@ -265,15 +264,15 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_sql_auth_store() -> anyhow::Result<()> {
+    async fn test_auth_store() -> anyhow::Result<()> {
         let db = Database::in_memory().await?;
         migrate_up(&db).await?;
-        let store = SqlAuthStore::new(db);
+        let store = AuthStore::new(db);
 
         let prj1 = ProjectId::generate();
         let prj2 = ProjectId::generate();
 
-        let authenticator = Authenticator::new(Box::new(store));
+        let authenticator = Authenticator::new(store);
 
         let key1 = authenticator
             .gen_key(build_create_key_request("key1"), &prj1)
