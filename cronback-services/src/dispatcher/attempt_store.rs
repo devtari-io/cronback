@@ -89,6 +89,7 @@ mod tests {
         AttemptStatus,
         WebhookAttemptDetails,
     };
+    use crate::dispatcher::migrate_up;
 
     fn build_attempt(
         project: &ValidShardedId<ProjectId>,
@@ -119,6 +120,7 @@ mod tests {
     #[tokio::test]
     async fn test_sql_trigger_store() -> anyhow::Result<()> {
         let db = Database::in_memory().await?;
+        migrate_up(&db).await?;
         let store = SqlAttemptLogStore::new(db);
 
         let project = ProjectId::generate();

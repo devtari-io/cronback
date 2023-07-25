@@ -211,6 +211,7 @@ mod tests {
     use chrono::{Timelike, Utc};
 
     use super::*;
+    use crate::scheduler::migrate_up;
 
     fn build_trigger(
         name: &str,
@@ -245,6 +246,8 @@ mod tests {
     #[tokio::test]
     async fn test_sql_trigger_store() -> anyhow::Result<()> {
         let db = Database::in_memory().await?;
+        migrate_up(&db).await?;
+
         let store = SqlTriggerStore::new(db);
 
         let project1 = ProjectId::generate();

@@ -1,6 +1,7 @@
 mod db_model;
 mod handler;
 mod metadata_store;
+mod migration;
 
 use std::sync::Arc;
 
@@ -8,7 +9,17 @@ use lib::prelude::*;
 use lib::{netutils, service};
 use metadata_store::{MetadataStore, SqlMetadataStore};
 use proto::metadata_svc::metadata_svc_server::MetadataSvcServer;
+use sea_orm::TransactionTrait;
+use sea_orm_migration::MigratorTrait;
 use tracing::info;
+
+// TODO: Move database migration into a new service trait.
+pub async fn migrate_up(db: &Database) -> Result<(), DatabaseError> {
+    let conn = db.orm.begin().await?;
+    migration::Migrator::up(&conn, None).await?;
+    conn.commit().await?;
+    Ok(())
+}
 
 #[tracing::instrument(skip_all, fields(service = context.service_name()))]
 pub async fn start_metadata_server(
@@ -20,7 +31,7 @@ pub async fn start_metadata_server(
             .unwrap();
 
     let db = Database::connect(&config.metadata.database_uri).await?;
-    db.migrate().await?;
+    migrate_up(&db).await?;
 
     let store: Arc<dyn MetadataStore + Send + Sync> =
         Arc::new(SqlMetadataStore::new(db));
