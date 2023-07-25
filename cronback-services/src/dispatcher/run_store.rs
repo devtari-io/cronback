@@ -160,6 +160,7 @@ mod tests {
     use sea_orm::DbErr;
 
     use super::*;
+    use crate::dispatcher::migrate_up;
 
     fn build_run(
         trigger_id: ValidShardedId<TriggerId>,
@@ -190,6 +191,7 @@ mod tests {
     #[tokio::test]
     async fn test_sql_run_store() -> anyhow::Result<()> {
         let db = Database::in_memory().await?;
+        migrate_up(&db).await?;
         let store = SqlRunStore::new(db);
 
         let project1 = ProjectId::generate();
