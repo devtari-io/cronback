@@ -1,4 +1,4 @@
-pub mod api_srv;
-pub mod dispatcher_srv;
-pub mod project_srv;
-pub mod scheduler_srv;
+pub mod api;
+pub mod dispatcher;
+pub mod metadata;
+pub mod scheduler;

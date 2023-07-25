@@ -23,7 +23,7 @@ use crate::types::{AttemptId, ProjectId, RunId, TriggerId};
     Eq,
     FromJsonQueryResult,
 )]
-#[proto(target = "proto::attempt_proto::Attempt")]
+#[proto(target = "proto::attempts::Attempt")]
 #[sea_orm(table_name = "attempts")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
@@ -56,7 +56,7 @@ pub enum Relation {}
 impl ActiveModelBehavior for ActiveModel {}
 
 #[derive(Debug, Serialize, Deserialize, IntoProto, Clone, PartialEq, Eq)]
-#[proto(target = "proto::attempt_proto::WebhookAttemptDetails")]
+#[proto(target = "proto::attempts::WebhookAttemptDetails")]
 pub struct WebhookAttemptDetails {
     pub response_code: Option<i32>,
     #[into_proto(map = "Duration::as_secs_f64", map_by_ref)]
@@ -88,7 +88,7 @@ impl WebhookAttemptDetails {
     Eq,
     FromJsonQueryResult,
 )]
-#[proto(target = "proto::attempt_proto::AttemptDetails", oneof = "details")]
+#[proto(target = "proto::attempts::AttemptDetails", oneof = "details")]
 pub enum AttemptDetails {
     #[proto(name = "Webhook")]
     WebhookAttemptDetails(WebhookAttemptDetails),
@@ -106,7 +106,7 @@ pub enum AttemptDetails {
     DeriveActiveEnum,
 )]
 #[sea_orm(rs_type = "String", db_type = "String(None)")]
-#[proto(target = "proto::attempt_proto::AttemptStatus")]
+#[proto(target = "proto::attempts::AttemptStatus")]
 pub enum AttemptStatus {
     #[sea_orm(string_value = "Succeeded")]
     Succeeded,
