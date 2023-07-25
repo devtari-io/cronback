@@ -4,7 +4,7 @@ use axum::extract::{FromRequest, FromRequestParts, Path};
 use axum::http::request::Parts;
 use axum::http::Request;
 use axum::Json;
-use lib::model::{ModelId, ValidShardedId};
+use lib::prelude::*;
 use serde::de::DeserializeOwned;
 use validator::Validate;
 

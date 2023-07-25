@@ -1,11 +1,8 @@
 use std::sync::Arc;
 
 use chrono::Utc;
-use lib::database::DatabaseError;
-use lib::e;
-use lib::prelude::ModelId;
+use lib::prelude::*;
 use lib::service::ServiceContext;
-use lib::types::ProjectId;
 use proto::metadata_svc::metadata_svc_server::MetadataSvc;
 use proto::metadata_svc::{
     CreateProjectRequest,

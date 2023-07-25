@@ -3,7 +3,7 @@
 use std::pin::Pin;
 use std::time::Duration;
 
-use lib::types::{ExponentialBackoffRetry, RetryConfig, SimpleRetry};
+use lib::prelude::*;
 
 // Inclusive of first attempt? Yes. the initial delay will be zero.
 #[derive(Debug)]
@@ -179,11 +179,7 @@ impl Iterator for Retry {
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
-
-    use lib::types::{ExponentialBackoffRetry, RetryConfig, SimpleRetry};
-
-    use super::Retry;
+    use super::*;
 
     #[tokio::test]
     async fn no_retry_policy() {

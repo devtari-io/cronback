@@ -2,12 +2,8 @@ use std::sync::Arc;
 
 use chrono::Utc;
 use futures::TryFutureExt;
-use lib::database::run_store::RunStore;
-use lib::database::DatabaseError;
-use lib::e;
-use lib::prelude::TonicRequestExt;
+use lib::prelude::*;
 use lib::service::ServiceContext;
-use lib::types::{Run, RunId, RunStatus, TriggerId};
 use metrics::counter;
 use proto::common::PaginationIn;
 use proto::dispatcher_svc::dispatcher_svc_server::DispatcherSvc;
@@ -22,7 +18,10 @@ use proto::dispatcher_svc::{
 use thiserror::Error;
 use tonic::{Request, Response, Status};
 
+use super::db_model::runs::RunStatus;
+use super::db_model::Run;
 use super::dispatch_manager::DispatchManager;
+use super::run_store::RunStore;
 
 pub(crate) struct DispatcherSvcHandler {
     #[allow(unused)]

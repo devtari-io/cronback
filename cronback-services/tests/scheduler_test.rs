@@ -2,14 +2,11 @@ use std::sync::Arc;
 
 use cronback_services::scheduler::test_helpers;
 use dto::traits::ProstOptionExt;
-use lib::clients::scheduler_client::ScopedSchedulerSvcClient;
-use lib::config::{ConfigLoader, Role};
-use lib::grpc_client_provider::test_helpers::TestGrpcClientProvider;
-use lib::grpc_client_provider::GrpcClientFactory;
+use lib::clients::ScopedSchedulerSvcClient;
+use lib::grpc_test_helpers::TestGrpcClientProvider;
 use lib::prelude::*;
 use lib::service::ServiceContext;
-use lib::shutdown::Shutdown;
-use lib::types::{ProjectId, RequestId};
+use lib::{ConfigLoader, GrpcClientFactory, Role, Shutdown};
 use proto::common::{
     action,
     Action,
