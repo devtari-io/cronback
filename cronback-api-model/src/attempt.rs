@@ -11,7 +11,7 @@ use strum::Display;
 #[cfg_attr(
     feature = "dto",
     derive(FromProto),
-    proto(target = "proto::attempt_proto::Attempt")
+    proto(target = "proto::attempts::Attempt")
 )]
 #[skip_serializing_none]
 pub struct Attempt {
@@ -29,7 +29,7 @@ pub struct Attempt {
 #[cfg_attr(
     feature = "dto",
     derive(FromProto),
-    proto(target = "proto::attempt_proto::WebhookAttemptDetails")
+    proto(target = "proto::attempts::WebhookAttemptDetails")
 )]
 pub struct WebhookAttemptDetails {
     pub response_code: Option<i32>,
@@ -44,7 +44,7 @@ pub struct WebhookAttemptDetails {
 #[cfg_attr(
     feature = "dto",
     derive(FromProto),
-    proto(target = "proto::attempt_proto::AttemptDetails", oneof = "details")
+    proto(target = "proto::attempts::AttemptDetails", oneof = "details")
 )]
 #[serde(untagged)]
 pub enum AttemptDetails {
@@ -74,7 +74,7 @@ impl AttemptDetails {
 #[cfg_attr(
     feature = "dto",
     derive(FromProto),
-    proto(target = "proto::attempt_proto::AttemptStatus")
+    proto(target = "proto::attempts::AttemptStatus")
 )]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[cfg_attr(feature = "clap", clap(rename_all = "snake_case"))]

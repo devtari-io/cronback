@@ -1,0 +1,138 @@
+syntax = "proto3";
+
+import "common.proto";
+import "runs.proto";
+import "triggers.proto";
+
+package scheduler_svc;
+
+service SchedulerSvc {
+  /// Install or update a trigger onto the scheduler
+  rpc UpsertTrigger (UpsertTriggerRequest) returns (UpsertTriggerResponse);
+  /// Manually run a trigger
+  rpc RunTrigger (RunTriggerRequest) returns (RunTriggerResponse);
+  /// Get a trigger by id
+  rpc GetTrigger (GetTriggerRequest) returns (GetTriggerResponse);
+  /// Retrieve a list of triggers 
+  rpc ListTriggers (ListTriggersRequest) returns (ListTriggersResponse);
+  /// Pause a running trigger
+  rpc PauseTrigger (PauseTriggerRequest) returns (PauseTriggerResponse);
+  /// Resume a paused/active trigger
+  rpc ResumeTrigger (ResumeTriggerRequest) returns (ResumeTriggerResponse);
+  /// Cancel trigger
+  rpc CancelTrigger (CancelTriggerRequest) returns (CancelTriggerResponse);
+  /// Delete trigger
+  rpc DeleteTrigger (DeleteTriggerRequest) returns (DeleteTriggerResponse);
+  /// Find trigger id by name
+  rpc GetTriggerId (GetTriggerIdRequest) returns (GetTriggerIdResponse);
+  /// Find trigger id by name
+
+  /// Immediately deletes all triggers for a project
+  rpc DeleteProjectTriggers (DeleteProjectTriggersRequest) returns (DeleteProjectTriggersResponse);
+}
+
+enum RunMode {
+  RunMode_UNKNOWN = 0;
+  ASYNC = 1;
+  SYNC = 2;
+}
+
+message UpsertTriggerRequest {
+  common.RequestPrecondition precondition = 1;
+  triggers.Trigger trigger = 2;
+  // This is the trigger_name passed through the URL path. This indicates that 
+  // the user is using the PUT flow.
+  optional string trigger_name = 3;
+}
+
+// == INSTALL OR UPDATE EXISTING TRIGGER ==
+message UpsertTriggerResponse {
+  triggers.Trigger trigger = 1;
+  common.UpsertEffect effect = 2;
+}
+
+// PAUSE TRIGGER
+message PauseTriggerRequest {
+  string name = 1;
+}
+
+message PauseTriggerResponse {
+  triggers.Trigger trigger = 1;
+}
+
+// RESUME TRIGGER
+message ResumeTriggerRequest {
+  string name = 1;
+}
+
+message ResumeTriggerResponse {
+  triggers.Trigger trigger = 1;
+}
+
+// CANCEL TRIGGER
+message CancelTriggerRequest {
+  string name = 1;
+}
+
+message CancelTriggerResponse {
+  triggers.Trigger trigger = 1;
+}
+
+// DELETE TRIGGER
+message DeleteTriggerRequest {
+  string name = 1;
+}
+
+message DeleteTriggerResponse {
+}
+
+
+// == EXECUTE TRIGGER MANUALLY ==
+message RunTriggerRequest {
+  string name = 1;
+  RunMode mode = 2;
+}
+
+message RunTriggerResponse {
+  runs.Run run = 1;
+}
+
+// == GET TRIGGER ==
+message GetTriggerRequest {
+  string name = 1;
+}
+
+message GetTriggerResponse {
+  triggers.Trigger trigger = 1;
+}
+
+// == LIST TRIGGER ==
+// The returned triggers must match the "set" fields in this object
+message ListTriggersFilter {
+  repeated triggers.TriggerStatus statuses = 2;
+}
+
+message ListTriggersRequest {
+  common.PaginationIn pagination = 1;
+  ListTriggersFilter filter = 5;
+}
+
+message ListTriggersResponse {
+  common.PaginationOut pagination = 1;
+  repeated triggers.Trigger triggers = 2;
+}
+
+message GetTriggerIdRequest {
+  string name = 1;
+}
+
+message GetTriggerIdResponse {
+  common.TriggerId id = 1;
+}
+
+// DELETE PROJECT TRIGGERS -- Project is set in request context.
+message DeleteProjectTriggersRequest {
+}
+
+message DeleteProjectTriggersResponse {
+}

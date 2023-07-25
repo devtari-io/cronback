@@ -15,7 +15,7 @@ use crate::{Recurring, RunAt, Webhook};
 #[cfg_attr(
     feature = "dto",
     derive(IntoProto),
-    proto(target = "proto::scheduler_proto::ListTriggersFilter")
+    proto(target = "proto::scheduler_svc::ListTriggersFilter")
 )]
 pub struct TriggersFilter {
     #[serde(default)]
@@ -28,7 +28,7 @@ pub struct TriggersFilter {
 #[cfg_attr(
     feature = "dto",
     derive(IntoProto, FromProto),
-    proto(target = "proto::trigger_proto::TriggerStatus")
+    proto(target = "proto::triggers::TriggerStatus")
 )]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[cfg_attr(feature = "clap", clap(rename_all = "snake_case"))]
@@ -48,7 +48,7 @@ pub enum TriggerStatus {
 #[cfg_attr(
     feature = "dto",
     derive(IntoProto, FromProto),
-    proto(target = "proto::trigger_proto::Trigger")
+    proto(target = "proto::triggers::Trigger")
 )]
 #[cfg_attr(feature = "server", serde(deny_unknown_fields))]
 pub struct Trigger {

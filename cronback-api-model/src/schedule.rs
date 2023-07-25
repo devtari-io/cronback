@@ -15,7 +15,7 @@ use crate::validation_util::validation_error;
 #[cfg_attr(
     feature = "dto",
     derive(IntoProto, FromProto),
-    proto(target = "proto::trigger_proto::Schedule")
+    proto(target = "proto::triggers::Schedule")
 )]
 #[serde(rename_all = "snake_case")]
 #[serde(untagged)]
@@ -30,7 +30,7 @@ pub enum Schedule {
 #[cfg_attr(
     feature = "dto",
     derive(IntoProto, FromProto),
-    proto(target = "proto::trigger_proto::Recurring")
+    proto(target = "proto::triggers::Recurring")
 )]
 #[cfg_attr(feature = "server", serde(deny_unknown_fields))]
 #[serde(rename_all = "snake_case")]
@@ -58,7 +58,7 @@ pub struct Recurring {
 #[cfg_attr(
     feature = "dto",
     derive(IntoProto, FromProto),
-    proto(target = "proto::trigger_proto::RunAt")
+    proto(target = "proto::triggers::RunAt")
 )]
 #[cfg_attr(feature = "server", serde(deny_unknown_fields))]
 #[serde(rename_all = "snake_case")]

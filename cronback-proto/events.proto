@@ -1,9 +1,9 @@
 syntax = "proto3";
 
 import "common.proto";
-import "trigger.proto";
-import "attempt.proto";
-import "project_svc.proto";
+import "triggers.proto";
+import "attempts.proto";
+import "projects.proto";
 
 package events;
 
@@ -57,8 +57,8 @@ message TriggerDeleted {
 
 message TriggerStatusUpdated {
   TriggerMeta meta = 1;
-  trigger_proto.TriggerStatus new_status = 2;
-  trigger_proto.TriggerStatus old_status = 3;
+  triggers.TriggerStatus new_status = 2;
+  triggers.TriggerStatus old_status = 3;
 }
 
 message RunCreated {
@@ -93,7 +93,7 @@ message WebhookAttemptSucceeded {
   uint32 attempt_num = 2;
   uint32 attempt_limit = 3;
   common.Webhook webhook = 4;
-  attempt_proto.WebhookAttemptDetails response_details= 5;
+  attempts.WebhookAttemptDetails response_details= 5;
 }
 
 message WebhookAttemptFailed {
@@ -102,12 +102,12 @@ message WebhookAttemptFailed {
   uint32 attempt_num = 2;
   uint32 attempt_limit = 3;
   common.Webhook webhook = 4;
-  attempt_proto.WebhookAttemptDetails response_details = 5;
+  attempts.WebhookAttemptDetails response_details = 5;
 }
 
 message ProjectCreated {}
 
 message ProjectStatusUpdated {
-  project_svc_proto.ProjectStatus old_status = 1;
-  project_svc_proto.ProjectStatus new_status = 2;
+  projects.ProjectStatus old_status = 1;
+  projects.ProjectStatus new_status = 2;
 }

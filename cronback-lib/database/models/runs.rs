@@ -13,7 +13,7 @@ use crate::types::{Action, AttemptId, Payload, ProjectId, RunId, TriggerId};
 #[derive(
     Clone, Debug, IntoProto, FromProto, PartialEq, DeriveEntityModel, Eq,
 )]
-#[proto(target = "proto::run_proto::Run")]
+#[proto(target = "proto::runs::Run")]
 #[sea_orm(table_name = "runs")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
@@ -90,7 +90,7 @@ impl ActiveModelBehavior for ActiveModel {}
     DeriveActiveEnum,
 )]
 #[sea_orm(rs_type = "String", db_type = "String(None)")]
-#[proto(target = "proto::run_proto::RunStatus")]
+#[proto(target = "proto::runs::RunStatus")]
 pub enum RunStatus {
     #[sea_orm(string_value = "Attempting")]
     Attempting,
