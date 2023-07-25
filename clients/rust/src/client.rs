@@ -120,7 +120,6 @@ impl ClientBuilder {
         self
     }
 
-    #[cfg(feature = "admin")]
     /// If the secret_token is an admin key, the client will act on behalf of
     /// the project passed here.
     /// This method is for cronback admin use only. For normal users, the

@@ -8,6 +8,8 @@ use lib::database::models::api_keys;
 use lib::database::DatabaseError;
 use lib::prelude::ValidShardedId;
 use lib::types::ProjectId;
+use once_cell::sync::Lazy;
+use regex::Regex;
 use sha2::{Digest, Sha512};
 use thiserror::Error;
 use tracing::error;
@@ -219,6 +221,13 @@ impl SecretApiKey {
     pub fn unsafe_to_string(&self) -> String {
         format!("{}{}_{}", API_KEY_PREFIX, self.key_id, self.plain_secret)
     }
+
+    /// Returns true if the passed string potentially contains a secret key
+    pub fn matches(string: &str) -> bool {
+        static REGEX: Lazy<Regex> =
+            Lazy::new(|| Regex::new(r"sk_[0-9a-f]{32}_[0-9a-f]{32}").unwrap());
+        REGEX.is_match(string)
+    }
 }
 
 #[cfg(test)]
@@ -321,5 +330,16 @@ mod tests {
         );
 
         Ok(())
+    }
+
+    #[test]
+    fn test_secret_api_key_regex_matching() {
+        assert!(SecretApiKey::matches(
+            SecretApiKey::generate().unsafe_to_string().as_ref()
+        ));
+        assert!(SecretApiKey::matches(
+            SecretApiKey::generate().unsafe_to_string().as_ref()
+        ));
+        assert!(!SecretApiKey::matches("sk_key1_plain"));
     }
 }
