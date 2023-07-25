@@ -4,12 +4,11 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::{debug_handler, Extension, Json};
-use lib::model::ValidShardedId;
-use lib::types::{ProjectId, RequestId};
+use lib::prelude::*;
 use proto::scheduler_svc::RunTriggerRequest;
 
+use crate::api::api_model::{Run, RunTrigger};
 use crate::api::errors::ApiError;
-use crate::api::model::{Run, RunTrigger};
 use crate::api::AppState;
 
 #[tracing::instrument(skip(state))]

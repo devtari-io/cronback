@@ -4,16 +4,17 @@ use std::time::Duration;
 
 use chrono::Utc;
 use dispatcher_svc::DispatchMode;
-use lib::database::attempt_log_store::AttemptLogStore;
-use lib::database::run_store::{RunStore, RunStoreError};
-use lib::e;
-use lib::types::{Action, Run, RunStatus};
+use lib::prelude::*;
 use metrics::{decrement_gauge, increment_gauge};
 use proto::dispatcher_svc;
 use thiserror::Error;
 use tracing::{error, info};
 
-use super::actions;
+use super::attempt_store::AttemptLogStore;
+use super::db_model::runs::RunStatus;
+use super::db_model::Run;
+use super::run_store::{RunStore, RunStoreError};
+use super::webhook_action::WebhookActionJob;
 
 #[derive(Error, Debug)]
 pub enum DispatcherManagerError {
@@ -119,7 +120,7 @@ impl RunJob {
         debug_assert!(self.run.status == RunStatus::Attempting);
         let run = match &self.run.action {
             | Action::Webhook(_) => {
-                let e = actions::webhook::WebhookActionJob {
+                let e = WebhookActionJob {
                     run: self.run,
                     run_store: self.run_store.clone(),
                     attempt_store: self.attempt_store,
