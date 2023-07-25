@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use std::time::Instant;
 
 use chrono::Utc;
@@ -10,7 +9,7 @@ use reqwest::Method;
 use tracing::{debug, error, info, warn};
 use validator::Validate;
 
-use super::attempt_store::AttemptLogStore;
+use super::attempt_store::AttemptStore;
 use super::db_model::attempts::{
     AttemptDetails,
     AttemptStatus,
@@ -34,8 +33,8 @@ fn to_reqwest_http_method(method: &HttpMethod) -> reqwest::Method {
 
 pub struct WebhookActionJob {
     pub run: Run,
-    pub run_store: Arc<dyn RunStore + Send + Sync>,
-    pub attempt_store: Arc<dyn AttemptLogStore + Send + Sync>,
+    pub run_store: RunStore,
+    pub attempt_store: AttemptStore,
 }
 
 impl WebhookActionJob {

@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use lib::prelude::*;
 use proto::common::PaginationIn;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter};
@@ -8,56 +7,23 @@ use super::db_model::{runs, Attempts, Run, Runs};
 
 pub type RunStoreError = DatabaseError;
 
-#[async_trait]
-pub trait RunStore {
-    async fn store_run(&self, run: Run) -> Result<(), RunStoreError>;
-
-    async fn update_run(&self, run: Run) -> Result<(), RunStoreError>;
-
-    async fn get_run(
-        &self,
-        project: &ValidShardedId<ProjectId>,
-        id: &RunId,
-    ) -> Result<Option<Run>, RunStoreError>;
-
-    async fn get_runs_by_trigger(
-        &self,
-        project: &ValidShardedId<ProjectId>,
-        trigger_id: &TriggerId,
-        pagination: PaginationIn,
-    ) -> Result<PaginatedResponse<Run>, RunStoreError>;
-
-    async fn get_runs_by_project(
-        &self,
-        project: &ValidShardedId<ProjectId>,
-        pagination: PaginationIn,
-    ) -> Result<PaginatedResponse<Run>, RunStoreError>;
-
-    async fn get_runs_by_status(
-        &self,
-        status: RunStatus,
-    ) -> Result<Vec<Run>, RunStoreError>;
-}
-
-pub struct SqlRunStore {
+#[derive(Clone)]
+pub struct RunStore {
     db: Database,
 }
 
-impl SqlRunStore {
+impl RunStore {
     pub fn new(db: Database) -> Self {
         Self { db }
     }
-}
 
-#[async_trait]
-impl RunStore for SqlRunStore {
-    async fn store_run(&self, run: Run) -> Result<(), RunStoreError> {
+    pub async fn store_run(&self, run: Run) -> Result<(), RunStoreError> {
         let active_model: runs::ActiveModel = run.into();
         active_model.insert(&self.db.orm).await?;
         Ok(())
     }
 
-    async fn update_run(&self, run: Run) -> Result<(), RunStoreError> {
+    pub async fn update_run(&self, run: Run) -> Result<(), RunStoreError> {
         let project = run.project_id.clone();
         let active_model: runs::ActiveModel = run.into();
         // Mark all the fields as dirty
@@ -69,7 +35,7 @@ impl RunStore for SqlRunStore {
         Ok(())
     }
 
-    async fn get_run(
+    pub async fn get_run(
         &self,
         project: &ValidShardedId<ProjectId>,
         id: &RunId,
@@ -85,7 +51,7 @@ impl RunStore for SqlRunStore {
         Ok(res)
     }
 
-    async fn get_runs_by_trigger(
+    pub async fn get_runs_by_trigger(
         &self,
         project: &ValidShardedId<ProjectId>,
         trigger_id: &TriggerId,
@@ -109,7 +75,9 @@ impl RunStore for SqlRunStore {
         Ok(PaginatedResponse::paginate(res, &pagination))
     }
 
-    async fn get_runs_by_project(
+    // Leaving this under cfg(test) until someone actually need it.
+    #[cfg(test)]
+    pub async fn get_runs_by_project(
         &self,
         project: &ValidShardedId<ProjectId>,
         pagination: PaginationIn,
@@ -132,7 +100,7 @@ impl RunStore for SqlRunStore {
         Ok(PaginatedResponse::paginate(res, &pagination))
     }
 
-    async fn get_runs_by_status(
+    pub async fn get_runs_by_status(
         &self,
         status: RunStatus,
     ) -> Result<Vec<Run>, RunStoreError> {
@@ -189,10 +157,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_sql_run_store() -> anyhow::Result<()> {
+    async fn test_run_store() -> anyhow::Result<()> {
         let db = Database::in_memory().await?;
         migrate_up(&db).await?;
-        let store = SqlRunStore::new(db);
+        let store = RunStore::new(db);
 
         let project1 = ProjectId::generate();
         let project2 = ProjectId::generate();

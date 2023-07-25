@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use chrono::Utc;
 use futures::TryFutureExt;
 use lib::prelude::*;
@@ -27,14 +25,14 @@ pub(crate) struct DispatcherSvcHandler {
     #[allow(unused)]
     context: ServiceContext,
     dispatch_manager: DispatchManager,
-    run_store: Arc<dyn RunStore + Send + Sync>,
+    run_store: RunStore,
 }
 
 impl DispatcherSvcHandler {
     pub fn new(
         context: ServiceContext,
         dispatch_manager: DispatchManager,
-        run_store: Arc<dyn RunStore + Send + Sync>,
+        run_store: RunStore,
     ) -> Self {
         Self {
             context,
