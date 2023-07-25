@@ -2,8 +2,8 @@ use anyhow::Result;
 use async_trait::async_trait;
 use clap::clap_derive::Parser;
 
-use super::{AdminOptions, RunAdminCommand};
 use crate::args::CommonOptions;
+use crate::Command;
 
 mod create;
 
@@ -14,7 +14,7 @@ pub enum ProjectsCommand {
 }
 
 #[async_trait]
-impl RunAdminCommand for ProjectsCommand {
+impl Command for ProjectsCommand {
     async fn run<
         A: tokio::io::AsyncWrite + Send + Sync + Unpin,
         B: tokio::io::AsyncWrite + Send + Sync + Unpin,
@@ -23,11 +23,10 @@ impl RunAdminCommand for ProjectsCommand {
         out: &mut tokio::io::BufWriter<A>,
         err: &mut tokio::io::BufWriter<B>,
         common_options: &CommonOptions,
-        admin_options: &AdminOptions,
     ) -> Result<()> {
         match self {
             | ProjectsCommand::Create(c) => {
-                c.run(out, err, common_options, admin_options).await
+                c.run(out, err, common_options).await
             }
         }
     }

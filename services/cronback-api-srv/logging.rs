@@ -1,8 +1,9 @@
 use std::borrow::Cow;
 use std::fmt::Display;
+use std::net::SocketAddr;
 use std::sync::Arc;
 
-use axum::extract::State;
+use axum::extract::{ConnectInfo, State};
 use axum::http::{Request, StatusCode};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
@@ -12,7 +13,7 @@ use lib::types::RequestId;
 use tower_http::trace::MakeSpan;
 use tracing::{error_span, info};
 
-use crate::auth::API_KEY_PREFIX;
+use crate::auth::SecretApiKey;
 
 #[derive(Clone, Debug)]
 pub struct ApiMakeSpan {
@@ -34,6 +35,12 @@ impl<B> MakeSpan<B> for ApiMakeSpan {
             .extensions()
             .get::<RequestId>()
             .map(ToString::to_string);
+
+        let ip = request
+            .extensions()
+            .get::<ConnectInfo<SocketAddr>>()
+            .map(|a| a.ip().to_string());
+
         error_span!(
             target: "request_response_tracing_metadata",
             "http_request",
@@ -44,6 +51,7 @@ impl<B> MakeSpan<B> for ApiMakeSpan {
              uri = %request.uri(),
              version = ?request.version(),
              user_agent = ?user_agent,
+             ip = %ip.unwrap_or_default(),
         )
     }
 }
@@ -102,7 +110,7 @@ where
         (StatusCode::BAD_REQUEST, err.to_string()).into_response()
     })?;
     let mut body_str = String::from_utf8_lossy(&bytes);
-    if body_str.find(API_KEY_PREFIX).is_some() {
+    if SecretApiKey::matches(&body_str) {
         body_str = Cow::from("REDACTED");
     }
 
