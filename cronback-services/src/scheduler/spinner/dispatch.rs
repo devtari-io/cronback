@@ -1,13 +1,9 @@
 use std::sync::Arc;
 
 use dto::{FromProto, IntoProto};
-use lib::clients::dispatcher_client::ScopedDispatcherSvcClient;
-use lib::grpc_client_provider::{
-    GrpcClientError,
-    GrpcClientFactory,
-    GrpcClientProvider,
-};
-use lib::prelude::{RequestContext, *};
+use lib::clients::ScopedDispatcherSvcClient;
+use lib::prelude::*;
+use lib::{GrpcClientError, GrpcClientFactory, GrpcClientProvider};
 use proto::dispatcher_svc::{self, DispatchRequest};
 use proto::runs::Run;
 use thiserror::Error;

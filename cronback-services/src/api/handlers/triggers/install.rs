@@ -2,15 +2,14 @@ use std::sync::Arc;
 
 use axum::extract::State;
 use axum::{debug_handler, Extension};
-use lib::model::ValidShardedId;
-use lib::types::{ProjectId, RequestId};
+use lib::prelude::*;
 use proto::common::request_precondition::PreconditionType;
 use proto::common::{RequestPrecondition, UpsertEffect};
 use tracing::error;
 
+use crate::api::api_model::{UpsertTriggerRequest, UpsertTriggerResponse};
 use crate::api::errors::ApiError;
 use crate::api::extractors::ValidatedJson;
-use crate::api::model::{UpsertTriggerRequest, UpsertTriggerResponse};
 use crate::api::AppState;
 
 #[tracing::instrument(skip(state))]

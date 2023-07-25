@@ -56,7 +56,7 @@ pub struct Trigger {
     // or outputed in the API. This is here just for IntoProto to work
     #[cfg_attr(feature = "server", serde(skip))]
     #[cfg(feature = "dto")]
-    pub id: Option<lib::types::TriggerId>,
+    pub id: Option<lib::prelude::TriggerId>,
     #[cfg_attr(
         feature = "validation",
         validate(length(

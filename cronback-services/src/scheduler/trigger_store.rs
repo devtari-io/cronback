@@ -1,8 +1,5 @@
 use async_trait::async_trait;
-use lib::database::pagination::{PaginatedResponse, PaginatedSelect};
-use lib::database::{Database, DatabaseError};
-use lib::model::{ModelId, ValidShardedId};
-use lib::types::{ProjectId, TriggerId};
+use lib::prelude::*;
 use proto::common::PaginationIn;
 use sea_orm::{
     ActiveModelTrait,
@@ -212,14 +209,8 @@ mod tests {
     use std::time::Duration;
 
     use chrono::{Timelike, Utc};
-    use lib::database::{Database, DatabaseError};
-    use lib::model::ValidShardedId;
-    use lib::types::{Action, ProjectId, TriggerId, Webhook};
-    use proto::common::PaginationIn;
 
-    use super::{SqlTriggerStore, TriggerStore};
-    use crate::scheduler::db_model::triggers::Status;
-    use crate::scheduler::db_model::Trigger;
+    use super::*;
 
     fn build_trigger(
         name: &str,
@@ -242,7 +233,7 @@ mod tests {
             schedule: None,
             action: Action::Webhook(Webhook {
                 url: "http://test".to_string(),
-                http_method: lib::types::HttpMethod::Get,
+                http_method: HttpMethod::Get,
                 timeout_s: Duration::from_secs(5),
                 retry: None,
             }),

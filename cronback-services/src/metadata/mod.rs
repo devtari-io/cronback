@@ -4,7 +4,7 @@ mod metadata_store;
 
 use std::sync::Arc;
 
-use lib::database::Database;
+use lib::prelude::*;
 use lib::{netutils, service};
 use metadata_store::{MetadataStore, SqlMetadataStore};
 use proto::metadata_svc::metadata_svc_server::MetadataSvcServer;

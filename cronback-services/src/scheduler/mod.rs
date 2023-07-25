@@ -8,9 +8,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use handler::SchedulerSvcHandler;
-use lib::database::Database;
-use lib::grpc_client_provider::GrpcClientProvider;
-use lib::{netutils, service};
+use lib::prelude::*;
+use lib::{netutils, service, GrpcClientProvider};
 use proto::scheduler_svc::scheduler_svc_server::SchedulerSvcServer;
 use spinner::controller::SpinnerController;
 use trigger_store::SqlTriggerStore;
@@ -67,18 +66,14 @@ pub async fn start_scheduler_server(
 pub mod test_helpers {
     use std::sync::Arc;
 
-    use lib::clients::scheduler_client::ScopedSchedulerSvcClient;
-    use lib::database::Database;
-    use lib::grpc_client_provider::test_helpers::TestGrpcClientProvider;
-    use lib::grpc_client_provider::GrpcClientProvider;
+    use lib::clients::ScopedSchedulerSvcClient;
+    use lib::grpc_test_helpers::TestGrpcClientProvider;
     use lib::service::{self, ServiceContext};
-    use proto::scheduler_svc::scheduler_svc_server::SchedulerSvcServer;
+    use lib::GrpcClientProvider;
     use tempfile::NamedTempFile;
     use tokio::task::JoinHandle;
 
-    use super::handler::SchedulerSvcHandler;
-    use super::spinner::controller::SpinnerController;
-    use super::trigger_store::SqlTriggerStore;
+    use super::*;
 
     pub async fn test_server_and_client(
         mut context: ServiceContext,

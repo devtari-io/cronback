@@ -1,11 +1,12 @@
+mod api_model;
 pub(crate) mod auth;
 pub(crate) mod auth_middleware;
 pub(crate) mod auth_store;
+mod db_model;
 pub mod errors;
 pub(crate) mod extractors;
 mod handlers;
 mod logging;
-mod model;
 mod paginated;
 
 use std::sync::Arc;
@@ -19,16 +20,13 @@ use axum::middleware::{self, Next};
 use axum::response::IntoResponse;
 use axum::routing::get;
 use axum::Router;
-use lib::clients::dispatcher_client::ScopedDispatcherSvcClient;
-use lib::clients::metadata_srv_client::ScopedMetadataSvcClient;
-use lib::clients::scheduler_client::ScopedSchedulerSvcClient;
-use lib::config::Config;
-use lib::database::Database;
-use lib::grpc_client_provider::{GrpcClientFactory, GrpcClientProvider};
-use lib::model::ValidShardedId;
+use lib::clients::{
+    ScopedDispatcherSvcClient,
+    ScopedMetadataSvcClient,
+    ScopedSchedulerSvcClient,
+};
 use lib::prelude::*;
-use lib::types::{ProjectId, RequestId};
-use lib::{netutils, service};
+use lib::{netutils, service, Config, GrpcClientFactory, GrpcClientProvider};
 use logging::{trace_request_response, ApiMakeSpan};
 use metrics::{histogram, increment_counter};
 use thiserror::Error;
