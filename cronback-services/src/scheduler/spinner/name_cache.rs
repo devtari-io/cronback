@@ -5,7 +5,7 @@ use std::pin::Pin;
 use std::sync::RwLock;
 
 use dashmap::DashMap;
-use lib::types::{ProjectId, TriggerId};
+use lib::prelude::*;
 use tracing::trace;
 
 pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
@@ -186,8 +186,6 @@ const _: () = {
 #[cfg(test)]
 mod tests {
     use std::sync::{Arc, Mutex};
-
-    use lib::types::TriggerId;
 
     use super::*;
     #[test]

@@ -8,9 +8,8 @@ use axum::http::{Request, StatusCode};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use hyper::header::USER_AGENT;
-use lib::config::Config;
 use lib::prelude::*;
-use lib::types::*;
+use lib::Config;
 use tower_http::trace::MakeSpan;
 use tracing::{error_span, info};
 

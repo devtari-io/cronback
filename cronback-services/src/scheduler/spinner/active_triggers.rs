@@ -3,8 +3,7 @@ use std::collections::{BinaryHeap, HashMap, HashSet};
 
 use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
-use lib::e;
-use lib::types::{ProjectId, TriggerId};
+use lib::prelude::*;
 use tracing::{info, trace};
 
 use crate::scheduler::db_model::schedule::ScheduleIter;
@@ -414,8 +413,6 @@ impl ActiveTrigger {
 #[cfg(test)]
 mod tests {
     use std::time::Duration;
-
-    use lib::types::{Action, HttpMethod, ProjectId, TriggerId, Webhook};
 
     use super::*;
     use crate::scheduler::db_model::schedule::{Recurring, Schedule};

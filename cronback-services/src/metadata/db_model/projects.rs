@@ -2,8 +2,7 @@
 
 use chrono::{DateTime, Utc};
 use dto::{FromProto, IntoProto};
-use lib::model::ValidShardedId;
-use lib::types::ProjectId;
+use lib::prelude::*;
 use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]

@@ -180,7 +180,7 @@ impl<T: GrpcClientType> GrpcClientFactory for GrpcClientProvider<T> {
     }
 }
 
-pub mod test_helpers {
+pub mod grpc_test_helpers {
     use std::sync::Arc;
 
     use hyper::Uri;
