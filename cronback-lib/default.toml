@@ -19,7 +19,7 @@ prometheus_port = 9000
 [api]
 address = "0.0.0.0"
 port = 8888
-database_uri = "sqlite://database.sqlite?mode=rwc"
+database_uri = "sqlite://api.sqlite?mode=rwc"
 admin_api_keys = []
 log_request_body = true
 log_response_body = true
@@ -29,7 +29,7 @@ cell_id = 0
 address = "0.0.0.0"
 port = 9999
 request_processing_timeout_s = 30
-database_uri = "sqlite://database.sqlite?mode=rwc"
+database_uri = "sqlite://dispatcher.sqlite?mode=rwc"
 
 [scheduler]
 cell_id = 0
@@ -38,7 +38,7 @@ port = 9811
 request_processing_timeout_s = 30
 spinner_yield_max_ms = 250
 max_triggers_per_tick = 100000
-database_uri = "sqlite://database.sqlite?mode=rwc"
+database_uri = "sqlite://scheduler.sqlite?mode=rwc"
 db_flush_s = 10
 dangerous_fast_forward = false
 
@@ -47,4 +47,4 @@ cell_id = 0
 address = "0.0.0.0"
 port = 9998
 request_processing_timeout_s = 30
-database_uri = "sqlite://database.sqlite?mode=rwc"
+database_uri = "sqlite://metadata.sqlite?mode=rwc"

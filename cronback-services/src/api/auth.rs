@@ -236,6 +236,7 @@ mod tests {
 
     use super::*;
     use crate::api::auth_store::SqlAuthStore;
+    use crate::api::migrate_up;
 
     #[test]
     fn test_api_key() {
@@ -266,6 +267,7 @@ mod tests {
     #[tokio::test]
     async fn test_sql_auth_store() -> anyhow::Result<()> {
         let db = Database::in_memory().await?;
+        migrate_up(&db).await?;
         let store = SqlAuthStore::new(db);
 
         let prj1 = ProjectId::generate();

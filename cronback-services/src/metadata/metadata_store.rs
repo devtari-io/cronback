@@ -90,6 +90,7 @@ impl MetadataStore for SqlMetadataStore {
 mod tests {
 
     use super::*;
+    use crate::metadata::migrate_up;
 
     fn build_project(status: ProjectStatus) -> Project {
         let now = Utc::now();
@@ -105,6 +106,7 @@ mod tests {
     #[tokio::test]
     async fn test_sql_project_store() -> anyhow::Result<()> {
         let db = Database::in_memory().await?;
+        migrate_up(&db).await?;
         let store = SqlMetadataStore::new(db);
 
         let project1 = build_project(ProjectStatus::Enabled);

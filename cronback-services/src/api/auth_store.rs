@@ -84,6 +84,7 @@ mod tests {
     use chrono::Utc;
 
     use super::*;
+    use crate::api::migrate_up;
 
     fn build_model(
         key_id: &str,
@@ -105,6 +106,7 @@ mod tests {
     #[tokio::test]
     async fn test_sql_auth_store() -> anyhow::Result<()> {
         let db = Database::in_memory().await?;
+        migrate_up(&db).await?;
         let store = SqlAuthStore::new(db);
 
         let owner1 = ProjectId::generate();
