@@ -304,7 +304,7 @@ mod tests {
         // TODO: Replace with a more robust approach
         std::env::remove_var("CRONBACK__SKIP_PUBLIC_IP_VALIDATION");
         let urls = vec![
-            "https://google.com/url",
+            "https://google.com/url2",
             "https://example.com:3030/url",
             "https://1.1.1.1/url",
             "http://[2606:4700:4700::1111]/another_url/path",

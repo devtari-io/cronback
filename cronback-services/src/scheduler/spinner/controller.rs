@@ -54,7 +54,7 @@ pub(crate) struct SpinnerController {
     context: ServiceContext,
     triggers: Arc<RwLock<ActiveTriggerMap>>,
     spinner: Mutex<Option<SpinnerHandle>>,
-    store: Arc<dyn TriggerStore + Send + Sync>,
+    store: TriggerStore,
     name_cache: Arc<NameCache<TriggerStoreError>>,
     dispatcher_clients: Arc<GrpcClientProvider<ScopedDispatcherSvcClient>>,
 }
@@ -62,7 +62,7 @@ pub(crate) struct SpinnerController {
 impl SpinnerController {
     pub fn new(
         context: ServiceContext,
-        store: Arc<dyn TriggerStore + Send + Sync>,
+        store: TriggerStore,
         dispatcher_clients: Arc<GrpcClientProvider<ScopedDispatcherSvcClient>>,
     ) -> Self {
         let name_cacher_fetcher = {

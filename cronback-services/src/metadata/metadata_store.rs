@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use chrono::Utc;
 use lib::prelude::*;
 use sea_orm::{ActiveModelTrait, EntityTrait, Set};
@@ -7,43 +6,17 @@ use super::db_model::{projects, Project, ProjectStatus, Projects};
 
 pub type MetadataStoreError = DatabaseError;
 
-#[async_trait]
-pub trait MetadataStore {
-    async fn store_project(
-        &self,
-        project: Project,
-    ) -> Result<(), MetadataStoreError>;
-
-    async fn set_status(
-        &self,
-        id: &ValidShardedId<ProjectId>,
-        status: ProjectStatus,
-    ) -> Result<(), MetadataStoreError>;
-
-    async fn get_status(
-        &self,
-        id: &ValidShardedId<ProjectId>,
-    ) -> Result<Option<ProjectStatus>, MetadataStoreError>;
-
-    async fn exists(
-        &self,
-        id: &ValidShardedId<ProjectId>,
-    ) -> Result<bool, MetadataStoreError>;
-}
-
-pub struct SqlMetadataStore {
+#[derive(Clone)]
+pub struct MetadataStore {
     db: Database,
 }
 
-impl SqlMetadataStore {
+impl MetadataStore {
     pub fn new(db: Database) -> Self {
         Self { db }
     }
-}
 
-#[async_trait]
-impl MetadataStore for SqlMetadataStore {
-    async fn store_project(
+    pub async fn store_project(
         &self,
         project: Project,
     ) -> Result<(), MetadataStoreError> {
@@ -52,7 +25,7 @@ impl MetadataStore for SqlMetadataStore {
         Ok(())
     }
 
-    async fn set_status(
+    pub async fn set_status(
         &self,
         id: &ValidShardedId<ProjectId>,
         status: ProjectStatus,
@@ -68,7 +41,7 @@ impl MetadataStore for SqlMetadataStore {
         Ok(())
     }
 
-    async fn get_status(
+    pub async fn get_status(
         &self,
         id: &ValidShardedId<ProjectId>,
     ) -> Result<Option<ProjectStatus>, MetadataStoreError> {
@@ -78,7 +51,7 @@ impl MetadataStore for SqlMetadataStore {
             .map(|p| p.status))
     }
 
-    async fn exists(
+    pub async fn exists(
         &self,
         id: &ValidShardedId<ProjectId>,
     ) -> Result<bool, MetadataStoreError> {
@@ -107,7 +80,7 @@ mod tests {
     async fn test_sql_project_store() -> anyhow::Result<()> {
         let db = Database::in_memory().await?;
         migrate_up(&db).await?;
-        let store = SqlMetadataStore::new(db);
+        let store = MetadataStore::new(db);
 
         let project1 = build_project(ProjectStatus::Enabled);
         let project2 = build_project(ProjectStatus::QuotaExceeded);

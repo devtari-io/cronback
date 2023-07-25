@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use lib::prelude::*;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 
@@ -6,47 +5,23 @@ use crate::api::db_model::{api_keys, ApiKey, ApiKeys};
 
 pub type AuthStoreError = DatabaseError;
 
-#[async_trait]
-pub trait AuthStore {
-    async fn save_key(&self, key: ApiKey) -> Result<(), AuthStoreError>;
-
-    async fn get_key(
-        &self,
-        key: &str,
-    ) -> Result<Option<ApiKey>, AuthStoreError>;
-
-    /// Returns true if the key got deleted, false if the key didn't exist
-    async fn delete_key(
-        &self,
-        key_id: &str,
-        project: &ValidShardedId<ProjectId>,
-    ) -> Result<bool, AuthStoreError>;
-
-    async fn list_keys(
-        &self,
-        project: &ValidShardedId<ProjectId>,
-    ) -> Result<Vec<ApiKey>, AuthStoreError>;
-}
-
-pub struct SqlAuthStore {
+#[derive(Clone)]
+pub struct AuthStore {
     db: Database,
 }
 
-impl SqlAuthStore {
+impl AuthStore {
     pub fn new(db: Database) -> Self {
         Self { db }
     }
-}
 
-#[async_trait]
-impl AuthStore for SqlAuthStore {
-    async fn save_key(&self, key: ApiKey) -> Result<(), AuthStoreError> {
+    pub async fn save_key(&self, key: ApiKey) -> Result<(), AuthStoreError> {
         let active_model: api_keys::ActiveModel = key.into();
         ApiKeys::insert(active_model).exec(&self.db.orm).await?;
         Ok(())
     }
 
-    async fn get_key(
+    pub async fn get_key(
         &self,
         key_id: &str,
     ) -> Result<Option<ApiKey>, AuthStoreError> {
@@ -54,7 +29,7 @@ impl AuthStore for SqlAuthStore {
         Ok(res)
     }
 
-    async fn delete_key(
+    pub async fn delete_key(
         &self,
         key_id: &str,
         project: &ValidShardedId<ProjectId>,
@@ -67,7 +42,7 @@ impl AuthStore for SqlAuthStore {
         Ok(res.rows_affected > 0)
     }
 
-    async fn list_keys(
+    pub async fn list_keys(
         &self,
         project: &ValidShardedId<ProjectId>,
     ) -> Result<Vec<ApiKey>, AuthStoreError> {
@@ -104,10 +79,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_sql_auth_store() -> anyhow::Result<()> {
+    async fn test_auth_store() -> anyhow::Result<()> {
         let db = Database::in_memory().await?;
         migrate_up(&db).await?;
-        let store = SqlAuthStore::new(db);
+        let store = AuthStore::new(db);
 
         let owner1 = ProjectId::generate();
         let owner2 = ProjectId::generate();
