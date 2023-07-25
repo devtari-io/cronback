@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+import "common.proto";
+import "runs.proto";
+
+package dispatcher_svc;
+
+service DispatcherSvc {
+  rpc Dispatch (DispatchRequest) returns (DispatchResponse);
+  rpc GetRun (GetRunRequest) returns (GetRunResponse);
+  rpc ListRuns (ListRunsRequest) returns (ListRunsResponse);
+}
+
+enum DispatchMode {
+  DispatchMode_UNKNOWN = 0;
+  ASYNC = 1;
+  SYNC = 2;
+}
+
+message DispatchRequest {
+  common.TriggerId trigger_id = 1;
+  common.Action action = 2;
+  common.Payload payload = 3;
+  DispatchMode mode = 4;
+}
+
+message DispatchResponse {
+  runs.Run run = 1;
+}
+
+message GetRunRequest {
+  common.RunId run_id = 1;
+}
+
+message GetRunResponse {
+  runs.Run run = 1;
+}
+
+
+message ListRunsRequest {
+  common.TriggerId trigger_id = 1;
+  common.PaginationIn pagination = 3;
+}
+
+message ListRunsResponse {
+  repeated runs.Run runs = 1;
+  common.PaginationOut pagination = 2;
+}

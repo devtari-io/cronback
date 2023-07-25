@@ -20,7 +20,7 @@ pub enum Role {
     Api,
     Dispatcher,
     Scheduler,
-    Projects,
+    Metadata,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -30,11 +30,11 @@ pub struct MainConfig {
     pub prometheus_port: u16,
     pub dispatcher_cell_map: HashMap<u64, String>,
     pub scheduler_cell_map: HashMap<u64, String>,
-    pub project_srv_cell_map: HashMap<u64, String>,
+    pub metadata_cell_map: HashMap<u64, String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct DispatcherConfig {
+pub struct DispatcherSvcConfig {
     pub cell_id: u32,
     pub address: String,
     pub port: u16,
@@ -43,7 +43,7 @@ pub struct DispatcherConfig {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct SchedulerConfig {
+pub struct SchedulerSvcConfig {
     // Cell Id of the current scheduler
     pub cell_id: u32,
     pub address: String,
@@ -57,7 +57,7 @@ pub struct SchedulerConfig {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct ProjectsConfig {
+pub struct MetadataSvcConfig {
     pub cell_id: u32,
     pub address: String,
     pub port: u16,
@@ -66,7 +66,7 @@ pub struct ProjectsConfig {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct ApiConfig {
+pub struct ApiSvcConfig {
     pub address: String,
     pub port: u16,
     pub database_uri: String,
@@ -76,20 +76,17 @@ pub struct ApiConfig {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-#[allow(unused)]
-///
-///
 /// * `roles`: Which roles the binary will start with
 /// * `api`: Configuration of the API server
 /// * `dispatcher`:  Configuration of the dispatcher
 /// * `scheduler`:  Configuration of the scheduler
-/// * `projects`:  Configuration of the project data service
+/// * `metadata`:  Configuration of the metadata data service
 pub struct Config {
     pub main: MainConfig,
-    pub api: ApiConfig,
-    pub dispatcher: DispatcherConfig,
-    pub scheduler: SchedulerConfig,
-    pub projects: ProjectsConfig,
+    pub api: ApiSvcConfig,
+    pub dispatcher: DispatcherSvcConfig,
+    pub scheduler: SchedulerSvcConfig,
+    pub metadata: MetadataSvcConfig,
 }
 
 #[derive(Debug)]

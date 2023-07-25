@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+import "common.proto";
+
+package attempts;
+
+message Attempt {
+  common.AttemptId id = 1;
+  common.RunId run_id = 2;
+  AttemptStatus status = 3;
+  AttemptDetails details = 4;
+  uint32 attempt_num = 5;
+  common.DateTime created_at = 6;
+}
+
+enum AttemptStatus {
+    AttemptStatus_UNKNOWN = 0;
+    SUCCEEDED = 1;
+    FAILED = 2;
+}
+
+
+message AttemptDetails {
+  oneof details {
+    WebhookAttemptDetails webhook = 1;
+  }
+}
+
+message WebhookAttemptDetails {
+  optional int32 response_code = 1;
+  double response_latency_s = 2;
+  optional string error_message = 3;
+}
+
