@@ -15,7 +15,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use auth::Authenticator;
-use auth_store::SqlAuthStore;
+use auth_store::AuthStore;
 use axum::extract::MatchedPath;
 use axum::http::{Request, StatusCode};
 use axum::middleware::{self, Next};
@@ -87,9 +87,7 @@ pub async fn start_api_server(
     let shared_state = Arc::new(AppState {
         _context: context.clone(),
         config: config.clone(),
-        authenicator: Authenticator::new(Box::new(SqlAuthStore::new(
-            db.clone(),
-        ))),
+        authenicator: Authenticator::new(AuthStore::new(db)),
         scheduler_clients: Box::new(GrpcClientProvider::new(context.clone())),
         dispatcher_clients: Box::new(GrpcClientProvider::new(context.clone())),
         metadata_svc_clients: Box::new(GrpcClientProvider::new(
