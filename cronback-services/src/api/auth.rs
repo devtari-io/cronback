@@ -4,10 +4,7 @@ use std::str::FromStr;
 use base64::Engine;
 use chrono::Utc;
 use cronback_api_model::admin::CreateAPIkeyRequest;
-use lib::database::models::api_keys;
-use lib::database::DatabaseError;
-use lib::prelude::ValidShardedId;
-use lib::types::ProjectId;
+use lib::prelude::*;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use sha2::{Digest, Sha512};
@@ -16,6 +13,7 @@ use tracing::error;
 use uuid::Uuid;
 
 use super::auth_store::AuthStore;
+use super::db_model::{api_keys, ApiKey};
 use super::errors::ApiError;
 
 pub static API_KEY_PREFIX: &str = "sk_";
@@ -63,7 +61,7 @@ impl Authenticator {
         let key = SecretApiKey::generate();
         let hashed = key.hash(HashVersion::default());
 
-        let model = api_keys::Model {
+        let model = ApiKey {
             key_id: hashed.key_id,
             hash: hashed.hash,
             hash_version: hashed.hash_version.to_string(),
@@ -123,7 +121,7 @@ impl Authenticator {
     pub async fn list_keys(
         &self,
         project: &ValidShardedId<ProjectId>,
-    ) -> Result<Vec<api_keys::Model>, AuthError> {
+    ) -> Result<Vec<ApiKey>, AuthError> {
         let res = self.store.list_keys(project).await?;
         Ok(res)
     }
@@ -235,8 +233,6 @@ mod tests {
     use std::str::FromStr;
 
     use cronback_api_model::admin::CreateAPIkeyRequest;
-    use lib::database::Database;
-    use lib::types::ProjectId;
 
     use super::*;
     use crate::api::auth_store::SqlAuthStore;

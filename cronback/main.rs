@@ -9,10 +9,9 @@ use clap::Parser;
 use cli::LogFormat;
 use colored::Colorize;
 use cronback_services::*;
-use lib::config::{ConfigLoader, Role};
 use lib::netutils::parse_addr;
 use lib::service::ServiceContext;
-use lib::shutdown::Shutdown;
+use lib::{ConfigLoader, Role, Shutdown};
 use metrics_exporter_prometheus::PrometheusBuilder;
 use metrics_util::MetricKindMask;
 use tokio::task::JoinSet;
@@ -33,8 +32,9 @@ fn setup_logging_subscriber(
             .with_env_var("CRONBACK_LOG")
             .try_from_env()
             .unwrap_or_else(|_| {
-                "info,cronbackd=debug,cronback_services=debug,tower_http=info,\
-                 cronback_lib=debug,request_response_tracing=off,\
+                "info,sqlx=warn,cronbackd=debug,cronback_services=debug,\
+                 tower_http=info,cronback_lib=debug,\
+                 request_response_tracing=off,\
                  request_response_tracing_metadata=info,events=off"
                     .into()
             });
