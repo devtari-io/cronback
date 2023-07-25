@@ -2,16 +2,14 @@ use std::sync::Arc;
 
 use axum::extract::{Path, Query, State};
 use axum::{debug_handler, Extension, Json};
-use lib::model::ValidShardedId;
-use lib::prelude::{ModelId, OptionExt};
-use lib::types::{ProjectId, RequestId, RunId};
+use lib::prelude::*;
 use proto::common::TriggerId;
 use proto::dispatcher_svc::{GetRunRequest, ListRunsRequest};
 use proto::scheduler_svc::GetTriggerIdRequest;
 use validator::Validate;
 
+use crate::api::api_model::{GetRunResponse, Run};
 use crate::api::errors::ApiError;
-use crate::api::model::{GetRunResponse, Run};
 use crate::api::paginated::{Paginated, Pagination};
 use crate::api::AppState;
 
