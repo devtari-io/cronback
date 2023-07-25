@@ -18,7 +18,7 @@ use crate::RunId;
 #[cfg_attr(
     feature = "dto",
     derive(IntoProto),
-    proto(target = "proto::scheduler_proto::RunMode")
+    proto(target = "proto::scheduler_svc::RunMode")
 )]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[cfg_attr(feature = "clap", clap(rename_all = "snake_case"))]
@@ -35,7 +35,7 @@ pub enum RunMode {
 #[cfg_attr(
     feature = "dto",
     derive(FromProto),
-    proto(target = "proto::run_proto::RunStatus")
+    proto(target = "proto::runs::RunStatus")
 )]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
 #[cfg_attr(feature = "clap", clap(rename_all = "snake_case"))]
@@ -65,7 +65,7 @@ pub struct RunTrigger {
 #[cfg_attr(
     feature = "dto",
     derive(FromProto),
-    proto(target = "proto::run_proto::Run")
+    proto(target = "proto::runs::Run")
 )]
 #[cfg_attr(feature = "server", serde(deny_unknown_fields))]
 pub struct Run {
@@ -84,7 +84,7 @@ pub struct Run {
 #[cfg_attr(
     feature = "dto",
     derive(FromProto),
-    proto(target = "proto::dispatcher_proto::GetRunResponse")
+    proto(target = "proto::dispatcher_svc::GetRunResponse")
 )]
 pub struct GetRunResponse {
     #[serde(flatten)]

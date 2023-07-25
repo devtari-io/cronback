@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use cronback_services::scheduler_srv::test_helpers;
+use cronback_services::scheduler::test_helpers;
 use dto::traits::ProstOptionExt;
-use lib::clients::scheduler_client::ScopedSchedulerClient;
+use lib::clients::scheduler_client::ScopedSchedulerSvcClient;
 use lib::config::{ConfigLoader, Role};
 use lib::grpc_client_provider::test_helpers::TestGrpcClientProvider;
 use lib::grpc_client_provider::GrpcClientFactory;
@@ -18,7 +18,7 @@ use proto::common::{
     UpsertEffect,
     Webhook,
 };
-use proto::scheduler_proto::{
+use proto::scheduler_svc::{
     DeleteProjectTriggersRequest,
     GetTriggerRequest,
     GetTriggerResponse,
@@ -27,13 +27,7 @@ use proto::scheduler_proto::{
     UpsertTriggerRequest,
     UpsertTriggerResponse,
 };
-use proto::trigger_proto::{
-    schedule,
-    Recurring,
-    Schedule,
-    Trigger,
-    TriggerStatus,
-};
+use proto::triggers::{schedule, Recurring, Schedule, Trigger, TriggerStatus};
 use tonic::Request;
 use tracing::info;
 use tracing_test::traced_test;
@@ -78,7 +72,7 @@ fn make_trigger(
 }
 
 async fn install_trigger(
-    client_provider: &TestGrpcClientProvider<ScopedSchedulerClient>,
+    client_provider: &TestGrpcClientProvider<ScopedSchedulerSvcClient>,
     project: &ValidShardedId<ProjectId>,
     trigger: Trigger,
 ) -> UpsertTriggerResponse {
@@ -98,7 +92,7 @@ async fn install_trigger(
 }
 
 async fn list_triggers(
-    client_provider: &TestGrpcClientProvider<ScopedSchedulerClient>,
+    client_provider: &TestGrpcClientProvider<ScopedSchedulerSvcClient>,
     project: &ValidShardedId<ProjectId>,
 ) -> ListTriggersResponse {
     let list = ListTriggersRequest::default();
@@ -113,7 +107,7 @@ async fn list_triggers(
 }
 
 async fn get_trigger(
-    client_provider: &TestGrpcClientProvider<ScopedSchedulerClient>,
+    client_provider: &TestGrpcClientProvider<ScopedSchedulerSvcClient>,
     project: &ValidShardedId<ProjectId>,
     trigger_name: &str,
 ) -> Option<GetTriggerResponse> {

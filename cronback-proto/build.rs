@@ -13,14 +13,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .file_descriptor_set_path(descriptor_path.clone())
         .compile(
             &[
+                "./attempts.proto",
                 "./common.proto",
-                "./scheduler.proto",
-                "./dispatcher.proto",
-                "./project_svc.proto",
-                "./trigger.proto",
-                "./run.proto",
-                "./attempt.proto",
+                "./dispatcher_svc.proto",
                 "./events.proto",
+                "./metadata_svc.proto",
+                "./projects.proto",
+                "./runs.proto",
+                "./scheduler_svc.proto",
+                "./triggers.proto",
             ],
             &["../proto"],
         )?;
@@ -30,11 +31,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .register_descriptors(&descriptor_set)?
         // Add more packages here as needed.
         .build(&[
-            ".events",
+            ".attempts",
             ".common",
-            ".trigger_proto",
-            ".attempt_proto",
-            ".project_svc_proto",
+            ".events",
+            ".projects",
+            ".triggers",
         ])?;
 
     Ok(())

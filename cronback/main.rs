@@ -196,14 +196,14 @@ async fn spawn_service(
 
     let join_handle = match role {
         | Role::Api => {
-            tokio::spawn(api_srv::start_api_server(ServiceContext::new(
+            tokio::spawn(api::start_api_server(ServiceContext::new(
                 service_name.clone(),
                 config_loader,
                 shutdown.clone(),
             )))
         }
         | Role::Scheduler => {
-            tokio::spawn(scheduler_srv::start_scheduler_server(
+            tokio::spawn(scheduler::start_scheduler_server(
                 ServiceContext::new(
                     service_name.clone(),
                     config_loader,
@@ -212,7 +212,7 @@ async fn spawn_service(
             ))
         }
         | Role::Dispatcher => {
-            tokio::spawn(dispatcher_srv::start_dispatcher_server(
+            tokio::spawn(dispatcher::start_dispatcher_server(
                 ServiceContext::new(
                     service_name.clone(),
                     config_loader,
@@ -220,14 +220,12 @@ async fn spawn_service(
                 ),
             ))
         }
-        | Role::Projects => {
-            tokio::spawn(project_srv::start_project_store_server(
-                ServiceContext::new(
-                    service_name.clone(),
-                    config_loader,
-                    shutdown.clone(),
-                ),
-            ))
+        | Role::Metadata => {
+            tokio::spawn(metadata::start_metadata_server(ServiceContext::new(
+                service_name.clone(),
+                config_loader,
+                shutdown.clone(),
+            )))
         }
     };
     match join_handle.await.unwrap() {

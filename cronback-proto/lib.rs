@@ -49,31 +49,35 @@ pub mod common {
     }
 }
 
-pub mod scheduler_proto {
-    tonic::include_proto!("scheduler_proto");
+pub mod scheduler_svc {
+    tonic::include_proto!("scheduler_svc");
 }
 
-pub mod dispatcher_proto {
-    tonic::include_proto!("dispatcher_proto");
+pub mod dispatcher_svc {
+    tonic::include_proto!("dispatcher_svc");
 }
 
-pub mod trigger_proto {
-    tonic::include_proto!("trigger_proto");
-    include!(concat!(env!("OUT_DIR"), "/trigger_proto.serde.rs"));
+pub mod triggers {
+    tonic::include_proto!("triggers");
+    include!(concat!(env!("OUT_DIR"), "/triggers.serde.rs"));
 }
 
-pub mod run_proto {
-    tonic::include_proto!("run_proto");
+pub mod runs {
+    tonic::include_proto!("runs");
 }
 
-pub mod attempt_proto {
-    tonic::include_proto!("attempt_proto");
-    include!(concat!(env!("OUT_DIR"), "/attempt_proto.serde.rs"));
+pub mod attempts {
+    tonic::include_proto!("attempts");
+    include!(concat!(env!("OUT_DIR"), "/attempts.serde.rs"));
 }
 
-pub mod project_svc_proto {
-    tonic::include_proto!("project_svc_proto");
-    include!(concat!(env!("OUT_DIR"), "/project_svc_proto.serde.rs"));
+pub mod metadata_svc {
+    tonic::include_proto!("metadata_svc");
+}
+
+pub mod projects {
+    tonic::include_proto!("projects");
+    include!(concat!(env!("OUT_DIR"), "/projects.serde.rs"));
 }
 
 pub const FILE_DESCRIPTOR_SET: &[u8] =
