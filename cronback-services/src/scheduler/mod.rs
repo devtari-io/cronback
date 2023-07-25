@@ -1,6 +1,7 @@
 pub(crate) mod db_model;
 pub(crate) mod error;
 pub(crate) mod handler;
+mod migration;
 pub(crate) mod spinner;
 pub(crate) mod trigger_store;
 
@@ -11,8 +12,18 @@ use handler::SchedulerSvcHandler;
 use lib::prelude::*;
 use lib::{netutils, service, GrpcClientProvider};
 use proto::scheduler_svc::scheduler_svc_server::SchedulerSvcServer;
+use sea_orm::TransactionTrait;
+use sea_orm_migration::MigratorTrait;
 use spinner::controller::SpinnerController;
 use trigger_store::SqlTriggerStore;
+
+// TODO: Move database migration into a new service trait.
+pub async fn migrate_up(db: &Database) -> Result<(), DatabaseError> {
+    let conn = db.orm.begin().await?;
+    migration::Migrator::up(&conn, None).await?;
+    conn.commit().await?;
+    Ok(())
+}
 
 #[tracing::instrument(skip_all, fields(service = context.service_name()))]
 pub async fn start_scheduler_server(
@@ -21,7 +32,8 @@ pub async fn start_scheduler_server(
     let config = context.load_config();
 
     let db = Database::connect(&config.scheduler.database_uri).await?;
-    db.migrate().await?;
+    migrate_up(&db).await?;
+
     let trigger_store = Arc::new(SqlTriggerStore::new(db));
 
     let dispatcher_clients = Arc::new(GrpcClientProvider::new(context.clone()));
@@ -89,6 +101,8 @@ pub mod test_helpers {
             Arc::new(GrpcClientProvider::new(context.clone()));
 
         let db = Database::in_memory().await.unwrap();
+        migrate_up(&db).await.unwrap();
+
         let trigger_store = Arc::new(SqlTriggerStore::new(db));
         let controller = Arc::new(SpinnerController::new(
             context.clone(),

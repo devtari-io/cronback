@@ -7,6 +7,7 @@ pub mod errors;
 pub(crate) mod extractors;
 mod handlers;
 mod logging;
+mod migration;
 mod paginated;
 
 use std::net::SocketAddr;
@@ -30,6 +31,8 @@ use lib::prelude::*;
 use lib::{netutils, service, Config, GrpcClientFactory, GrpcClientProvider};
 use logging::{trace_request_response, ApiMakeSpan};
 use metrics::{histogram, increment_counter};
+use sea_orm::TransactionTrait;
+use sea_orm_migration::MigratorTrait;
 use thiserror::Error;
 use tokio::select;
 use tower_http::cors::{AllowOrigin, CorsLayer};
@@ -62,6 +65,14 @@ async fn fallback() -> (StatusCode, &'static str) {
     (StatusCode::NOT_FOUND, "Not Found")
 }
 
+// TODO: Move database migration into a new service trait.
+pub async fn migrate_up(db: &Database) -> Result<(), DatabaseError> {
+    let conn = db.orm.begin().await?;
+    migration::Migrator::up(&conn, None).await?;
+    conn.commit().await?;
+    Ok(())
+}
+
 #[tracing::instrument(skip_all, fields(service = context.service_name()))]
 pub async fn start_api_server(
     mut context: service::ServiceContext,
@@ -71,7 +82,7 @@ pub async fn start_api_server(
         netutils::parse_addr(&config.api.address, config.api.port).unwrap();
 
     let db = Database::connect(&config.api.database_uri).await?;
-    db.migrate().await?;
+    migrate_up(&db).await?;
 
     let shared_state = Arc::new(AppState {
         _context: context.clone(),

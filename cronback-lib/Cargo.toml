@@ -17,7 +17,6 @@ path = "lib.rs"
 # Internal Dependencies
 proto = { workspace = true }
 dto = { workspace = true }
-migration = { workspace = true }
 
 # Dependencies from workspace
 anyhow = { workspace = true }
