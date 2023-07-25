@@ -129,6 +129,7 @@ where
             }
 
             // Inject project_id into response headers
+
             if let Some(project_id) = response
                 .extensions()
                 .get::<ValidShardedId<ProjectId>>()
