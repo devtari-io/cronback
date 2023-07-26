@@ -5,10 +5,14 @@ use proto::metadata_svc::metadata_svc_server::MetadataSvc;
 use proto::metadata_svc::{
     CreateProjectRequest,
     CreateProjectResponse,
+    GetProjectNotificationSettingsRequest,
+    GetProjectNotificationSettingsResponse,
     GetProjectStatusRequest,
     GetProjectStatusResponse,
     ProjectExistsRequest,
     ProjectExistsResponse,
+    SetProjectNotificationSettingsRequest,
+    SetProjectNotificationSettingsResponse,
     SetProjectStatusRequest,
     SetProjectStatusResponse,
 };
@@ -49,6 +53,7 @@ impl MetadataSvc for MetadataSvcHandler {
             created_at: Utc::now(),
             changed_at: Utc::now(),
             status: ProjectStatus::Enabled,
+            notification_settings: Default::default(),
         };
 
         self.project_store
@@ -132,6 +137,71 @@ impl MetadataSvc for MetadataSvcHandler {
 
         Ok(Response::new(SetProjectStatusResponse {
             old_status: old_status.into(),
+        }))
+    }
+
+    async fn get_project_notification_settings(
+        &self,
+        request: Request<GetProjectNotificationSettingsRequest>,
+    ) -> Result<Response<GetProjectNotificationSettingsResponse>, Status> {
+        let (_, _, req) = request.into_parts();
+        let project_id: ProjectId = req.id.unwrap().into();
+        let project_id = project_id
+            .validated()
+            .map_err(|e| Status::invalid_argument(e.to_string()))?;
+        let status = self
+            .project_store
+            .get_notification_settings(&project_id)
+            .await
+            .map_err(ProjectStoreHandlerError::Store)?;
+        match status {
+            | Some(st) => {
+                Ok(Response::new(GetProjectNotificationSettingsResponse {
+                    settings: Some(st.into()),
+                }))
+            }
+            | None => {
+                Err(ProjectStoreHandlerError::NotFound(format!(
+                    "{}",
+                    project_id
+                )))?
+            }
+        }
+    }
+
+    async fn set_project_notification_settings(
+        &self,
+        request: Request<SetProjectNotificationSettingsRequest>,
+    ) -> Result<Response<SetProjectNotificationSettingsResponse>, Status> {
+        let (_, _, req) = request.into_parts();
+        let project_id: ProjectId = req.id.unwrap().into();
+        let project_id = project_id
+            .validated()
+            .map_err(|e| Status::invalid_argument(e.to_string()))?;
+
+        let old_settings = self
+            .project_store
+            .get_notification_settings(&project_id)
+            .await
+            .map_err(ProjectStoreHandlerError::Store)?;
+
+        let Some(old_settings) = old_settings else {
+            return Err(ProjectStoreHandlerError::NotFound(
+                project_id.to_string(),
+            )
+            .into());
+        };
+
+        self.project_store
+            .set_notification_settings(
+                &project_id,
+                req.settings.unwrap().into(),
+            )
+            .await
+            .map_err(ProjectStoreHandlerError::Store)?;
+
+        Ok(Response::new(SetProjectNotificationSettingsResponse {
+            old_settings: Some(old_settings.into()),
         }))
     }
 

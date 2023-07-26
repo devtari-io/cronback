@@ -2,6 +2,7 @@ syntax = "proto3";
 
 import "common.proto";
 import "projects.proto";
+import "notifications.proto";
 
 package metadata_svc;
 
@@ -10,6 +11,8 @@ service MetadataSvc {
   rpc GetProjectStatus(GetProjectStatusRequest) returns (GetProjectStatusResponse);
   rpc SetProjectStatus(SetProjectStatusRequest) returns (SetProjectStatusResponse);
   rpc ProjectExists(ProjectExistsRequest) returns (ProjectExistsResponse);
+  rpc GetProjectNotificationSettings(GetProjectNotificationSettingsRequest) returns (GetProjectNotificationSettingsResponse);
+  rpc SetProjectNotificationSettings(SetProjectNotificationSettingsRequest) returns (SetProjectNotificationSettingsResponse);
 }
 
 message CreateProjectRequest {
@@ -43,5 +46,23 @@ message ProjectExistsRequest {
 
 message ProjectExistsResponse {
   bool exists = 1;
+}
+
+message GetProjectNotificationSettingsRequest {
+  common.ProjectId id = 1;
+}
+
+message GetProjectNotificationSettingsResponse {
+  notifications.ProjectNotificationSettings settings = 1;
+}
+
+
+message SetProjectNotificationSettingsRequest {
+  common.ProjectId id = 1;
+  notifications.ProjectNotificationSettings settings = 2;
+}
+
+message SetProjectNotificationSettingsResponse {
+  notifications.ProjectNotificationSettings old_settings = 1;
 }
 

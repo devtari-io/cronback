@@ -1,0 +1,19 @@
+{
+    "channels": {
+        "email": {
+            "type": "email",
+            "address": "test@gmail.com",
+            "verified": false
+        }
+    },
+    "subscriptions": [
+        {
+            "channel_names": [
+                "email"
+            ],
+            "subscription": {
+                "type": "on_run_failure"
+            }
+        }
+    ]
+}

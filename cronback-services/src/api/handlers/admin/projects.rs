@@ -3,13 +3,22 @@ use std::sync::Arc;
 use axum::extract::{Path, State};
 use axum::response::IntoResponse;
 use axum::{Extension, Json};
-use cronback_api_model::admin::CreateProjectResponse as CreateProjectHttpResponse;
+use cronback_api_model::admin::{
+    CreateProjectResponse as CreateProjectHttpResponse,
+    NotificationSettings,
+};
 use hyper::StatusCode;
 use lib::prelude::*;
-use proto::metadata_svc::{CreateProjectRequest, SetProjectStatusRequest};
+use proto::metadata_svc::{
+    CreateProjectRequest,
+    GetProjectNotificationSettingsRequest,
+    SetProjectNotificationSettingsRequest,
+    SetProjectStatusRequest,
+};
 use proto::projects::ProjectStatus;
 
 use crate::api::errors::ApiError;
+use crate::api::extractors::ValidatedJson;
 use crate::api::AppState;
 
 #[tracing::instrument(skip(state))]
@@ -85,4 +94,58 @@ pub(crate) async fn disable(
         ProjectStatus::Disabled,
     )
     .await
+}
+
+#[tracing::instrument(skip(state))]
+pub(crate) async fn get_notification_settings(
+    state: State<Arc<AppState>>,
+    Path(project_id_str): Path<String>,
+    Extension(request_id): Extension<RequestId>,
+) -> Result<impl IntoResponse, ApiError> {
+    let project_id = ProjectId::from(project_id_str.clone())
+        .validated()
+        .map_err(move |_| ApiError::NotFound(project_id_str))?;
+
+    let mut metadata = state
+        .metadata_svc_clients
+        .get_client(&request_id, &project_id)
+        .await?;
+    let resp = metadata
+        .get_project_notification_settings(
+            GetProjectNotificationSettingsRequest {
+                id: Some(project_id.into()),
+            },
+        )
+        .await?
+        .into_inner();
+
+    let settings: NotificationSettings = resp.settings.unwrap().into();
+
+    Ok(Json(settings))
+}
+
+#[tracing::instrument(skip(state))]
+pub(crate) async fn set_notification_settings(
+    state: State<Arc<AppState>>,
+    Path(project_id_str): Path<String>,
+    Extension(request_id): Extension<RequestId>,
+    ValidatedJson(settings): ValidatedJson<NotificationSettings>,
+) -> Result<impl IntoResponse, ApiError> {
+    let project_id = ProjectId::from(project_id_str.clone())
+        .validated()
+        .map_err(move |_| ApiError::NotFound(project_id_str))?;
+
+    let mut metadata = state
+        .metadata_svc_clients
+        .get_client(&request_id, &project_id)
+        .await?;
+    metadata
+        .set_project_notification_settings(
+            SetProjectNotificationSettingsRequest {
+                id: Some(project_id.into()),
+                settings: Some(settings.into()),
+            },
+        )
+        .await?;
+    Ok(StatusCode::NO_CONTENT)
 }

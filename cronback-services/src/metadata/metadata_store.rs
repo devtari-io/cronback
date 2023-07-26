@@ -2,6 +2,7 @@ use chrono::Utc;
 use lib::prelude::*;
 use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 
+use super::db_model::notifications::NotificationSettings;
 use super::db_model::{projects, Project, ProjectStatus, Projects};
 
 pub type MetadataStoreError = DatabaseError;
@@ -51,6 +52,32 @@ impl MetadataStore {
             .map(|p| p.status))
     }
 
+    pub async fn set_notification_settings(
+        &self,
+        id: &ValidShardedId<ProjectId>,
+        settings: NotificationSettings,
+    ) -> Result<(), MetadataStoreError> {
+        let active_model = projects::ActiveModel {
+            id: Set(id.clone()),
+            notification_settings: Set(settings),
+            changed_at: Set(Utc::now()),
+            ..Default::default()
+        };
+
+        active_model.update(&self.db.orm).await?;
+        Ok(())
+    }
+
+    pub async fn get_notification_settings(
+        &self,
+        id: &ValidShardedId<ProjectId>,
+    ) -> Result<Option<NotificationSettings>, MetadataStoreError> {
+        Ok(Projects::find_by_id(id.clone())
+            .one(&self.db.orm)
+            .await?
+            .map(|p| p.notification_settings))
+    }
+
     pub async fn exists(
         &self,
         id: &ValidShardedId<ProjectId>,
@@ -73,6 +100,7 @@ mod tests {
             created_at: now,
             changed_at: now,
             status,
+            notification_settings: Default::default(),
         }
     }
 

@@ -80,5 +80,9 @@ pub mod projects {
     include!(concat!(env!("OUT_DIR"), "/projects.serde.rs"));
 }
 
+pub mod notifications {
+    tonic::include_proto!("notifications");
+}
+
 pub const FILE_DESCRIPTOR_SET: &[u8] =
     tonic::include_file_descriptor_set!("file_descriptor");
