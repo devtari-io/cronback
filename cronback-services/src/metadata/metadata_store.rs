@@ -89,7 +89,16 @@ impl MetadataStore {
 #[cfg(test)]
 mod tests {
 
+    use std::collections::HashMap;
+
     use super::*;
+    use crate::metadata::db_model::notifications::{
+        EmailNotification,
+        NotificationChannel,
+        NotificationEvent,
+        NotificationSubscription,
+        OnRunFailure,
+    };
     use crate::metadata::migrate_up;
 
     fn build_project(status: ProjectStatus) -> Project {
@@ -152,6 +161,30 @@ mod tests {
                 .await,
             Err(DatabaseError::DB(sea_orm::DbErr::RecordNotUpdated))
         ));
+
+        // Test notification setters / getters
+        {
+            let email = EmailNotification {
+                address: "test@gmail.com".to_string(),
+                verified: true,
+            };
+            let mut channels = HashMap::new();
+            channels
+                .insert("email".to_string(), NotificationChannel::Email(email));
+            let setting = NotificationSettings {
+                channels,
+                subscriptions: vec![NotificationSubscription {
+                    channel_names: vec!["email".to_string()],
+                    event: NotificationEvent::OnRunFailure(OnRunFailure {}),
+                }],
+            };
+            store
+                .set_notification_settings(&project2.id, setting.clone())
+                .await?;
+
+            let found = store.get_notification_settings(&project2.id).await?;
+            assert_eq!(found, Some(setting));
+        }
 
         Ok(())
     }
