@@ -18,18 +18,18 @@ use serde::{Deserialize, Serialize};
 )]
 #[proto(target = "proto::notifications::ProjectNotificationSettings")]
 pub struct NotificationSettings {
-    pub subscriptions: Vec<NotificationSubscriptionConfig>,
+    pub subscriptions: Vec<NotificationSubscription>,
     pub channels: HashMap<String, NotificationChannel>,
 }
 
 #[derive(
     Clone, Debug, Serialize, Deserialize, PartialEq, Eq, FromProto, IntoProto,
 )]
-#[proto(target = "proto::notifications::NotificationSubscriptionConfig")]
-pub struct NotificationSubscriptionConfig {
+#[proto(target = "proto::notifications::NotificationSubscription")]
+pub struct NotificationSubscription {
     pub channel_names: Vec<String>,
     #[proto(required)]
-    pub subscription: Subscription,
+    pub event: NotificationEvent,
 }
 
 #[derive(
@@ -46,11 +46,8 @@ pub enum NotificationChannel {
 #[derive(
     Clone, Debug, Serialize, Deserialize, PartialEq, Eq, FromProto, IntoProto,
 )]
-#[proto(
-    target = "proto::notifications::NotificationSubscription",
-    oneof = "subscription"
-)]
-pub enum Subscription {
+#[proto(target = "proto::notifications::NotificationEvent", oneof = "event")]
+pub enum NotificationEvent {
     OnRunFailure(OnRunFailure),
 }
 

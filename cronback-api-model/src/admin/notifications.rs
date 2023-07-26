@@ -27,7 +27,7 @@ use crate::validation_util::validation_error;
 #[serde(deny_unknown_fields)]
 pub struct NotificationSettings {
     #[cfg_attr(feature = "validation", validate)]
-    pub subscriptions: Vec<NotificationSubscriptionConfig>,
+    pub subscriptions: Vec<NotificationSubscription>,
     #[cfg_attr(feature = "validation", validate)]
     pub channels: HashMap<String, NotificationChannel>,
 }
@@ -36,16 +36,16 @@ pub struct NotificationSettings {
 #[cfg_attr(
     feature = "dto",
     derive(IntoProto, FromProto),
-    proto(target = "proto::notifications::NotificationSubscriptionConfig")
+    proto(target = "proto::notifications::NotificationSubscription")
 )]
 #[cfg_attr(feature = "validation", derive(Validate))]
 #[serde(deny_unknown_fields)]
-pub struct NotificationSubscriptionConfig {
+pub struct NotificationSubscription {
     #[cfg_attr(feature = "validation", validate(length(max = 20)))]
     pub channel_names: Vec<String>,
     #[cfg_attr(feature = "dto", proto(required))]
     #[cfg_attr(feature = "validation", validate)]
-    pub subscription: Subscription,
+    pub event: NotificationEvent,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -67,14 +67,11 @@ pub enum NotificationChannel {
 #[cfg_attr(
     feature = "dto",
     derive(IntoProto, FromProto),
-    proto(
-        target = "proto::notifications::NotificationSubscription",
-        oneof = "subscription"
-    )
+    proto(target = "proto::notifications::NotificationEvent", oneof = "event")
 )]
 #[serde(rename_all = "snake_case")]
 #[serde(untagged)]
-pub enum Subscription {
+pub enum NotificationEvent {
     OnRunFailure(OnRunFailure),
 }
 
@@ -112,10 +109,10 @@ pub struct OnRunFailure {
 }
 
 #[cfg(feature = "validation")]
-impl Validate for Subscription {
+impl Validate for NotificationEvent {
     fn validate(&self) -> Result<(), validator::ValidationErrors> {
         match self {
-            | Subscription::OnRunFailure(o) => o.validate(),
+            | NotificationEvent::OnRunFailure(o) => o.validate(),
         }
     }
 }
@@ -168,9 +165,9 @@ mod tests {
         channels.insert("email".to_string(), NotificationChannel::Email(email));
         let setting = NotificationSettings {
             channels,
-            subscriptions: vec![NotificationSubscriptionConfig {
+            subscriptions: vec![NotificationSubscription {
                 channel_names: vec!["email".to_string()],
-                subscription: Subscription::OnRunFailure(OnRunFailure {
+                event: NotificationEvent::OnRunFailure(OnRunFailure {
                     _kind: Default::default(),
                 }),
             }],
@@ -218,12 +215,12 @@ mod tests {
         channels.insert("email".to_string(), NotificationChannel::Email(email));
         let setting = NotificationSettings {
             channels,
-            subscriptions: vec![NotificationSubscriptionConfig {
+            subscriptions: vec![NotificationSubscription {
                 channel_names: vec![
                     "email".to_string(),
                     "wrong_channel".to_string(),
                 ],
-                subscription: Subscription::OnRunFailure(OnRunFailure {
+                event: NotificationEvent::OnRunFailure(OnRunFailure {
                     _kind: Default::default(),
                 }),
             }],

@@ -31,12 +31,12 @@ pub(crate) async fn create(
         .metadata_svc_clients
         .get_client(&request_id, &id)
         .await?;
-    let (_, resp, _) = metadata
+    let resp = metadata
         .create_project(CreateProjectRequest {
             id: Some(id.clone().into()),
         })
         .await?
-        .into_parts();
+        .into_inner();
     let response = CreateProjectHttpResponse {
         id: resp.id.unwrap().value,
     };

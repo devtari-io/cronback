@@ -43,7 +43,7 @@ impl MetadataSvc for MetadataSvcHandler {
         &self,
         request: Request<CreateProjectRequest>,
     ) -> Result<Response<CreateProjectResponse>, Status> {
-        let (_, _, req) = request.into_parts();
+        let req = request.into_inner();
         let id: ProjectId = req.id.unwrap().into();
         let id = id
             .validated()
@@ -72,7 +72,7 @@ impl MetadataSvc for MetadataSvcHandler {
         &self,
         request: Request<GetProjectStatusRequest>,
     ) -> Result<Response<GetProjectStatusResponse>, Status> {
-        let (_, _, req) = request.into_parts();
+        let req = request.into_inner();
         let project_id: ProjectId = req.id.unwrap().into();
         let project_id = project_id
             .validated()
@@ -101,7 +101,7 @@ impl MetadataSvc for MetadataSvcHandler {
         &self,
         request: Request<SetProjectStatusRequest>,
     ) -> Result<Response<SetProjectStatusResponse>, Status> {
-        let (_, _, req) = request.into_parts();
+        let req = request.into_inner();
         let project_id: ProjectId = req.id.unwrap().into();
         let project_id = project_id
             .validated()
@@ -144,7 +144,7 @@ impl MetadataSvc for MetadataSvcHandler {
         &self,
         request: Request<GetProjectNotificationSettingsRequest>,
     ) -> Result<Response<GetProjectNotificationSettingsResponse>, Status> {
-        let (_, _, req) = request.into_parts();
+        let req = request.into_inner();
         let project_id: ProjectId = req.id.unwrap().into();
         let project_id = project_id
             .validated()
@@ -173,7 +173,7 @@ impl MetadataSvc for MetadataSvcHandler {
         &self,
         request: Request<SetProjectNotificationSettingsRequest>,
     ) -> Result<Response<SetProjectNotificationSettingsResponse>, Status> {
-        let (_, _, req) = request.into_parts();
+        let req = request.into_inner();
         let project_id: ProjectId = req.id.unwrap().into();
         let project_id = project_id
             .validated()
@@ -209,7 +209,7 @@ impl MetadataSvc for MetadataSvcHandler {
         &self,
         request: Request<ProjectExistsRequest>,
     ) -> Result<Response<ProjectExistsResponse>, Status> {
-        let (_, _, req) = request.into_parts();
+        let req = request.into_inner();
         let project_id: ProjectId = req.id.unwrap().into();
         let project_id = project_id
             .validated()

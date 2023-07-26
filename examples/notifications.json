@@ -11,7 +11,7 @@
             "channel_names": [
                 "email"
             ],
-            "subscription": {
+            "event": {
                 "type": "on_run_failure"
             }
         }
