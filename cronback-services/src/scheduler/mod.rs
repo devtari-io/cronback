@@ -1,3 +1,4 @@
+mod config;
 pub(crate) mod db_model;
 pub(crate) mod error;
 pub(crate) mod handler;
@@ -8,71 +9,94 @@ pub(crate) mod trigger_store;
 use std::sync::Arc;
 use std::time::Duration;
 
+use async_trait::async_trait;
 use handler::SchedulerSvcHandler;
 use lib::prelude::*;
+use lib::service::{CronbackService, ServiceContext};
 use lib::{netutils, service, GrpcClientProvider};
+use metrics::{describe_gauge, describe_histogram, Unit};
 use proto::scheduler_svc::scheduler_svc_server::SchedulerSvcServer;
-use sea_orm::TransactionTrait;
-use sea_orm_migration::MigratorTrait;
 use spinner::controller::SpinnerController;
 use trigger_store::TriggerStore;
 
-// TODO: Move database migration into a new service trait.
-pub async fn migrate_up(db: &Database) -> Result<(), DatabaseError> {
-    let conn = db.orm.begin().await?;
-    migration::Migrator::up(&conn, None).await?;
-    conn.commit().await?;
-    Ok(())
-}
+use self::config::SchedulerSvcConfig;
 
-#[tracing::instrument(skip_all, fields(service = context.service_name()))]
-pub async fn start_scheduler_server(
-    mut context: service::ServiceContext,
-) -> anyhow::Result<()> {
-    let config = context.load_config();
+/// The primary service data type for the service.
+#[derive(Clone)]
+pub struct SchedulerService;
 
-    let db = Database::connect(&config.scheduler.database_uri).await?;
-    migrate_up(&db).await?;
+#[async_trait]
+impl CronbackService for SchedulerService {
+    type Migrator = migration::Migrator;
+    type ServiceConfig = SchedulerSvcConfig;
 
-    let trigger_store = TriggerStore::new(db);
+    const ROLE: &'static str = "scheduler";
 
-    let dispatcher_clients = Arc::new(GrpcClientProvider::new(context.clone()));
+    fn install_telemetry() {
+        describe_histogram!(
+            "spinner.yield_duration_ms",
+            Unit::Milliseconds,
+            "The time where the spinner gets to sleep until next tick"
+        );
+        describe_histogram!(
+            "spinner.dispatch_lag_seconds",
+            Unit::Seconds,
+            "How many seconds the spinner is lagging from trigger ticks"
+        );
+        describe_gauge!(
+            "spinner.active_triggers_total",
+            Unit::Count,
+            "How many active triggers are loaded into the spinner"
+        );
+    }
 
-    let controller = Arc::new(SpinnerController::new(
-        context.clone(),
-        trigger_store,
-        dispatcher_clients,
-    ));
+    #[tracing::instrument(skip_all, fields(service = context.service_name()))]
+    async fn serve(
+        mut context: ServiceContext<Self>,
+        db: Database,
+    ) -> anyhow::Result<()> {
+        let config = context.service_config();
 
-    let addr =
-        netutils::parse_addr(&config.scheduler.address, config.scheduler.port)
-            .unwrap();
-    controller.start().await?;
+        let trigger_store = TriggerStore::new(db);
 
-    let async_es = controller.clone();
-    let db_flush_s = config.scheduler.db_flush_s;
-    tokio::spawn(async move {
-        let sleep = Duration::from_secs(db_flush_s);
-        loop {
-            tokio::time::sleep(sleep).await;
-            async_es.perform_checkpoint().await;
-        }
-    });
+        let dispatcher_clients =
+            Arc::new(GrpcClientProvider::new(context.config_loader()));
 
-    let handler = SchedulerSvcHandler::new(context.clone(), controller.clone());
-    let svc = SchedulerSvcServer::new(handler);
+        let controller = Arc::new(SpinnerController::new(
+            context.clone(),
+            trigger_store,
+            dispatcher_clients,
+        ));
 
-    // grpc server
-    service::grpc_serve_tcp(
-        &mut context,
-        addr,
-        svc,
-        config.scheduler.request_processing_timeout_s,
-    )
-    .await;
+        let addr = netutils::parse_addr(&config.address, config.port).unwrap();
+        controller.start().await?;
 
-    controller.shutdown().await;
-    Ok(())
+        let async_es = controller.clone();
+        let db_flush_s = config.db_flush_s;
+        tokio::spawn(async move {
+            let sleep = Duration::from_secs(db_flush_s);
+            loop {
+                tokio::time::sleep(sleep).await;
+                async_es.perform_checkpoint().await;
+            }
+        });
+
+        let handler =
+            SchedulerSvcHandler::new(context.clone(), controller.clone());
+        let svc = SchedulerSvcServer::new(handler);
+
+        // grpc server
+        service::grpc_serve_tcp(
+            &mut context,
+            addr,
+            svc,
+            config.request_processing_timeout_s,
+        )
+        .await;
+
+        controller.shutdown().await;
+        Ok(())
+    }
 }
 
 pub mod test_helpers {
@@ -88,7 +112,7 @@ pub mod test_helpers {
     use super::*;
 
     pub async fn test_server_and_client(
-        mut context: ServiceContext,
+        mut context: ServiceContext<SchedulerService>,
     ) -> (
         JoinHandle<()>,
         TestGrpcClientProvider<ScopedSchedulerSvcClient>,
@@ -98,10 +122,9 @@ pub mod test_helpers {
         std::fs::remove_file(&*socket).unwrap();
 
         let dispatcher_client_provider =
-            Arc::new(GrpcClientProvider::new(context.clone()));
+            Arc::new(GrpcClientProvider::new(context.config_loader()));
 
-        let db = Database::in_memory().await.unwrap();
-        migrate_up(&db).await.unwrap();
+        let db = SchedulerService::in_memory_database().await.unwrap();
 
         let trigger_store = TriggerStore::new(db);
         let controller = Arc::new(SpinnerController::new(

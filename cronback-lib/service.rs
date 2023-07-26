@@ -5,59 +5,101 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Duration;
 
+use async_trait::async_trait;
+use config::ConfigError;
 use futures::Stream;
 use hyper::{Body, Request, Response};
 use proto::FILE_DESCRIPTOR_SET;
+use sea_orm::ConnectOptions;
+use serde::Deserialize;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::UnixListener;
 use tokio_stream::wrappers::UnixListenerStream;
 use tonic::body::BoxBody;
 use tonic::transport::server::{Connected, TcpIncoming};
-use tonic::transport::{NamedService, Server};
+use tonic::transport::{NamedService, Server as TonicServer};
 use tonic_reflection::server::Builder;
 use tower::Service;
 use tower_http::trace::{MakeSpan, TraceLayer};
 use tracing::{error, error_span, info, Id, Span};
 
-use crate::config::{Config, ConfigLoader};
+use crate::config::ConfigLoader;
 use crate::consts::{PARENT_SPAN_HEADER, PROJECT_ID_HEADER, REQUEST_ID_HEADER};
+use crate::database::{Database, DatabaseError, DbMigration};
 use crate::rpc_middleware::CronbackRpcMiddleware;
 use crate::shutdown::Shutdown;
+use crate::MainConfig;
 
-#[derive(Clone)]
-pub struct ServiceContext {
-    name: String,
-    config_loader: Arc<ConfigLoader>,
-    shutdown: Shutdown,
-}
+#[async_trait]
+pub trait CronbackService: Send + Sync + Sized + Clone + 'static {
+    type ServiceConfig: for<'a> Deserialize<'a> + Into<ConnectOptions> + Send;
+    type Migrator: DbMigration;
 
-impl ServiceContext {
-    pub fn new(
-        name: String,
+    const ROLE: &'static str;
+    // Default config section to the role name
+    const CONFIG_SECTION: &'static str = Self::ROLE;
+
+    /// Create a new service context.
+    fn make_context(
         config_loader: Arc<ConfigLoader>,
         shutdown: Shutdown,
-    ) -> Self {
+    ) -> ServiceContext<Self> {
+        ServiceContext::new(config_loader, shutdown)
+    }
+
+    /// Optional hook to install telemetry for the service.
+    fn install_telemetry() {}
+
+    /// Create and migrate database before service is started. Return None if no
+    /// database is needed.
+    async fn prepare_database<O>(opts: O) -> Result<Database, DatabaseError>
+    where
+        O: Into<ConnectOptions> + Send,
+    {
+        Database::connect::<O, Self::Migrator>(opts).await
+    }
+
+    // Creates and migrate an in-memory database for testing.
+    async fn in_memory_database() -> Result<Database, DatabaseError> {
+        Database::connect::<&str, Self::Migrator>("sqlite::memory:").await
+    }
+
+    async fn serve(
+        context: ServiceContext<Self>,
+        db: Database,
+    ) -> anyhow::Result<()>;
+}
+
+// needs to be parametric by config type.
+#[derive(Clone)]
+pub struct ServiceContext<S> {
+    config_loader: Arc<ConfigLoader>,
+    shutdown: Shutdown,
+    _service: std::marker::PhantomData<S>,
+}
+
+impl<S> ServiceContext<S>
+where
+    S: CronbackService,
+{
+    fn new(config_loader: Arc<ConfigLoader>, shutdown: Shutdown) -> Self {
         Self {
-            name,
             config_loader,
             shutdown,
+            _service: Default::default(),
         }
     }
 
-    pub fn service_name(&self) -> &str {
-        &self.name
-    }
-
-    pub fn get_config(&self) -> Config {
-        self.config_loader.load().unwrap()
+    pub fn service_name(&self) -> &'static str {
+        S::ROLE
     }
 
     pub fn config_loader(&self) -> Arc<ConfigLoader> {
         self.config_loader.clone()
     }
 
-    pub fn load_config(&self) -> Config {
-        self.config_loader.load().unwrap()
+    pub fn get_main_config(&self) -> MainConfig {
+        self.config_loader.load_main().unwrap()
     }
 
     /// Awaits the shutdown signal
@@ -69,7 +111,23 @@ impl ServiceContext {
     pub fn broadcast_shutdown(&mut self) {
         self.shutdown.broadcast_shutdown()
     }
+
+    // TODO: Return ref when we add config caching
+    pub fn service_config(&self) -> S::ServiceConfig {
+        self.config_loader.load_section(S::CONFIG_SECTION).unwrap()
+    }
+
+    pub fn load_service_config(&self) -> Result<S::ServiceConfig, ConfigError> {
+        self.config_loader.load_section(S::CONFIG_SECTION)
+    }
 }
+
+// Ensure that ServiceContext is Send + Sync
+const _: () = {
+    struct DummyService;
+    const fn _assert_send_sync<T: Send + Sync>() {}
+    _assert_send_sync::<ServiceContext<DummyService>>();
+};
 
 #[derive(Clone, Debug)]
 struct GrpcMakeSpan {
@@ -116,9 +174,8 @@ impl<B> MakeSpan<B> for GrpcMakeSpan {
     }
 }
 
-#[tracing::instrument(skip_all, fields(service = context.service_name()))]
-pub async fn grpc_serve_tcp<S>(
-    context: &mut ServiceContext,
+pub async fn grpc_serve_tcp<S, CS>(
+    context: &mut ServiceContext<CS>,
     addr: SocketAddr,
     svc: S,
     timeout: u64,
@@ -129,6 +186,7 @@ pub async fn grpc_serve_tcp<S>(
         + Send
         + 'static,
     S::Future: Send + 'static,
+    CS: CronbackService,
 {
     info!("Starting '{}' on {:?}", context.service_name(), addr);
     match TcpIncoming::new(addr, true, None) {
@@ -146,9 +204,8 @@ pub async fn grpc_serve_tcp<S>(
     };
 }
 
-#[tracing::instrument(skip_all, fields(service = context.service_name()))]
-pub async fn grpc_serve_unix<S, K>(
-    context: &mut ServiceContext,
+pub async fn grpc_serve_unix<S, K, CS>(
+    context: &mut ServiceContext<CS>,
     socket: K,
     svc: S,
     timeout: u64,
@@ -160,6 +217,7 @@ pub async fn grpc_serve_unix<S, K>(
         + 'static,
     S::Future: Send + 'static,
     K: AsRef<Path>,
+    CS: CronbackService,
 {
     info!(
         "Starting '{}' on {:?}",
@@ -172,8 +230,8 @@ pub async fn grpc_serve_unix<S, K>(
 }
 
 #[tracing::instrument(skip_all, fields(service = context.service_name()))]
-async fn grpc_serve_incoming<S, K, IO, IE>(
-    context: &mut ServiceContext,
+async fn grpc_serve_incoming<S, K, IO, IE, CS>(
+    context: &mut ServiceContext<CS>,
     svc: S,
     incoming: K,
     timeout: u64,
@@ -188,6 +246,7 @@ async fn grpc_serve_incoming<S, K, IO, IE>(
     IO: AsyncRead + AsyncWrite + Connected + Unpin + Send + 'static,
     IO::ConnectInfo: Clone + Send + Sync + 'static,
     IE: Into<Box<dyn Error + Send + Sync>>,
+    CS: CronbackService,
 {
     let svc_name = context.service_name().to_owned();
     // The stack of middleware that our service will be wrapped in
@@ -206,7 +265,7 @@ async fn grpc_serve_incoming<S, K, IO, IE>(
         .unwrap();
 
     // grpc Server
-    if let Err(e) = Server::builder()
+    if let Err(e) = TonicServer::builder()
         .timeout(Duration::from_secs(timeout))
         .layer(cronback_middleware)
         .add_service(reflection_service)

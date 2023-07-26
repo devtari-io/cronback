@@ -63,7 +63,7 @@ impl MetadataStore {
 mod tests {
 
     use super::*;
-    use crate::metadata::migrate_up;
+    use crate::metadata::MetadataService;
 
     fn build_project(status: ProjectStatus) -> Project {
         let now = Utc::now();
@@ -78,8 +78,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_sql_project_store() -> anyhow::Result<()> {
-        let db = Database::in_memory().await?;
-        migrate_up(&db).await?;
+        let db = MetadataService::in_memory_database().await?;
         let store = MetadataStore::new(db);
 
         let project1 = build_project(ProjectStatus::Enabled);

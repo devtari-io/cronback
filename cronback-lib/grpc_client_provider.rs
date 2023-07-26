@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::str::FromStr;
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
 use async_trait::async_trait;
 use derive_more::{Deref, DerefMut};
@@ -10,8 +10,8 @@ use tonic::transport::{Channel, Endpoint};
 use crate::config::MainConfig;
 use crate::model::ValidShardedId;
 use crate::prelude::{GrpcRequestInterceptor, Shard};
-use crate::service::ServiceContext;
 use crate::types::{ProjectId, RequestId};
+use crate::ConfigLoader;
 
 #[derive(Debug, Error)]
 pub enum GrpcClientError {
@@ -109,15 +109,15 @@ pub trait GrpcClientFactory: Send + Sync {
 // A concrete channel-caching implementation of the GrpcClientFactory used in
 // production.
 pub struct GrpcClientProvider<T> {
-    service_context: ServiceContext,
+    config_loader: Arc<ConfigLoader>,
     channel_cache: RwLock<HashMap<String, Channel>>,
     phantom: std::marker::PhantomData<T>,
 }
 
 impl<T: GrpcClientType> GrpcClientProvider<T> {
-    pub fn new(service_context: ServiceContext) -> Self {
+    pub fn new(config_loader: Arc<ConfigLoader>) -> Self {
         Self {
-            service_context,
+            config_loader,
             channel_cache: Default::default(),
             phantom: Default::default(),
         }
@@ -133,11 +133,10 @@ impl<T: GrpcClientType> GrpcClientFactory for GrpcClientProvider<T> {
         request_id: &RequestId,
         project_id: &ValidShardedId<ProjectId>,
     ) -> Result<Self::ClientType, GrpcClientError> {
+        // TODO: Will be optimised in a future change.
+        let config = self.config_loader.load_main().expect("main config valid");
         // resolve shard -> cell
-        let address = T::get_address(
-            &self.service_context.get_config().main,
-            project_id,
-        )?;
+        let address = T::get_address(&config, project_id)?;
 
         let mut channel = None;
         {

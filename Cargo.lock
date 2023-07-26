@@ -712,6 +712,7 @@ name = "cronback"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "clap 4.3.12",
  "colored",
  "cronback-lib",
@@ -852,6 +853,7 @@ dependencies = [
  "metrics",
  "rand",
  "sea-orm",
+ "sea-orm-migration",
  "sea-query",
  "sea-query-binder",
  "serde",
