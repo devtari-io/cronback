@@ -30,15 +30,16 @@ use tonic::{Request, Response, Status};
 
 use super::db_model::triggers;
 use super::spinner::controller::SpinnerController;
+use super::SchedulerService;
 
 pub(crate) struct SchedulerSvcHandler {
     #[allow(unused)]
-    context: ServiceContext,
+    context: ServiceContext<SchedulerService>,
     scheduler: Arc<SpinnerController>,
 }
 impl SchedulerSvcHandler {
     pub(crate) fn new(
-        context: ServiceContext,
+        context: ServiceContext<SchedulerService>,
         scheduler: Arc<SpinnerController>,
     ) -> Self {
         Self { context, scheduler }

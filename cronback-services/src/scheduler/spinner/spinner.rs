@@ -17,12 +17,13 @@ use tracing::{debug, info, trace, warn, Instrument};
 use super::active_triggers::{ActiveTriggerMap, TriggerTemporalState};
 use super::dispatch::{self, DispatchError, DispatchMode};
 use crate::scheduler::db_model::triggers::Status;
+use crate::scheduler::SchedulerService;
 
 pub(crate) struct Spinner {
     tokio_handle: Handle,
     triggers: Arc<RwLock<ActiveTriggerMap>>,
     shutdown: Arc<RwLock<bool>>,
-    context: ServiceContext,
+    context: ServiceContext<SchedulerService>,
     dispatcher_clients: Arc<GrpcClientProvider<ScopedDispatcherSvcClient>>,
 }
 
@@ -96,7 +97,7 @@ impl SpinnerHandle {
 ///     [SchedulerAPIHandler]: crate::handler::SchedulerAPIHandler
 impl Spinner {
     pub fn new(
-        context: ServiceContext,
+        context: ServiceContext<SchedulerService>,
         triggers: Arc<RwLock<ActiveTriggerMap>>,
         dispatcher_clients: Arc<GrpcClientProvider<ScopedDispatcherSvcClient>>,
     ) -> Self {
@@ -129,10 +130,10 @@ impl Spinner {
         let mut temporal_states: BinaryHeap<Reverse<TriggerTemporalState>> =
             Default::default();
         let mut inflight_dispatches: Vec<InflightDispatch> = Vec::new();
-        let config = self.context.load_config();
+        let config = self.context.service_config();
         let yield_max_duration =
-            Duration::from_millis(config.scheduler.spinner_yield_max_ms);
-        let max_triggers_per_tick = config.scheduler.max_triggers_per_tick;
+            Duration::from_millis(config.spinner_yield_max_ms);
+        let max_triggers_per_tick = config.max_triggers_per_tick;
         'tick_loop: loop {
             {
                 let shutdown = self.shutdown.read().unwrap();
@@ -234,7 +235,7 @@ impl Spinner {
                          increase `max_triggers_per_tick` (current \
                          '{max_triggers_per_tick}') or reduce \
                          `spinner_yield_max_ms` (current '{}')",
-                        config.scheduler.spinner_yield_max_ms
+                        config.spinner_yield_max_ms
                     );
                 }
 

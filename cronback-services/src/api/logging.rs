@@ -9,11 +9,11 @@ use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use hyper::header::USER_AGENT;
 use lib::prelude::*;
-use lib::Config;
 use tower_http::trace::MakeSpan;
 use tracing::{error_span, info};
 
 use super::auth::SecretApiKey;
+use super::ApiService;
 
 #[derive(Clone, Debug)]
 pub struct ApiMakeSpan {
@@ -68,11 +68,11 @@ impl<B> MakeSpan<B> for ApiMakeSpan {
 ///
 /// Mostly inspired from: https://github.com/tokio-rs/axum/blob/main/examples/consume-body-in-extractor-or-middleware/src/main.rs
 pub async fn trace_request_response(
-    State(config): State<Arc<Config>>,
+    State(service_context): State<Arc<ServiceContext<ApiService>>>,
     mut request: Request<axum::body::Body>,
     next: Next<axum::body::Body>,
 ) -> Result<impl IntoResponse, Response> {
-    let config = &config.api;
+    let config = service_context.service_config();
 
     if config.log_request_body {
         // Break the request into parts to be able to read the body

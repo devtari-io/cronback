@@ -20,17 +20,18 @@ use super::db_model::runs::RunStatus;
 use super::db_model::Run;
 use super::dispatch_manager::DispatchManager;
 use super::run_store::RunStore;
+use super::DispatcherService;
 
 pub(crate) struct DispatcherSvcHandler {
     #[allow(unused)]
-    context: ServiceContext,
+    context: ServiceContext<DispatcherService>,
     dispatch_manager: DispatchManager,
     run_store: RunStore,
 }
 
 impl DispatcherSvcHandler {
     pub fn new(
-        context: ServiceContext,
+        context: ServiceContext<DispatcherService>,
         dispatch_manager: DispatchManager,
         run_store: RunStore,
     ) -> Self {

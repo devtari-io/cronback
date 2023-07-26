@@ -27,8 +27,10 @@ lib = { workspace = true }
 # Dependencies from workspace
 anyhow = { workspace = true }
 metrics = { workspace = true }
-tokio = { workspace = true, features = ["signal", "macros"]}
+tokio = { workspace = true, features = ["signal", "macros"] }
 tracing = { workspace = true }
+async-trait = { workspace = true }
+
 
 # Unique Dependencies
 clap = { version = "4", features = ["color", "derive"] }
