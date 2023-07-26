@@ -59,7 +59,7 @@ mod tests {
     use chrono::Utc;
 
     use super::*;
-    use crate::api::migrate_up;
+    use crate::api::ApiService;
 
     fn build_model(
         key_id: &str,
@@ -80,8 +80,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_auth_store() -> anyhow::Result<()> {
-        let db = Database::in_memory().await?;
-        migrate_up(&db).await?;
+        let db = ApiService::in_memory_database().await?;
         let store = AuthStore::new(db);
 
         let owner1 = ProjectId::generate();

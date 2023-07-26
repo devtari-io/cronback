@@ -235,7 +235,7 @@ mod tests {
     use cronback_api_model::admin::CreateAPIkeyRequest;
 
     use super::*;
-    use crate::api::migrate_up;
+    use crate::api::ApiService;
 
     #[test]
     fn test_api_key() {
@@ -265,8 +265,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_auth_store() -> anyhow::Result<()> {
-        let db = Database::in_memory().await?;
-        migrate_up(&db).await?;
+        let db = ApiService::in_memory_database().await?;
         let store = AuthStore::new(db);
 
         let prj1 = ProjectId::generate();

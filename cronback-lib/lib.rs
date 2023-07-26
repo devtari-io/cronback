@@ -28,5 +28,6 @@ pub mod prelude {
     pub use crate::ext::*;
     pub use crate::grpc_helpers::*;
     pub use crate::model::*;
+    pub use crate::service::*;
     pub use crate::types::*;
 }

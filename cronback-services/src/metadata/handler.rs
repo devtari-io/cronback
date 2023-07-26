@@ -17,15 +17,19 @@ use tonic::{Request, Response, Status};
 
 use super::db_model::{Project, ProjectStatus};
 use super::metadata_store::MetadataStore;
+use super::MetadataService;
 
 pub(crate) struct MetadataSvcHandler {
     #[allow(unused)]
-    context: ServiceContext,
+    context: ServiceContext<MetadataService>,
     project_store: MetadataStore,
 }
 
 impl MetadataSvcHandler {
-    pub fn new(context: ServiceContext, project_store: MetadataStore) -> Self {
+    pub fn new(
+        context: ServiceContext<MetadataService>,
+        project_store: MetadataStore,
+    ) -> Self {
         Self {
             context,
             project_store,

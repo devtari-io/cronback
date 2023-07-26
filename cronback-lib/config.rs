@@ -13,80 +13,14 @@ use config::{
 };
 use serde::Deserialize;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
-#[serde(rename_all = "snake_case")]
-#[allow(unused)]
-pub enum Role {
-    Api,
-    Dispatcher,
-    Scheduler,
-    Metadata,
-}
-
 #[derive(Debug, Clone, Deserialize)]
 pub struct MainConfig {
-    pub roles: HashSet<Role>,
+    pub roles: HashSet<String>,
     pub prometheus_address: String,
     pub prometheus_port: u16,
     pub dispatcher_cell_map: HashMap<u64, String>,
     pub scheduler_cell_map: HashMap<u64, String>,
     pub metadata_cell_map: HashMap<u64, String>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct DispatcherSvcConfig {
-    pub cell_id: u32,
-    pub address: String,
-    pub port: u16,
-    pub request_processing_timeout_s: u64,
-    pub database_uri: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct SchedulerSvcConfig {
-    // Cell Id of the current scheduler
-    pub cell_id: u32,
-    pub address: String,
-    pub port: u16,
-    pub request_processing_timeout_s: u64,
-    pub spinner_yield_max_ms: u64,
-    pub max_triggers_per_tick: u64,
-    pub database_uri: String,
-    pub db_flush_s: u64,
-    pub dangerous_fast_forward: bool,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct MetadataSvcConfig {
-    pub cell_id: u32,
-    pub address: String,
-    pub port: u16,
-    pub request_processing_timeout_s: u64,
-    pub database_uri: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct ApiSvcConfig {
-    pub address: String,
-    pub port: u16,
-    pub database_uri: String,
-    pub admin_api_keys: HashSet<String>,
-    pub log_request_body: bool,
-    pub log_response_body: bool,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-/// * `roles`: Which roles the binary will start with
-/// * `api`: Configuration of the API server
-/// * `dispatcher`:  Configuration of the dispatcher
-/// * `scheduler`:  Configuration of the scheduler
-/// * `metadata`:  Configuration of the metadata data service
-pub struct Config {
-    pub main: MainConfig,
-    pub api: ApiSvcConfig,
-    pub dispatcher: DispatcherSvcConfig,
-    pub scheduler: SchedulerSvcConfig,
-    pub metadata: MetadataSvcConfig,
 }
 
 #[derive(Debug)]
@@ -96,8 +30,18 @@ pub struct ConfigLoader {
 
 impl ConfigLoader {
     /// Loads a fresh copy of the configuration from source.
-    pub fn load(&self) -> Result<Config, ConfigError> {
-        Self::deserialize(self.builder.build_cloned()?)
+    pub fn load_main(&self) -> Result<MainConfig, ConfigError> {
+        let c = self.builder.build_cloned()?;
+        c.get("main")
+    }
+
+    /// Loads a fresh copy of a specific configuration section from source.
+    pub fn load_section<'de, C>(&self, section: &str) -> Result<C, ConfigError>
+    where
+        C: Deserialize<'de>,
+    {
+        let c = self.builder.build_cloned()?;
+        c.get(section)
     }
 
     /// creates a new loader configured to load the default and overlays
@@ -119,9 +63,5 @@ impl ConfigLoader {
             builder = builder.add_source(File::with_name(path));
         }
         ConfigLoader { builder }
-    }
-
-    fn deserialize(config: ConfigRaw) -> Result<Config, ConfigError> {
-        config.try_deserialize()
     }
 }
