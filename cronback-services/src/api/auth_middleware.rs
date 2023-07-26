@@ -68,7 +68,8 @@ async fn get_auth_status<B>(
     let Some(auth_key) = auth_key else {
         return Ok(AuthenticationStatus::Unauthenticated);
     };
-    let admin_keys = &state.config.api.admin_api_keys;
+    let config = state.context.service_config();
+    let admin_keys = &config.admin_api_keys;
     if admin_keys.contains(&auth_key) {
         let project: Option<ValidShardedId<ProjectId>> = req
             .headers()
