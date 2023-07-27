@@ -57,6 +57,7 @@ impl CronbackService for ApiService {
     type Migrator = migration::Migrator;
     type ServiceConfig = ApiSvcConfig;
 
+    const DEFAULT_CONFIG_TOML: &'static str = include_str!("config.toml");
     const ROLE: &'static str = "api";
 
     fn install_telemetry() {
@@ -77,7 +78,7 @@ impl CronbackService for ApiService {
         mut context: ServiceContext<Self>,
         db: Database,
     ) -> anyhow::Result<()> {
-        let config_loader = context.config_loader();
+        let config = context.config();
         let svc_config = context.service_config();
         let addr =
             netutils::parse_addr(&svc_config.address, svc_config.port).unwrap();
@@ -86,13 +87,13 @@ impl CronbackService for ApiService {
             context: context.clone(),
             authenicator: Authenticator::new(AuthStore::new(db)),
             scheduler_clients: Box::new(GrpcClientProvider::new(
-                config_loader.clone(),
+                config.clone(),
             )),
             dispatcher_clients: Box::new(GrpcClientProvider::new(
-                config_loader.clone(),
+                config.clone(),
             )),
             metadata_svc_clients: Box::new(GrpcClientProvider::new(
-                config_loader.clone(),
+                config.clone(),
             )),
         });
 

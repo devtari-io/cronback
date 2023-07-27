@@ -30,6 +30,7 @@ impl CronbackService for SchedulerService {
     type Migrator = migration::Migrator;
     type ServiceConfig = SchedulerSvcConfig;
 
+    const DEFAULT_CONFIG_TOML: &'static str = include_str!("config.toml");
     const ROLE: &'static str = "scheduler";
 
     fn install_telemetry() {
@@ -60,7 +61,7 @@ impl CronbackService for SchedulerService {
         let trigger_store = TriggerStore::new(db);
 
         let dispatcher_clients =
-            Arc::new(GrpcClientProvider::new(context.config_loader()));
+            Arc::new(GrpcClientProvider::new(context.config().clone()));
 
         let controller = Arc::new(SpinnerController::new(
             context.clone(),
@@ -122,7 +123,7 @@ pub mod test_helpers {
         std::fs::remove_file(&*socket).unwrap();
 
         let dispatcher_client_provider =
-            Arc::new(GrpcClientProvider::new(context.config_loader()));
+            Arc::new(GrpcClientProvider::new(context.config().clone()));
 
         let db = SchedulerService::in_memory_database().await.unwrap();
 

@@ -1,0 +1,17 @@
+[main]
+roles = ["api", "dispatcher", "scheduler", "metadata"]
+prometheus_address = "0.0.0.0"
+prometheus_port = 9000
+
+[main.dispatcher_cell_map]
+# Maps a cell_id to a dispatcher address
+0 = "http://127.0.0.1:9999"
+
+[main.scheduler_cell_map]
+# Maps a cell_id to a scheduler address
+0 = "http://127.0.0.1:9811"
+
+
+[main.metadata_cell_map]
+# Maps a cell_id to a metadata service address
+0 = "http://127.0.0.1:9998"

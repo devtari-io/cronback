@@ -1,0 +1,6 @@
+[metadata]
+cell_id = 0
+address = "0.0.0.0"
+port = 9998
+request_processing_timeout_s = 30
+database_uri = "sqlite://metadata.sqlite?mode=rwc"

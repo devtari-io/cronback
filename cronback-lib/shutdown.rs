@@ -47,7 +47,7 @@ impl Shutdown {
 
     /// Returns `true` if the shutdown signal has been received.
     pub fn is_shutdown(&self) -> bool {
-        self.shutdown
+        self.shutdown || !self.watch.is_empty()
     }
 
     /// Receive the shutdown notice, waiting if necessary.

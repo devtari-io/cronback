@@ -2,7 +2,6 @@ pub mod cli;
 mod metric_defs;
 
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{bail, Context, Result};
@@ -12,7 +11,7 @@ use cli::LogFormat;
 use colored::Colorize;
 use lib::netutils::parse_addr;
 use lib::prelude::*;
-use lib::{ConfigLoader, MainConfig, Shutdown};
+use lib::{ConfigBuilder, MainConfig, Shutdown};
 use metrics_exporter_prometheus::PrometheusBuilder;
 use metrics_util::MetricKindMask;
 use tokio::task::JoinSet;
@@ -105,12 +104,7 @@ async fn prepare_database<S: CronbackService>(
 ) -> Result<Database, anyhow::Error> {
     let service_name = ctx.service_name();
     info!(service = service_name, "Preparing database");
-    // We load the service configuration to ensure that we have a good
-    // config.
-    let config = ctx.load_service_config().with_context(|| {
-        format!("Failed to load configuration for service '{service_name}")
-    })?;
-
+    let config = ctx.service_config();
     // Service config must implement Into<ConnectOptions>
     S::prepare_database(config).await.with_context(|| {
         format!("Failed to prepare database for service '{service_name}")
@@ -164,7 +158,11 @@ mod private {
 
 #[async_trait]
 pub trait Cronback: private::Sealed {
-    async fn run_cronback() -> Result<()>;
+    async fn run_cronback() -> Result<()> {
+        // built-in defaults.
+        Self::run_with_config(ConfigBuilder::default()).await
+    }
+    async fn run_with_config(config_builder: ConfigBuilder) -> Result<()>;
 }
 
 macro_rules! impl_cronback_with {
@@ -181,7 +179,7 @@ macro_rules! impl_cronback_with {
          impl<$($ty,)*> Cronback for ($($ty,)*) where
              $($ty: CronbackService),*
          {
-            async fn run_cronback() -> Result<()> {
+            async fn run_with_config(mut config_builder: ConfigBuilder) -> Result<()> {
                 // Load .env file if it exists
                 match dotenvy::dotenv() {
                     | Ok(_) => {}
@@ -198,16 +196,19 @@ macro_rules! impl_cronback_with {
                     setup_logging_subscriber(&opts.log_format, &opts.api_tracing_dir);
 
                 print_banner();
-                trace!(config = opts.config, "Loading configuration");
-                let config_loader = Arc::new(ConfigLoader::from_path(&opts.config));
-                let config_main = config_loader.load_main()?;
+                trace!(config = ?opts.config, "Loading configuration");
+                if let Some(config_path) = opts.config {
+                    config_builder = config_builder.add_file_source(&config_path);
+                }
 
-                // Configure Metric Exporter
-                setup_prometheus(&config_main)?;
+                // We need to load the configuration in two steps. First, we load the main section
+                // only and read "roles". Based on the roles, we will register services along their
+                // defaults, section loaders, and etc. Then we will re-load the configuration with
+                // all the sections and that'll be the final config.
+                let config_main = config_builder.clone().build_once()?.get_main();
 
                 // Install metric definitions
                 metric_defs::install_metrics();
-
                 // Init services
                 let mut available_roles: HashSet<String> = HashSet::new();
                 let mut services: JoinSet<()> = JoinSet::new();
@@ -219,7 +220,6 @@ macro_rules! impl_cronback_with {
                               $ty::ROLE);
                     }
 
-                    let $ty = $ty::make_context(config_loader.clone(), shutdown.clone());
                 )*
 
                 if !config_main.roles.is_subset(&available_roles) {
@@ -228,23 +228,43 @@ macro_rules! impl_cronback_with {
                 }
 
                 info!("Initializing services");
+                // Only register the services in "roles" in the config loader. The system cannot
+                // react to changes to `main.roles` after startup.
+                $(
+                    if config_main.roles.contains($ty::ROLE)
+                    {
+                        config_builder = config_builder.register_service::<$ty>();
+                    }
+                )*
+
+                // Create the permanent config
+                let config = config_builder.build_and_watch(shutdown.clone())?;
+                //
                 // Initialise services and run database migrations before serving any traffic on
                 // any service.
                 let mut databases: HashMap<String, Database> = HashMap::new();
                 $(
                     if config_main.roles.contains($ty::ROLE)
                     {
+                        // Create a temporary context for the service. We can't use this context
+                        // when spawning the service due to the scope.
+                        let $ty = $ty::make_context(config.clone(), shutdown.clone());
                         debug!(service = $ty::ROLE, "Installing telemetry");
                         $ty::install_telemetry();
                         databases.insert($ty::ROLE.to_owned(), prepare_database(&$ty).await?);
                     }
                 )*
 
+                // Configure Metric Exporter
+                setup_prometheus(&config_main)?;
                 info!("Services has completed database migrations");
+
                 // spawn the services in the order there were registered
                 $(
                     if config_main.roles.contains($ty::ROLE)
                     {
+                        // Create the permanent context for the service.
+                        let $ty = $ty::make_context(config.clone(), shutdown.clone());
                         services.spawn(spawn_service($ty, databases.remove($ty::ROLE).unwrap()));
                     }
                 )*
