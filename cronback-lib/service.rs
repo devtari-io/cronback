@@ -2,11 +2,9 @@ use std::convert::Infallible;
 use std::error::Error;
 use std::net::SocketAddr;
 use std::path::Path;
-use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
-use config::ConfigError;
 use futures::Stream;
 use hyper::{Body, Request, Response};
 use proto::FILE_DESCRIPTOR_SET;
@@ -23,7 +21,7 @@ use tower::Service;
 use tower_http::trace::{MakeSpan, TraceLayer};
 use tracing::{error, error_span, info, Id, Span};
 
-use crate::config::ConfigLoader;
+use crate::config::Config;
 use crate::consts::{PARENT_SPAN_HEADER, PROJECT_ID_HEADER, REQUEST_ID_HEADER};
 use crate::database::{Database, DatabaseError, DbMigration};
 use crate::rpc_middleware::CronbackRpcMiddleware;
@@ -32,19 +30,33 @@ use crate::MainConfig;
 
 #[async_trait]
 pub trait CronbackService: Send + Sync + Sized + Clone + 'static {
-    type ServiceConfig: for<'a> Deserialize<'a> + Into<ConnectOptions> + Send;
+    type ServiceConfig: for<'a> Deserialize<'a>
+        + Clone
+        // TODO: Consider better option instead of this bound.
+        + Into<ConnectOptions>
+        + Send
+        + Sync;
     type Migrator: DbMigration;
 
+    /// The role of the service. This must be unique across all services running
+    /// on the same binary. A role can be enabled or disabled via
+    /// `main.roles` list in the config file.
     const ROLE: &'static str;
-    // Default config section to the role name
+    /// Default config section to the role name (e.g. `scheduler` which
+    /// translates to `[scheduler]`) default configuration **must** be in TOML
+    /// format.
     const CONFIG_SECTION: &'static str = Self::ROLE;
+
+    /// An additional configuration layer that will be added to the default
+    /// configuration _before_ loading any configuration file externally.
+    const DEFAULT_CONFIG_TOML: &'static str = "";
 
     /// Create a new service context.
     fn make_context(
-        config_loader: Arc<ConfigLoader>,
+        config: Config,
         shutdown: Shutdown,
     ) -> ServiceContext<Self> {
-        ServiceContext::new(config_loader, shutdown)
+        ServiceContext::new(config, shutdown)
     }
 
     /// Optional hook to install telemetry for the service.
@@ -73,7 +85,7 @@ pub trait CronbackService: Send + Sync + Sized + Clone + 'static {
 // needs to be parametric by config type.
 #[derive(Clone)]
 pub struct ServiceContext<S> {
-    config_loader: Arc<ConfigLoader>,
+    config: Config,
     shutdown: Shutdown,
     _service: std::marker::PhantomData<S>,
 }
@@ -82,9 +94,9 @@ impl<S> ServiceContext<S>
 where
     S: CronbackService,
 {
-    fn new(config_loader: Arc<ConfigLoader>, shutdown: Shutdown) -> Self {
+    fn new(config: Config, shutdown: Shutdown) -> Self {
         Self {
-            config_loader,
+            config,
             shutdown,
             _service: Default::default(),
         }
@@ -94,12 +106,12 @@ where
         S::ROLE
     }
 
-    pub fn config_loader(&self) -> Arc<ConfigLoader> {
-        self.config_loader.clone()
+    pub fn config(&self) -> &Config {
+        &self.config
     }
 
     pub fn get_main_config(&self) -> MainConfig {
-        self.config_loader.load_main().unwrap()
+        self.config.get_main()
     }
 
     /// Awaits the shutdown signal
@@ -112,13 +124,8 @@ where
         self.shutdown.broadcast_shutdown()
     }
 
-    // TODO: Return ref when we add config caching
     pub fn service_config(&self) -> S::ServiceConfig {
-        self.config_loader.load_section(S::CONFIG_SECTION).unwrap()
-    }
-
-    pub fn load_service_config(&self) -> Result<S::ServiceConfig, ConfigError> {
-        self.config_loader.load_section(S::CONFIG_SECTION)
+        self.config.get(S::CONFIG_SECTION)
     }
 }
 
