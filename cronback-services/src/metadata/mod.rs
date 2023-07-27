@@ -22,6 +22,7 @@ impl CronbackService for MetadataService {
     type Migrator = migration::Migrator;
     type ServiceConfig = MetadataSvcConfig;
 
+    const DEFAULT_CONFIG_TOML: &'static str = include_str!("config.toml");
     const ROLE: &'static str = "metadata";
 
     #[tracing::instrument(skip_all, fields(service = context.service_name()))]

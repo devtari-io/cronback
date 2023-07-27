@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use clap::Parser;
 
 #[derive(clap::ValueEnum, Clone)]
@@ -12,7 +14,7 @@ pub enum LogFormat {
 pub struct CliOpts {
     /// Sets the custom configuration file.
     #[arg(short, long, value_name = "FILE")]
-    pub config: Option<String>,
+    pub config: Option<PathBuf>,
 
     /// Turn debugging information on
     #[arg(short, long, action = clap::ArgAction::Count)]

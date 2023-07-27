@@ -29,6 +29,7 @@ impl CronbackService for DispatcherService {
     type Migrator = migration::Migrator;
     type ServiceConfig = DispatcherSvcConfig;
 
+    const DEFAULT_CONFIG_TOML: &'static str = include_str!("config.toml");
     const ROLE: &'static str = "dispatcher";
 
     fn install_telemetry() {
