@@ -44,6 +44,7 @@ impl From<AuthError> for ApiError {
     }
 }
 
+#[derive(Clone)]
 pub struct Authenticator {
     store: AuthStore,
 }
@@ -190,7 +191,7 @@ impl FromStr for SecretApiKey {
 }
 
 impl SecretApiKey {
-    fn generate() -> Self {
+    pub fn generate() -> Self {
         Self {
             key_id: Uuid::new_v4().simple().to_string(),
             plain_secret: Uuid::new_v4().simple().to_string(),
