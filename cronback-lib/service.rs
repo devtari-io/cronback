@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::convert::Infallible;
 use std::error::Error;
 use std::net::SocketAddr;
@@ -57,6 +58,12 @@ pub trait CronbackService: Send + Sync + Sized + Clone + 'static {
         shutdown: Shutdown,
     ) -> ServiceContext<Self> {
         ServiceContext::new(config, shutdown)
+    }
+
+    // The list of keys in this service configs that should be parsed
+    // as vectors.
+    fn config_vec_keys() -> HashSet<String> {
+        HashSet::default()
     }
 
     /// Optional hook to install telemetry for the service.
