@@ -197,15 +197,19 @@ macro_rules! impl_cronback_with {
 
                 print_banner();
                 trace!(config = ?opts.config, "Loading configuration");
-                if let Some(config_path) = opts.config {
-                    config_builder = config_builder.add_file_source(&config_path);
-                }
+
 
                 // We need to load the configuration in two steps. First, we load the main section
                 // only and read "roles". Based on the roles, we will register services along their
                 // defaults, section loaders, and etc. Then we will re-load the configuration with
                 // all the sections and that'll be the final config.
-                let config_main = config_builder.clone().build_once()?.get_main();
+                let config_main = {
+                    let mut config_builder = config_builder.clone();
+                    if let Some(config_path) = &opts.config {
+                        config_builder = config_builder.add_file_source(config_path);
+                    }
+                    config_builder.clone().build_once()?.get_main()
+                };
 
                 // Install metric definitions
                 metric_defs::install_metrics();
@@ -236,6 +240,12 @@ macro_rules! impl_cronback_with {
                         config_builder = config_builder.register_service::<$ty>();
                     }
                 )*
+
+                // Add the config file as the last layer in the config builder to
+                // have precedence over the default service configs.
+                if let Some(config_path) = &opts.config {
+                    config_builder = config_builder.add_file_source(config_path);
+                }
 
                 // Create the permanent config
                 let config = config_builder.build_and_watch(shutdown.clone())?;
