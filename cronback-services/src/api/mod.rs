@@ -85,7 +85,7 @@ impl CronbackService for ApiService {
 
         let shared_state = Arc::new(AppState {
             context: context.clone(),
-            authenicator: Authenticator::new(AuthStore::new(db)),
+            authenticator: Authenticator::new(AuthStore::new(db)),
             scheduler_clients: Box::new(GrpcClientProvider::new(
                 config.clone(),
             )),
@@ -169,7 +169,7 @@ pub enum AppStateError {
 
 pub struct AppState {
     pub context: ServiceContext<ApiService>,
-    pub authenicator: Authenticator,
+    pub authenticator: Authenticator,
     pub scheduler_clients:
         Box<dyn GrpcClientFactory<ClientType = ScopedSchedulerSvcClient>>,
     pub dispatcher_clients:
