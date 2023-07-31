@@ -120,13 +120,13 @@ pub async fn ensure_authenticated<B>(
         "All endpoints should have passed by the authentication middleware",
     );
     match auth {
-        | AuthenticationStatus::Admin(Some(_))
         | AuthenticationStatus::Admin(None) => {
             Err(ApiError::BadRequest(
                 "Super privilege header(s) missing!".to_owned(),
             ))
         }
-        | AuthenticationStatus::Authenticated(_) => Ok(next.run(req).await),
+        | AuthenticationStatus::Authenticated(_)
+        | AuthenticationStatus::Admin(Some(_)) => Ok(next.run(req).await),
         | AuthenticationStatus::Unauthenticated => Err(ApiError::Unauthorized),
     }
 }
