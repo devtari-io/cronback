@@ -1,13 +1,12 @@
 use anyhow::{anyhow, Result};
-use async_trait::async_trait;
-use clap::Parser;
 use clap_stdin::FileOrStdin;
-use tokio::io::AsyncWriteExt;
+use cling::prelude::*;
 
 use crate::args::CommonOptions;
-use crate::{confirm_or_abort, emitln, Command};
+use crate::confirm_or_abort;
 
-#[derive(Clone, Debug, Parser)]
+#[derive(CliRunnable, CliParam, Clone, Debug, Parser)]
+#[cling(run = "create")]
 pub struct Create {
     /// JSON file name with the trigger definition, or use - for stdin
     file: FileOrStdin<String>,
@@ -17,58 +16,41 @@ pub struct Create {
 // 1. Command line arguments [future]
 // 2. Interactive (prompt) [future]
 // 3. Provide a file with the trigger definition [now]
-#[async_trait]
-impl Command for Create {
-    async fn run<
-        A: tokio::io::AsyncWrite + Send + Sync + Unpin,
-        B: tokio::io::AsyncWrite + Send + Sync + Unpin,
-    >(
-        &self,
-        out: &mut tokio::io::BufWriter<A>,
-        _err: &mut tokio::io::BufWriter<B>,
-        common_options: &CommonOptions,
-    ) -> Result<()> {
-        let json_raw: serde_json::Value = serde_json::from_str(&self.file)
-            .map_err(|e| anyhow!("Failed to parse JSON: {e}"))?;
+async fn create(common_options: &CommonOptions, opts: &Create) -> Result<()> {
+    let json_raw: serde_json::Value = serde_json::from_str(&opts.file)
+        .map_err(|e| anyhow!("Failed to parse JSON: {e}"))?;
 
-        let colored_req = colored_json::to_colored_json_auto(&json_raw)?;
+    let colored_req = colored_json::to_colored_json_auto(&json_raw)?;
 
-        emitln!(
-            out,
-            "You are about to send this trigger definition to be created:"
-        );
+    println!("You are about to send this trigger definition to be created:");
 
-        emitln!(out, "----");
-        emitln!(out, "{colored_req}");
-        emitln!(out, "----");
+    println!("----");
+    println!("{colored_req}");
+    println!("----");
 
-        out.flush().await?;
+    confirm_or_abort!(
+        common_options,
+        "Are you sure you want to create this trigger?",
+    );
 
-        confirm_or_abort!(
-            common_options,
-            "Are you sure you want to create this trigger?",
-        );
+    let client = common_options.new_client()?;
+    let response =
+        cronback_client::triggers::create_from_json(&client, json_raw).await?;
 
-        let client = common_options.new_client()?;
-        let response =
-            cronback_client::triggers::create_from_json(&client, json_raw)
-                .await?;
+    let response = response.into_inner();
+    match response {
+        | Ok(good) => {
+            let name = good.name.clone().expect("name is required");
+            let json = serde_json::to_value(good)?;
+            let colored = colored_json::to_colored_json_auto(&json)?;
+            println!("{}", colored);
+            println!();
+            println!("Trigger '{}' was created successfully", name);
+        }
+        | Err(bad) => {
+            return Err(bad.into());
+        }
+    };
 
-        let response = response.into_inner();
-        match response {
-            | Ok(good) => {
-                let name = good.name.clone().expect("name is required");
-                let json = serde_json::to_value(good)?;
-                let colored = colored_json::to_colored_json_auto(&json)?;
-                emitln!(out, "{}", colored);
-                emitln!(out);
-                emitln!(out, "Trigger '{}' was created successfully", name);
-            }
-            | Err(bad) => {
-                return Err(bad.into());
-            }
-        };
-
-        Ok(())
-    }
+    Ok(())
 }
