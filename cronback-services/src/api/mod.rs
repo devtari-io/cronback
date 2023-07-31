@@ -11,6 +11,7 @@ mod logging;
 mod migration;
 mod paginated;
 
+use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Instant;
@@ -71,6 +72,12 @@ impl CronbackService for ApiService {
             Unit::Seconds,
             "Total HTTP API processing in seconds"
         );
+    }
+
+    fn config_vec_keys() -> HashSet<String> {
+        let mut set = HashSet::new();
+        set.insert("api.admin_api_keys".to_string());
+        set
     }
 
     #[tracing::instrument(skip_all, fields(service = context.service_name()))]
