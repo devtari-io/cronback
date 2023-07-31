@@ -66,6 +66,7 @@ pub struct ConfigBuilder {
     builder: InnerBuilder<DefaultState>,
     file_sources: Vec<PathBuf>,
     section_loaders: SectionLoaders,
+    array_keys: HashSet<String>,
 }
 
 impl ConfigBuilder {
@@ -78,6 +79,7 @@ impl ConfigBuilder {
             builder,
             file_sources: Vec::default(),
             section_loaders: HashMap::default(),
+            array_keys: HashSet::default(),
         };
         // Register main section loader by default.
         loader = loader.register_section_loader::<MainConfig>("main");
@@ -104,10 +106,11 @@ impl ConfigBuilder {
         }
     }
 
-    pub fn register_service<S>(self) -> Self
+    pub fn register_service<S>(mut self) -> Self
     where
         S: CronbackService,
     {
+        self.array_keys.extend(S::config_vec_keys());
         self.add_default_toml(S::DEFAULT_CONFIG_TOML)
             .register_section_loader::<<S as CronbackService>::ServiceConfig>(
             S::CONFIG_SECTION,
@@ -117,12 +120,14 @@ impl ConfigBuilder {
     // This needs to be the last source added to the builder to ensure that
     // environemnt variables are not overridden by files or default config.
     fn add_env_source(mut self) -> Self {
-        self.builder = self.builder.add_source(
-            Environment::with_prefix(&self.env_prefix)
-                .try_parsing(true)
-                .separator("__")
-                .list_separator(","),
-        );
+        let mut env = Environment::with_prefix(&self.env_prefix)
+            .try_parsing(true)
+            .separator("__")
+            .list_separator(",");
+        for key in &self.array_keys {
+            env = env.with_list_parse_key(key);
+        }
+        self.builder = self.builder.add_source(env);
         self
     }
 
