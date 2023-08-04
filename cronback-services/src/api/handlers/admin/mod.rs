@@ -25,6 +25,14 @@ pub(crate) fn routes(shared_state: Arc<AppState>) -> Router {
                 .route("/", axum::routing::post(projects::create))
                 .route("/:id/disable", axum::routing::post(projects::disable))
                 .route("/:id/enable", axum::routing::post(projects::enable))
+                .route(
+                    "/:id/notification_settings",
+                    axum::routing::post(projects::set_notification_settings),
+                )
+                .route(
+                    "/:id/notification_settings",
+                    axum::routing::get(projects::get_notification_settings),
+                )
                 .with_state(Arc::clone(&shared_state))
                 .route_layer(middleware::from_fn(ensure_admin)),
         )

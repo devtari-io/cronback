@@ -12,6 +12,7 @@ use crate::attributes::{
 };
 use crate::utils::{
     extract_inner_type_from_container,
+    map_segment,
     option_segment,
     vec_segment,
 };
@@ -59,6 +60,12 @@ impl ProtoFieldInfo {
         //  - IntoProto + required: .into() should handle it.
         //  - FromProto + required: our_name: incoming.unwrap()
         //
+        // - HashMap<K, V>:
+        //  - Protobuf's map keys only support scaler types, we only need to map
+        //    the values
+        //  - IntoProto + required: .into() should handle it.
+        //  - FromProto + required: our_name: incoming.unwrap()
+        //
         // - always add .into() after mapping.
 
         // Primary cases we need to take care of:
@@ -84,6 +91,7 @@ impl ProtoFieldInfo {
         let option_type =
             extract_inner_type_from_container(&self.ty, option_segment);
         let vec_type = extract_inner_type_from_container(&self.ty, vec_segment);
+        let map_type = extract_inner_type_from_container(&self.ty, map_segment);
 
         // 1. Do we need to unwrap the input before processing? We do that if
         // the field is `required` and our local type is not `Option<T>` when
@@ -162,6 +170,25 @@ impl ProtoFieldInfo {
                 });
             rhs_value_tok = quote_spanned! { span =>
                 #rhs_value_tok.into_iter().map(#mapper).collect::<::std::vec::Vec<_>>()
+            };
+        } else if let Some(_inner_ty) = map_type {
+            // A HashMap<K,V>
+            let mapper = self
+                .wrap_with_mapper(direction, quote! { v })
+                .map(|mapper| {
+                    quote_spanned! { span =>
+                            |(k, v)| (k, #mapper)
+                    }
+                })
+                // If there is no mapper, we just map the inner value with any
+                // existing Into impl.
+                .unwrap_or_else(|| {
+                    quote_spanned! { span =>
+                        |(k, v)| (k, v.into())
+                    }
+                });
+            rhs_value_tok = quote_spanned! { span =>
+                #rhs_value_tok.into_iter().map(#mapper).collect::<::std::collections::HashMap<_, _>>()
             };
         } else {
             // Bare type

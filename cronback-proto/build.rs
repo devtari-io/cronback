@@ -22,6 +22,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "./runs.proto",
                 "./scheduler_svc.proto",
                 "./triggers.proto",
+                "./notifications.proto",
             ],
             &["../proto"],
         )?;
@@ -36,6 +37,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ".events",
             ".projects",
             ".triggers",
+            ".notifications",
         ])?;
 
     Ok(())

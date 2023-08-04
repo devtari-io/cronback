@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package notifications;
+
+// This struct represents the notification settings of a single project.
+// Every project has different kind of notification channels (e.g. email, slack, etc).
+// A project then subscribes to certain events, and specify which channels should the
+// notification be sent on if the event fires.
+message ProjectNotificationSettings {
+    repeated NotificationSubscription default_subscriptions = 1;
+
+    // The list of configured channels. The map key is the channel name and the value
+    // is the channel configuration.
+    map<string, NotificationChannel> channels = 2;
+}
+
+message NotificationSubscription {
+    // The list of channel names to send notifications to. Items in this list must
+    // refer to channels configured in this project.
+    repeated string channel_names = 1;
+
+    // The event type that this subscription will fire on.
+    NotificationEvent event = 2;
+}
+
+message NotificationChannel {
+    oneof channel {
+        Email email = 1;
+    }
+}
+
+message NotificationEvent {
+    oneof event {
+        OnRunFailure on_run_failure = 1;
+    }
+}
+
+//////////////// Channels
+
+// Sends an email to the address specified if and only if its a verified address.
+message Email {
+    string address = 1;
+    bool verified = 2;
+}
+
+
+//////////////// Events
+
+// Trigger the subscription if a run in this project fails.
+message OnRunFailure {
+}
