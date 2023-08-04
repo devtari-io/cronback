@@ -5,6 +5,8 @@ use dto::{FromProto, IntoProto};
 use lib::prelude::*;
 use sea_orm::entity::prelude::*;
 
+use super::notifications::NotificationSettings;
+
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "projects")]
 pub struct Model {
@@ -13,6 +15,7 @@ pub struct Model {
     pub created_at: DateTime<Utc>,
     pub changed_at: DateTime<Utc>,
     pub status: ProjectStatus,
+    pub notification_settings: NotificationSettings,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

@@ -29,6 +29,11 @@ pub(crate) fn vec_segment(path: &syn::Path) -> Option<&syn::PathSegment> {
     extract_generic_type_segment(path, VECTOR)
 }
 
+pub(crate) fn map_segment(path: &syn::Path) -> Option<&syn::PathSegment> {
+    static MAP: &[&str] = &["HashMap|", "std|collections|HashMap|"];
+    extract_generic_type_segment(path, MAP)
+}
+
 fn extract_type_path(ty: &syn::Type) -> Option<&syn::Path> {
     match *ty {
         | syn::Type::Path(ref typepath) if typepath.qself.is_none() => {
