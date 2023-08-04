@@ -1,12 +1,9 @@
-use std::sync::Arc;
-
-use cronback_services::scheduler::test_helpers;
+use cronback_services::scheduler::{test_helpers, SchedulerService};
 use dto::traits::ProstOptionExt;
 use lib::clients::ScopedSchedulerSvcClient;
 use lib::grpc_test_helpers::TestGrpcClientProvider;
 use lib::prelude::*;
-use lib::service::ServiceContext;
-use lib::{ConfigLoader, GrpcClientFactory, Role, Shutdown};
+use lib::{ConfigBuilder, GrpcClientFactory, Shutdown};
 use proto::common::{
     action,
     Action,
@@ -125,12 +122,11 @@ async fn get_trigger(
 #[tokio::test]
 async fn install_trigger_valid_test() {
     let shutdown = Shutdown::default();
-    let config_loader = Arc::new(ConfigLoader::from_path(&None));
-    let context = ServiceContext::new(
-        format!("{:?}", Role::Scheduler),
-        config_loader,
-        shutdown,
-    );
+    let config = ConfigBuilder::default()
+        .register_service::<SchedulerService>()
+        .build_once()
+        .unwrap();
+    let context = SchedulerService::make_context(config, shutdown);
     let project = ProjectId::generate();
     info!("Initialising test...");
     let (_serve_future, client_provider) =
@@ -201,12 +197,11 @@ async fn install_trigger_valid_test() {
 #[ignore]
 async fn install_trigger_uniqueness_test() {
     let shutdown = Shutdown::default();
-    let config_loader = Arc::new(ConfigLoader::from_path(&None));
-    let context = ServiceContext::new(
-        format!("{:?}", Role::Scheduler),
-        config_loader,
-        shutdown,
-    );
+    let config = ConfigBuilder::default()
+        .register_service::<SchedulerService>()
+        .build_once()
+        .unwrap();
+    let context = SchedulerService::make_context(config, shutdown);
     let project = ProjectId::generate();
     let (_serve_future, client_provider) =
         test_helpers::test_server_and_client(context).await;
@@ -361,12 +356,11 @@ async fn install_trigger_uniqueness_test() {
 #[tokio::test]
 async fn delete_project_triggers_test() {
     let shutdown = Shutdown::default();
-    let config_loader = Arc::new(ConfigLoader::from_path(&None));
-    let context = ServiceContext::new(
-        format!("{:?}", Role::Scheduler),
-        config_loader,
-        shutdown,
-    );
+    let config = ConfigBuilder::default()
+        .register_service::<SchedulerService>()
+        .build_once()
+        .unwrap();
+    let context = SchedulerService::make_context(config, shutdown);
 
     let project1 = ProjectId::generate();
     let project2 = ProjectId::generate();

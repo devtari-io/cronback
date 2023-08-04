@@ -44,6 +44,7 @@ impl From<AuthError> for ApiError {
     }
 }
 
+#[derive(Clone)]
 pub struct Authenticator {
     store: AuthStore,
 }
@@ -190,7 +191,7 @@ impl FromStr for SecretApiKey {
 }
 
 impl SecretApiKey {
-    fn generate() -> Self {
+    pub fn generate() -> Self {
         Self {
             key_id: Uuid::new_v4().simple().to_string(),
             plain_secret: Uuid::new_v4().simple().to_string(),
@@ -235,7 +236,7 @@ mod tests {
     use cronback_api_model::admin::CreateAPIkeyRequest;
 
     use super::*;
-    use crate::api::migrate_up;
+    use crate::api::ApiService;
 
     #[test]
     fn test_api_key() {
@@ -265,8 +266,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_auth_store() -> anyhow::Result<()> {
-        let db = Database::in_memory().await?;
-        migrate_up(&db).await?;
+        let db = ApiService::in_memory_database().await?;
         let store = AuthStore::new(db);
 
         let prj1 = ProjectId::generate();

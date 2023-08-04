@@ -1,4 +1,5 @@
 mod attempt_store;
+mod config;
 mod db_model;
 mod dispatch_manager;
 mod handler;
@@ -7,67 +8,88 @@ mod retry;
 mod run_store;
 mod webhook_action;
 
+use async_trait::async_trait;
 use attempt_store::AttemptStore;
 use dispatch_manager::DispatchManager;
 use lib::prelude::*;
 use lib::{netutils, service};
+use metrics::{describe_counter, describe_gauge, Unit};
 use proto::dispatcher_svc::dispatcher_svc_server::DispatcherSvcServer;
 use run_store::RunStore;
-use sea_orm::TransactionTrait;
-use sea_orm_migration::MigratorTrait;
 use tracing::info;
 
-// TODO: Move database migration into a new service trait.
-pub async fn migrate_up(db: &Database) -> Result<(), DatabaseError> {
-    let conn = db.orm.begin().await?;
-    migration::Migrator::up(&conn, None).await?;
-    conn.commit().await?;
-    Ok(())
-}
+use self::config::DispatcherSvcConfig;
 
-#[tracing::instrument(skip_all, fields(service = context.service_name()))]
-pub async fn start_dispatcher_server(
-    mut context: service::ServiceContext,
-) -> anyhow::Result<()> {
-    let config = context.load_config();
-    let addr = netutils::parse_addr(
-        &config.dispatcher.address,
-        config.dispatcher.port,
-    )
-    .unwrap();
+/// The primary service data type for the service.
+#[derive(Clone)]
+pub struct DispatcherService;
 
-    let db = Database::connect(&config.dispatcher.database_uri).await?;
-    migrate_up(&db).await?;
+#[async_trait]
+impl CronbackService for DispatcherService {
+    type Migrator = migration::Migrator;
+    type ServiceConfig = DispatcherSvcConfig;
 
-    let attempt_store = AttemptStore::new(db.clone());
+    const DEFAULT_CONFIG_TOML: &'static str = include_str!("config.toml");
+    const ROLE: &'static str = "dispatcher";
 
-    let run_store = RunStore::new(db);
+    fn install_telemetry() {
+        describe_counter!(
+            "dispatcher.runs_total",
+            Unit::Count,
+            "Total number of runs by the dispatcher"
+        );
+        describe_counter!(
+            "dispatcher.attempts_total",
+            Unit::Count,
+            "Total number of attempts attempted by the dispatcher"
+        );
 
-    let dispatch_manager = DispatchManager::new(
-        config.dispatcher.cell_id,
-        run_store.clone(),
-        attempt_store,
-    );
-    dispatch_manager.start().await?;
+        describe_gauge!(
+            "dispatcher.inflight_runs_total",
+            Unit::Count,
+            "Total number of inflight runs in the dispatcher"
+        );
+    }
 
-    let handler = handler::DispatcherSvcHandler::new(
-        context.clone(),
-        dispatch_manager,
-        run_store,
-    );
-    let svc = DispatcherSvcServer::new(handler);
+    #[tracing::instrument(skip_all, fields(service = context.service_name()))]
+    async fn serve(
+        mut context: ServiceContext<Self>,
+        db: Database,
+    ) -> anyhow::Result<()> {
+        let svc_config = context.service_config();
+        let addr =
+            netutils::parse_addr(&svc_config.address, svc_config.port).unwrap();
 
-    // grpc server
-    info!("Starting Dispatcher on {:?}", addr);
+        let attempt_store = AttemptStore::new(db.clone());
 
-    // The stack of middleware that our service will be wrapped in
-    service::grpc_serve_tcp(
-        &mut context,
-        addr,
-        svc,
-        config.dispatcher.request_processing_timeout_s,
-    )
-    .await;
+        let run_store = RunStore::new(db);
 
-    Ok(())
+        let dispatch_manager = DispatchManager::new(
+            svc_config.cell_id,
+            run_store.clone(),
+            attempt_store,
+        );
+        dispatch_manager.start().await?;
+
+        let handler = handler::DispatcherSvcHandler::new(
+            context.clone(),
+            dispatch_manager,
+            run_store,
+        );
+        let svc = DispatcherSvcServer::new(handler);
+
+        // grpc server
+        info!("Starting Dispatcher on {:?}", addr);
+
+        // The stack of middleware that our service will be wrapped in
+        service::grpc_serve_tcp(
+            &mut context,
+            addr,
+            svc,
+            svc_config.request_processing_timeout_s,
+        )
+        .await;
+
+        Ok(())
+    }
 }
