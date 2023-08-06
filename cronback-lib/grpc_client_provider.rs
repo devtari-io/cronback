@@ -10,8 +10,8 @@ use tonic::transport::{Channel, Endpoint};
 use crate::config::MainConfig;
 use crate::model::ValidShardedId;
 use crate::prelude::{GrpcRequestInterceptor, Shard};
-use crate::service::ServiceContext;
 use crate::types::{ProjectId, RequestId};
+use crate::Config;
 
 #[derive(Debug, Error)]
 pub enum GrpcClientError {
@@ -109,15 +109,15 @@ pub trait GrpcClientFactory: Send + Sync {
 // A concrete channel-caching implementation of the GrpcClientFactory used in
 // production.
 pub struct GrpcClientProvider<T> {
-    service_context: ServiceContext,
+    config: Config,
     channel_cache: RwLock<HashMap<String, Channel>>,
     phantom: std::marker::PhantomData<T>,
 }
 
 impl<T: GrpcClientType> GrpcClientProvider<T> {
-    pub fn new(service_context: ServiceContext) -> Self {
+    pub fn new(config: Config) -> Self {
         Self {
-            service_context,
+            config,
             channel_cache: Default::default(),
             phantom: Default::default(),
         }
@@ -133,11 +133,9 @@ impl<T: GrpcClientType> GrpcClientFactory for GrpcClientProvider<T> {
         request_id: &RequestId,
         project_id: &ValidShardedId<ProjectId>,
     ) -> Result<Self::ClientType, GrpcClientError> {
+        let config = self.config.get_main();
         // resolve shard -> cell
-        let address = T::get_address(
-            &self.service_context.get_config().main,
-            project_id,
-        )?;
+        let address = T::get_address(&config, project_id)?;
 
         let mut channel = None;
         {

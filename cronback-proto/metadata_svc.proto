@@ -11,8 +11,8 @@ service MetadataSvc {
   rpc GetProjectStatus(GetProjectStatusRequest) returns (GetProjectStatusResponse);
   rpc SetProjectStatus(SetProjectStatusRequest) returns (SetProjectStatusResponse);
   rpc ProjectExists(ProjectExistsRequest) returns (ProjectExistsResponse);
-  rpc GetProjectNotificationSettings(GetProjectNotificationSettingsRequest) returns (GetProjectNotificationSettingsResponse);
-  rpc SetProjectNotificationSettings(SetProjectNotificationSettingsRequest) returns (SetProjectNotificationSettingsResponse);
+  rpc GetNotificationSettings(GetNotificationSettingsRequest) returns (GetNotificationSettingsResponse);
+  rpc SetNotificationSettings(SetNotificationSettingsRequest) returns (SetNotificationSettingsResponse);
 }
 
 message CreateProjectRequest {
@@ -48,21 +48,21 @@ message ProjectExistsResponse {
   bool exists = 1;
 }
 
-message GetProjectNotificationSettingsRequest {
+message GetNotificationSettingsRequest {
   common.ProjectId id = 1;
 }
 
-message GetProjectNotificationSettingsResponse {
+message GetNotificationSettingsResponse {
   notifications.ProjectNotificationSettings settings = 1;
 }
 
 
-message SetProjectNotificationSettingsRequest {
+message SetNotificationSettingsRequest {
   common.ProjectId id = 1;
   notifications.ProjectNotificationSettings settings = 2;
 }
 
-message SetProjectNotificationSettingsResponse {
+message SetNotificationSettingsResponse {
   notifications.ProjectNotificationSettings old_settings = 1;
 }
 

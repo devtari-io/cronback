@@ -155,7 +155,7 @@ mod tests {
     use chrono::{Timelike, Utc};
 
     use super::*;
-    use crate::scheduler::migrate_up;
+    use crate::scheduler::SchedulerService;
 
     fn build_trigger(
         name: &str,
@@ -189,9 +189,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_trigger_store() -> anyhow::Result<()> {
-        let db = Database::in_memory().await?;
-        migrate_up(&db).await?;
-
+        let db = SchedulerService::in_memory_database().await?;
         let store = TriggerStore::new(db);
 
         let project1 = ProjectId::generate();

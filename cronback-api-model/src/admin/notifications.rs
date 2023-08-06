@@ -27,7 +27,8 @@ use crate::validation_util::validation_error;
 #[serde(deny_unknown_fields)]
 pub struct NotificationSettings {
     #[cfg_attr(feature = "validation", validate)]
-    pub subscriptions: Vec<NotificationSubscription>,
+    pub default_subscriptions: Vec<NotificationSubscription>,
+    // The key of the hashmap is the channel name
     #[cfg_attr(feature = "validation", validate)]
     pub channels: HashMap<String, NotificationChannel>,
 }
@@ -132,7 +133,7 @@ fn validate_settings(
 ) -> Result<(), validator::ValidationError> {
     // Validate that any channel referenced in a subscription actually exists.
 
-    for sub in &settings.subscriptions {
+    for sub in &settings.default_subscriptions {
         for channel in &sub.channel_names {
             if !settings.channels.contains_key(channel) {
                 return Err(validation_error(
@@ -165,7 +166,7 @@ mod tests {
         channels.insert("email".to_string(), NotificationChannel::Email(email));
         let setting = NotificationSettings {
             channels,
-            subscriptions: vec![NotificationSubscription {
+            default_subscriptions: vec![NotificationSubscription {
                 channel_names: vec!["email".to_string()],
                 event: NotificationEvent::OnRunFailure(OnRunFailure {
                     _kind: Default::default(),
@@ -188,7 +189,7 @@ mod tests {
         channels.insert("email".to_string(), NotificationChannel::Email(email));
         let setting = NotificationSettings {
             channels,
-            subscriptions: vec![],
+            default_subscriptions: vec![],
         };
 
         let validated = setting.validate();
@@ -215,7 +216,7 @@ mod tests {
         channels.insert("email".to_string(), NotificationChannel::Email(email));
         let setting = NotificationSettings {
             channels,
-            subscriptions: vec![NotificationSubscription {
+            default_subscriptions: vec![NotificationSubscription {
                 channel_names: vec![
                     "email".to_string(),
                     "wrong_channel".to_string(),

@@ -1,52 +1,56 @@
+mod config;
 mod db_model;
 mod handler;
 mod metadata_store;
 mod migration;
 
+use async_trait::async_trait;
 use lib::prelude::*;
 use lib::{netutils, service};
 use metadata_store::MetadataStore;
 use proto::metadata_svc::metadata_svc_server::MetadataSvcServer;
-use sea_orm::TransactionTrait;
-use sea_orm_migration::MigratorTrait;
 use tracing::info;
 
-// TODO: Move database migration into a new service trait.
-pub async fn migrate_up(db: &Database) -> Result<(), DatabaseError> {
-    let conn = db.orm.begin().await?;
-    migration::Migrator::up(&conn, None).await?;
-    conn.commit().await?;
-    Ok(())
-}
+use self::config::MetadataSvcConfig;
 
-#[tracing::instrument(skip_all, fields(service = context.service_name()))]
-pub async fn start_metadata_server(
-    mut context: service::ServiceContext,
-) -> anyhow::Result<()> {
-    let config = context.load_config();
-    let addr =
-        netutils::parse_addr(&config.metadata.address, config.metadata.port)
-            .unwrap();
+/// The primary service data type for the service.
+#[derive(Clone)]
+pub struct MetadataService;
 
-    let db = Database::connect(&config.metadata.database_uri).await?;
-    migrate_up(&db).await?;
+#[async_trait]
+impl CronbackService for MetadataService {
+    type Migrator = migration::Migrator;
+    type ServiceConfig = MetadataSvcConfig;
 
-    let store = MetadataStore::new(db);
+    const DEFAULT_CONFIG_TOML: &'static str = include_str!("config.toml");
+    const ROLE: &'static str = "metadata";
 
-    let handler = handler::MetadataSvcHandler::new(context.clone(), store);
-    let svc = MetadataSvcServer::new(handler);
+    #[tracing::instrument(skip_all, fields(service = context.service_name()))]
+    async fn serve(
+        mut context: ServiceContext<Self>,
+        db: Database,
+    ) -> anyhow::Result<()> {
+        let svc_config = context.service_config();
+        let addr =
+            netutils::parse_addr(&svc_config.address, svc_config.port).unwrap();
 
-    // grpc server
-    info!("Starting Metadata service on {:?}", addr);
+        let store = MetadataStore::new(db);
 
-    // The stack of middleware that our service will be wrapped in
-    service::grpc_serve_tcp(
-        &mut context,
-        addr,
-        svc,
-        config.metadata.request_processing_timeout_s,
-    )
-    .await;
+        let handler = handler::MetadataSvcHandler::new(context.clone(), store);
+        let svc = MetadataSvcServer::new(handler);
 
-    Ok(())
+        // grpc server
+        info!("Starting Metadata service on {:?}", addr);
+
+        // The stack of middleware that our service will be wrapped in
+        service::grpc_serve_tcp(
+            &mut context,
+            addr,
+            svc,
+            svc_config.request_processing_timeout_s,
+        )
+        .await;
+
+        Ok(())
+    }
 }

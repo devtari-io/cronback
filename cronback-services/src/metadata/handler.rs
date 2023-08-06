@@ -5,14 +5,14 @@ use proto::metadata_svc::metadata_svc_server::MetadataSvc;
 use proto::metadata_svc::{
     CreateProjectRequest,
     CreateProjectResponse,
-    GetProjectNotificationSettingsRequest,
-    GetProjectNotificationSettingsResponse,
+    GetNotificationSettingsRequest,
+    GetNotificationSettingsResponse,
     GetProjectStatusRequest,
     GetProjectStatusResponse,
     ProjectExistsRequest,
     ProjectExistsResponse,
-    SetProjectNotificationSettingsRequest,
-    SetProjectNotificationSettingsResponse,
+    SetNotificationSettingsRequest,
+    SetNotificationSettingsResponse,
     SetProjectStatusRequest,
     SetProjectStatusResponse,
 };
@@ -21,15 +21,19 @@ use tonic::{Request, Response, Status};
 
 use super::db_model::{Project, ProjectStatus};
 use super::metadata_store::MetadataStore;
+use super::MetadataService;
 
 pub(crate) struct MetadataSvcHandler {
     #[allow(unused)]
-    context: ServiceContext,
+    context: ServiceContext<MetadataService>,
     project_store: MetadataStore,
 }
 
 impl MetadataSvcHandler {
-    pub fn new(context: ServiceContext, project_store: MetadataStore) -> Self {
+    pub fn new(
+        context: ServiceContext<MetadataService>,
+        project_store: MetadataStore,
+    ) -> Self {
         Self {
             context,
             project_store,
@@ -140,10 +144,10 @@ impl MetadataSvc for MetadataSvcHandler {
         }))
     }
 
-    async fn get_project_notification_settings(
+    async fn get_notification_settings(
         &self,
-        request: Request<GetProjectNotificationSettingsRequest>,
-    ) -> Result<Response<GetProjectNotificationSettingsResponse>, Status> {
+        request: Request<GetNotificationSettingsRequest>,
+    ) -> Result<Response<GetNotificationSettingsResponse>, Status> {
         let req = request.into_inner();
         let project_id: ProjectId = req.id.unwrap().into();
         let project_id = project_id
@@ -156,7 +160,7 @@ impl MetadataSvc for MetadataSvcHandler {
             .map_err(ProjectStoreHandlerError::Store)?;
         match status {
             | Some(st) => {
-                Ok(Response::new(GetProjectNotificationSettingsResponse {
+                Ok(Response::new(GetNotificationSettingsResponse {
                     settings: Some(st.into()),
                 }))
             }
@@ -169,10 +173,10 @@ impl MetadataSvc for MetadataSvcHandler {
         }
     }
 
-    async fn set_project_notification_settings(
+    async fn set_notification_settings(
         &self,
-        request: Request<SetProjectNotificationSettingsRequest>,
-    ) -> Result<Response<SetProjectNotificationSettingsResponse>, Status> {
+        request: Request<SetNotificationSettingsRequest>,
+    ) -> Result<Response<SetNotificationSettingsResponse>, Status> {
         let req = request.into_inner();
         let project_id: ProjectId = req.id.unwrap().into();
         let project_id = project_id
@@ -200,7 +204,7 @@ impl MetadataSvc for MetadataSvcHandler {
             .await
             .map_err(ProjectStoreHandlerError::Store)?;
 
-        Ok(Response::new(SetProjectNotificationSettingsResponse {
+        Ok(Response::new(SetNotificationSettingsResponse {
             old_settings: Some(old_settings.into()),
         }))
     }

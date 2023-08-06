@@ -7,7 +7,7 @@ package notifications;
 // A project then subscribes to certain events, and specify which channels should the
 // notification be sent on if the event fires.
 message ProjectNotificationSettings {
-    repeated NotificationSubscription subscriptions = 1;
+    repeated NotificationSubscription default_subscriptions = 1;
 
     // The list of configured channels. The map key is the channel name and the value
     // is the channel configuration.

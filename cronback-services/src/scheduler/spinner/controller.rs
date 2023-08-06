@@ -23,6 +23,7 @@ use crate::scheduler::db_model::triggers::Status;
 use crate::scheduler::db_model::Trigger;
 use crate::scheduler::error::TriggerError;
 use crate::scheduler::trigger_store::{TriggerStore, TriggerStoreError};
+use crate::scheduler::SchedulerService;
 
 ///  SpinnerController is the gateway to the scheduling and dispatch thread
 ///  (spinner) It's designed to be easily shared with inner mutability and
@@ -51,7 +52,7 @@ use crate::scheduler::trigger_store::{TriggerStore, TriggerStoreError};
 ///  - Compaction/eviction: remove expired triggers.
 ///  - Flushes active triggers map into the database periodically.
 pub(crate) struct SpinnerController {
-    context: ServiceContext,
+    context: ServiceContext<SchedulerService>,
     triggers: Arc<RwLock<ActiveTriggerMap>>,
     spinner: Mutex<Option<SpinnerHandle>>,
     store: TriggerStore,
@@ -61,7 +62,7 @@ pub(crate) struct SpinnerController {
 
 impl SpinnerController {
     pub fn new(
-        context: ServiceContext,
+        context: ServiceContext<SchedulerService>,
         store: TriggerStore,
         dispatcher_clients: Arc<GrpcClientProvider<ScopedDispatcherSvcClient>>,
     ) -> Self {
@@ -700,8 +701,8 @@ impl SpinnerController {
         let triggers = self.store.get_all_active_triggers().await?;
 
         info!("Found {} active triggers in the database", triggers.len());
-        let config = self.context.get_config();
-        if config.scheduler.dangerous_fast_forward {
+        let config = self.context.service_config();
+        if config.dangerous_fast_forward {
             warn!(
                 "Skipping missed runs, the scheduler will ignore the \
                  last_ran_at of all triggers. This will cause triggers to \
@@ -710,10 +711,7 @@ impl SpinnerController {
         }
         let mut map = self.triggers.write().unwrap();
         for trigger in triggers {
-            map.add_or_update(
-                trigger,
-                config.scheduler.dangerous_fast_forward,
-            )?;
+            map.add_or_update(trigger, config.dangerous_fast_forward)?;
         }
         Ok(())
     }

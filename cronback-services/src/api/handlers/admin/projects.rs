@@ -11,8 +11,8 @@ use hyper::StatusCode;
 use lib::prelude::*;
 use proto::metadata_svc::{
     CreateProjectRequest,
-    GetProjectNotificationSettingsRequest,
-    SetProjectNotificationSettingsRequest,
+    GetNotificationSettingsRequest,
+    SetNotificationSettingsRequest,
     SetProjectStatusRequest,
 };
 use proto::projects::ProjectStatus;
@@ -111,11 +111,9 @@ pub(crate) async fn get_notification_settings(
         .get_client(&request_id, &project_id)
         .await?;
     let resp = metadata
-        .get_project_notification_settings(
-            GetProjectNotificationSettingsRequest {
-                id: Some(project_id.into()),
-            },
-        )
+        .get_notification_settings(GetNotificationSettingsRequest {
+            id: Some(project_id.into()),
+        })
         .await?
         .into_inner();
 
@@ -140,12 +138,10 @@ pub(crate) async fn set_notification_settings(
         .get_client(&request_id, &project_id)
         .await?;
     metadata
-        .set_project_notification_settings(
-            SetProjectNotificationSettingsRequest {
-                id: Some(project_id.into()),
-                settings: Some(settings.into()),
-            },
-        )
+        .set_notification_settings(SetNotificationSettingsRequest {
+            id: Some(project_id.into()),
+            settings: Some(settings.into()),
+        })
         .await?;
     Ok(StatusCode::NO_CONTENT)
 }

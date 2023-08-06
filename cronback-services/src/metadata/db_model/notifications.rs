@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 )]
 #[proto(target = "proto::notifications::ProjectNotificationSettings")]
 pub struct NotificationSettings {
-    pub subscriptions: Vec<NotificationSubscription>,
+    pub default_subscriptions: Vec<NotificationSubscription>,
     pub channels: HashMap<String, NotificationChannel>,
 }
 

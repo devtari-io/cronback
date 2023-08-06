@@ -24,7 +24,7 @@ pub(crate) async fn create(
     Extension(project): Extension<ValidShardedId<ProjectId>>,
     ValidatedJson(req): ValidatedJson<CreateAPIkeyRequest>,
 ) -> Result<Json<CreateAPIKeyResponse>, ApiError> {
-    let key = state.authenicator.gen_key(req, &project).await?;
+    let key = state.authenticator.gen_key(req, &project).await?;
 
     // This is the only legitimate place where this function should be used.
     let key_str = key.unsafe_to_string();
@@ -38,7 +38,7 @@ pub(crate) async fn list(
     Extension(project): Extension<ValidShardedId<ProjectId>>,
 ) -> Result<Paginated<ApiKey>, ApiError> {
     let keys = state
-        .authenicator
+        .authenticator
         .list_keys(&project)
         .await
         .map_err(|e| AppStateError::DatabaseError(e.to_string()))?
@@ -72,7 +72,7 @@ pub(crate) async fn revoke(
     Extension(project): Extension<ValidShardedId<ProjectId>>,
 ) -> Result<StatusCode, ApiError> {
     let deleted = state
-        .authenicator
+        .authenticator
         .revoke_key(&id, &project)
         .await
         .map_err(|e| AppStateError::DatabaseError(e.to_string()))?;
