@@ -345,13 +345,13 @@ pub(crate) struct ActiveTrigger {
 
 impl ActiveTrigger {
     fn try_from(
-        trigger: Trigger,
+        mut trigger: Trigger,
         fast_forward: bool,
     ) -> Result<Self, TriggerError> {
         // Do we have a cron pattern or a set of time points?
         let k = trigger
             .schedule
-            .as_ref()
+            .as_mut()
             .ok_or_else(|| TriggerError::NotScheduled(trigger.id.clone()))?;
         // On fast forward, we ignore the last run time.
         let last_ran_at = if fast_forward {
@@ -360,6 +360,12 @@ impl ActiveTrigger {
             trigger.last_ran_at
         };
         let ticks = ScheduleIter::from_schedule(k, last_ran_at)?;
+
+        // RunAt triggers in particular might have expired timepoints that will
+        // be skipped. Update the underlying trigger so that the
+        // "remaining" attribute correctly reflects that.
+        k.set_remaining(ticks.remaining());
+
         // We assume that Trigger.schedule is never None
         Ok(Self {
             inner: trigger,
