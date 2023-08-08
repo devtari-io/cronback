@@ -1,13 +1,13 @@
 use anyhow::Result;
-use async_trait::async_trait;
-use clap::Parser;
+use cling::prelude::*;
 use cronback_api_model::RunMode;
 use spinners::{Spinner, Spinners};
 
 use crate::args::CommonOptions;
-use crate::{confirm_or_abort, emitln, Command};
+use crate::confirm_or_abort;
 
-#[derive(Clone, Debug, Parser)]
+#[derive(CliRunnable, CliParam, Clone, Debug, Parser)]
+#[cling(run = "run")]
 pub struct RunArgs {
     /// Trigger name
     name: String,
@@ -17,56 +17,45 @@ pub struct RunArgs {
     r#await: bool,
 }
 
-#[async_trait]
-impl Command for RunArgs {
-    async fn run<
-        A: tokio::io::AsyncWrite + Send + Sync + Unpin,
-        B: tokio::io::AsyncWrite + Send + Sync + Unpin,
-    >(
-        &self,
-        out: &mut tokio::io::BufWriter<A>,
-        _err: &mut tokio::io::BufWriter<B>,
-        common_options: &CommonOptions,
-    ) -> Result<()> {
-        confirm_or_abort!(
-            common_options,
-            "Are you sure you want to run the trigger '{}' immediately?",
-            self.name
-        );
+async fn run(common_options: &CommonOptions, opts: &RunArgs) -> Result<()> {
+    confirm_or_abort!(
+        common_options,
+        "Are you sure you want to run the trigger '{}' immediately?",
+        opts.name
+    );
 
-        let client = common_options.new_client()?;
-        let mode = if self.r#await {
-            RunMode::Sync
-        } else {
-            RunMode::Async
-        };
+    let client = common_options.new_client()?;
+    let mode = if opts.r#await {
+        RunMode::Sync
+    } else {
+        RunMode::Async
+    };
 
-        let spinner = if mode == RunMode::Sync {
-            Some(Spinner::new(
-                Spinners::Dots9,
-                "Awaiting the run to complete...".to_owned(),
-            ))
-        } else {
-            None
-        };
+    let spinner = if mode == RunMode::Sync {
+        Some(Spinner::new(
+            Spinners::Dots9,
+            "Awaiting the run to complete...".to_owned(),
+        ))
+    } else {
+        None
+    };
 
-        let response =
-            cronback_client::triggers::run(&client, &self.name, mode).await?;
-        if let Some(mut spinner) = spinner {
-            spinner.stop_with_message("".to_string());
-        }
-
-        let response = response.into_inner();
-        match response {
-            | Ok(good) => {
-                let json = serde_json::to_value(good)?;
-                let colored = colored_json::to_colored_json_auto(&json)?;
-                emitln!(out, "{}", colored);
-            }
-            | Err(bad) => {
-                return Err(bad.into());
-            }
-        };
-        Ok(())
+    let response =
+        cronback_client::triggers::run(&client, &opts.name, mode).await?;
+    if let Some(mut spinner) = spinner {
+        spinner.stop_with_message("".to_string());
     }
+
+    let response = response.into_inner();
+    match response {
+        | Ok(good) => {
+            let json = serde_json::to_value(good)?;
+            let colored = colored_json::to_colored_json_auto(&json)?;
+            println!("{}", colored);
+        }
+        | Err(bad) => {
+            return Err(bad.into());
+        }
+    };
+    Ok(())
 }
