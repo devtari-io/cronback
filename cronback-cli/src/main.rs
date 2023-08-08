@@ -1,6 +1,5 @@
-use clap::Parser;
-use colored::Colorize;
-use cronback_cli::{run_cli, Cli};
+use cling::prelude::*;
+use cronback_cli::Cli;
 use dotenvy::dotenv;
 use tracing::log::info;
 
@@ -24,8 +23,6 @@ async fn main() {
         }
         | Err(e) => info!("Didn't load .env file: {e}"),
     };
-    if let Err(err) = run_cli(args).await {
-        eprintln!("{}", err.to_string().red());
-        std::process::exit(1);
-    };
+
+    args.run().await.print_err_and_exit();
 }
