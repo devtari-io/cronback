@@ -1,6 +1,5 @@
 use anyhow::{Context, Result};
-use async_trait::async_trait;
-use clap::clap_derive::Parser;
+use cling::prelude::*;
 use cronback_client::{
     ClientBuilder,
     Response,
@@ -14,13 +13,13 @@ use url::Url;
 use crate::admin;
 use crate::client::WrappedClient;
 use crate::ui::FancyToString;
-use crate::{runs, triggers, whoami, Command};
+use crate::{runs, triggers, whoami};
 
 const CRONBACK_SECRET_TOKEN_VAR: &str = "CRONBACK_SECRET_TOKEN";
 #[cfg(feature = "admin")]
 const CRONBACK_PROJECT_ID_VAR: &str = "CRONBACK_PROJECT_ID";
 
-#[derive(Parser, Debug, Clone)]
+#[derive(CliRunnable, Parser, Debug, Clone)]
 /// Command-line utility to manage cronback projects
 pub struct Cli {
     #[clap(flatten)]
@@ -32,7 +31,7 @@ pub struct Cli {
     pub command: CliCommand,
 }
 
-#[derive(Parser, Debug, Clone)]
+#[derive(CliParam, Parser, Debug, Clone)]
 pub struct CommonOptions {
     #[arg(long, global = true)]
     /// Connect to a local cronback service (http://localhost:8888)
@@ -64,31 +63,25 @@ pub struct CommonOptions {
     pub yes: bool,
 }
 
-#[derive(Parser, Debug, Clone)]
+#[derive(CliRunnable, Subcommand, Debug, Clone)]
 pub enum CliCommand {
     /// Commands for triggers
-    Triggers {
-        #[command(subcommand)]
-        command: TriggerCommand,
-    },
+    #[command(subcommand)]
+    Triggers(TriggerCommand),
     /// Commands for trigger runs
-    Runs {
-        #[command(subcommand)]
-        command: RunsCommand,
-    },
+    #[command(subcommand)]
+    Runs(RunsCommand),
     #[command(name = "whoami")]
     /// Prints information about the current context/environment
     WhoAmI(whoami::WhoAmI),
 
     /// Set of commands that require admin privillages.
     #[cfg(feature = "admin")]
-    Admin {
-        #[command(subcommand)]
-        command: admin::AdminCommand,
-    },
+    #[command(subcommand)]
+    Admin(admin::AdminCommand),
 }
 
-#[derive(Parser, Debug, Clone)]
+#[derive(CliRunnable, Subcommand, Debug, Clone)]
 pub enum TriggerCommand {
     /// List triggers
     #[command(visible_alias = "ls")]
@@ -113,7 +106,7 @@ pub enum TriggerCommand {
     Delete(triggers::Delete),
 }
 
-#[derive(Parser, Debug, Clone)]
+#[derive(CliRunnable, Subcommand, Debug, Clone)]
 pub enum RunsCommand {
     /// View details about a given trigger run
     View(runs::View),
@@ -174,34 +167,6 @@ impl CommonOptions {
                 "-------------------------------------------------".green()
             );
             eprintln!();
-        }
-    }
-}
-
-// TODO: Macro-fy this.
-#[async_trait]
-impl Command for CliCommand {
-    async fn run<
-        A: tokio::io::AsyncWrite + Send + Sync + Unpin,
-        B: tokio::io::AsyncWrite + Send + Sync + Unpin,
-    >(
-        &self,
-        out: &mut tokio::io::BufWriter<A>,
-        err: &mut tokio::io::BufWriter<B>,
-        common_options: &CommonOptions,
-    ) -> Result<()> {
-        match self {
-            | CliCommand::Triggers { command } => {
-                command.run(out, err, common_options).await
-            }
-            | CliCommand::Runs { command } => {
-                command.run(out, err, common_options).await
-            }
-            #[cfg(feature = "admin")]
-            | CliCommand::Admin { command } => {
-                command.run(out, err, common_options).await
-            }
-            | CliCommand::WhoAmI(c) => c.run(out, err, common_options).await,
         }
     }
 }
