@@ -1,9 +1,9 @@
-use std::fmt::Write;
+use std::fmt::Write as FmtWrite;
 
 use anyhow::Result;
-use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use clap::Parser;
+use cling::prelude::*;
 use colored::Colorize;
 use cronback_client::{
     Pagination,
@@ -17,9 +17,9 @@ use prettytable::{row, Table};
 
 use crate::args::CommonOptions;
 use crate::ui::FancyToString;
-use crate::{emitln, Command};
 
-#[derive(Clone, Debug, Parser)]
+#[derive(CliRunnable, CliParam, Clone, Debug, Parser)]
+#[cling(run = "list")]
 pub struct List {
     /// Cursor to start listing from
     #[clap(long)]
@@ -37,103 +37,87 @@ pub struct List {
     all: bool,
 }
 
-#[async_trait]
-impl Command for List {
-    async fn run<
-        A: tokio::io::AsyncWrite + Send + Sync + Unpin,
-        B: tokio::io::AsyncWrite + Send + Sync + Unpin,
-    >(
-        &self,
-        out: &mut tokio::io::BufWriter<A>,
-        err: &mut tokio::io::BufWriter<B>,
-        common_options: &CommonOptions,
-    ) -> Result<()> {
-        let client = common_options.new_client()?;
-        let status: Vec<TriggerStatus> = match self.status {
-            | Some(ref statuses) => statuses.to_vec(),
+async fn list(common_options: &CommonOptions, opts: &List) -> Result<()> {
+    let client = common_options.new_client()?;
+    let status: Vec<TriggerStatus> = match opts.status {
+        | Some(ref statuses) => statuses.to_vec(),
 
-            | None => {
-                vec![
-                    TriggerStatus::Scheduled,
-                    TriggerStatus::OnDemand,
-                    TriggerStatus::Paused,
-                ]
-            }
-        };
+        | None => {
+            vec![
+                TriggerStatus::Scheduled,
+                TriggerStatus::OnDemand,
+                TriggerStatus::Paused,
+            ]
+        }
+    };
 
-        let filter = if self.all {
-            None
-        } else {
-            Some(TriggersFilter { status })
-        };
+    let filter = if opts.all {
+        None
+    } else {
+        Some(TriggersFilter { status })
+    };
 
-        let pagination = Some(Pagination {
-            cursor: self.cursor.clone(),
-            limit: self.limit,
-        });
+    let pagination = Some(Pagination {
+        cursor: opts.cursor.clone(),
+        limit: opts.limit,
+    });
 
-        let response =
-            cronback_client::triggers::list(&client, pagination, filter)
-                .await?;
+    let response =
+        cronback_client::triggers::list(&client, pagination, filter).await?;
 
-        let response = response.into_inner()?;
-        // Print Table
-        if !response.data.is_empty() {
-            let len = response.data.len();
+    let response = response.into_inner()?;
+    // Print Table
+    if !response.data.is_empty() {
+        let len = response.data.len();
 
-            let mut table = Table::new();
-            table.set_titles(row![
-                "Name",
-                "Status",
-                "Schedule",
-                "Runs",
-                "End Point",
-                "Payload Size",
-                "Created At",
+        let mut table = Table::new();
+        table.set_titles(row![
+            "Name",
+            "Status",
+            "Schedule",
+            "Runs",
+            "End Point",
+            "Payload Size",
+            "Created At",
+        ]);
+        for trigger in response.data {
+            let endpoint = trigger
+                .webhook()
+                .and_then(|e| e.url.clone())
+                .unwrap_or_default();
+
+            table.add_row(row![
+                trigger.name.expect("name should be present"),
+                trigger.status.fancy(),
+                trigger.schedule.map(fancy_schedule).unwrap_or_default(),
+                fancy_runs(trigger.last_ran_at, trigger.estimated_future_runs),
+                endpoint,
+                trigger
+                    .payload
+                    .map(|x| x.body)
+                    .map(|y| format!("{} bytes", y.as_bytes().len()))
+                    .unwrap_or_default(),
+                trigger
+                    .created_at
+                    .expect("created_at should be present")
+                    .to_rfc2822(),
             ]);
-            for trigger in response.data {
-                let endpoint = trigger
-                    .webhook()
-                    .and_then(|e| e.url.clone())
-                    .unwrap_or_default();
-
-                table.add_row(row![
-                    trigger.name.expect("name should be present"),
-                    trigger.status.fancy(),
-                    trigger.schedule.map(fancy_schedule).unwrap_or_default(),
-                    fancy_runs(
-                        trigger.last_ran_at,
-                        trigger.estimated_future_runs
-                    ),
-                    endpoint,
-                    trigger
-                        .payload
-                        .map(|x| x.body)
-                        .map(|y| format!("{} bytes", y.as_bytes().len()))
-                        .unwrap_or_default(),
-                    trigger
-                        .created_at
-                        .expect("created_at should be present")
-                        .to_rfc2822(),
-                ]);
-            }
-
-            emitln!(out, "{}", table);
-
-            // Print Pagination Metadata
-            emitln!(err, "{len} Triggers Shown");
-            if let Some(next_page_cursor) = response.meta.next_cursor {
-                emitln!(
-                    err,
-                    "View next page by {}{}",
-                    "--cursor=".bold(),
-                    next_page_cursor.bold()
-                );
-            }
         }
 
-        Ok(())
+        println!("{}", table);
+
+        // Print Pagination Metadata
+        eprintln!("{len} Triggers Shown");
+        if let Some(next_page_cursor) = response.meta.next_cursor {
+            eprintln!(
+                "View next page by {}{}",
+                "--cursor=".bold(),
+                next_page_cursor.bold()
+            );
+        }
     }
+
+    Ok(())
 }
 
 fn fancy_runs(

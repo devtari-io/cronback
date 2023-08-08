@@ -1,2 +1,0 @@
-#[derive(Debug)]
-struct CliError {}
