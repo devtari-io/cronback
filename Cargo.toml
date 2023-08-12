@@ -38,15 +38,15 @@ iso8601-duration = "0.2.0"
 metrics = "0.21"
 prost = "0.11"
 rand = "0.8"
-sea-query = { version = "0.28", features = ["with-json"] }
-sea-query-binder = { version = "0.3", features = [
+sea-query = { version = "0.30.0", features = ["with-json"] }
+sea-query-binder = { version = "0.5.0", features = [
   "sqlx-sqlite",
   "sqlx-postgres",
   "sqlx-any",
   "runtime-tokio-native-tls",
   "with-json",
 ] }
-sea-orm = { version = "0.11.3", features = [
+sea-orm = { version = "0.12.2", features = [
   "chrono",
   "sqlx-sqlite",
   "macros",
@@ -54,9 +54,9 @@ sea-orm = { version = "0.11.3", features = [
 ] }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1.0.93" }
-serde_with = { version = "3.0.0"}
+serde_with = { version = "3.0.0" }
 sha2 = "0.10.6"
-sqlx = { version = "0.6.3", features = ["runtime-tokio-native-tls", "any"] }
+sqlx = { version = "0.7.1", features = ["runtime-tokio-native-tls", "any"] }
 tempfile = "3.5"
 thiserror = "1"
 tokio = { version = "1", default-features = false, features = [
