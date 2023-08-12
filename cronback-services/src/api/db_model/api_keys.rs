@@ -3,6 +3,7 @@
 use chrono::{DateTime, Utc};
 use lib::prelude::*;
 use sea_orm::entity::prelude::*;
+use sea_orm::FromJsonQueryResult;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
