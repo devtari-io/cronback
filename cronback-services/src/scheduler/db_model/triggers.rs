@@ -107,6 +107,7 @@ impl Model {
     Eq,
     EnumIter,
     DeriveActiveEnum,
+    DeriveDisplay,
 )]
 #[sea_orm(rs_type = "String", db_type = "String(None)")]
 #[proto(target = "proto::triggers::TriggerStatus")]
