@@ -26,7 +26,7 @@ admin = ["cronback-client/admin", "cronback-api-model/admin"]
 [dependencies]
 cronback-client = { workspace = true }
 cronback-api-model = { workspace = true, features = ["client", "clap"] }
-cling = { git = "https://github.com/AhmedSoliman/cling.git", version = "0.0.0-alpha.2" }
+cling = { version = "0.0.0-alpha.5" }
 
 anyhow = { version = "1.0.71" }
 async-trait = { workspace = true }

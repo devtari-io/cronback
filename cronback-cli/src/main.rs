@@ -4,7 +4,7 @@ use dotenvy::dotenv;
 use tracing::log::info;
 
 #[tokio::main(flavor = "multi_thread")]
-async fn main() {
+async fn main() -> ClingFinished<Cli> {
     // Load .env file. Best effort.
     let maybe_env = dotenv();
     let args = Cli::parse();
@@ -24,5 +24,5 @@ async fn main() {
         | Err(e) => info!("Didn't load .env file: {e}"),
     };
 
-    args.run().await.print_err_and_exit();
+    args.into_cling().run().await
 }
