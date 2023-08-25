@@ -4,6 +4,7 @@ mod database;
 mod grpc_client_provider;
 mod grpc_helpers;
 mod model;
+mod project_settings;
 mod rpc_middleware;
 mod shutdown;
 mod types;
@@ -28,6 +29,7 @@ pub mod prelude {
     pub use crate::ext::*;
     pub use crate::grpc_helpers::*;
     pub use crate::model::*;
+    pub use crate::project_settings::*;
     pub use crate::service::*;
     pub use crate::types::*;
 }
