@@ -29,7 +29,6 @@ fn setup_logging_subscriber(
     // The default stdout logging
     let stdout_layer = {
         let env_filter = tracing_subscriber::EnvFilter::builder()
-            .with_env_var("CRONBACK_LOG")
             .try_from_env()
             .unwrap_or_else(|_| {
                 "info,sqlx=warn,cronbackd=debug,cronback_services=debug,\
