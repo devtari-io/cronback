@@ -20,11 +20,13 @@ const CRONBACK_SECRET_TOKEN_VAR: &str = "CRONBACK_SECRET_TOKEN";
 const CRONBACK_PROJECT_ID_VAR: &str = "CRONBACK_PROJECT_ID";
 
 #[derive(CliRunnable, Parser, Debug, Clone)]
+#[cling(run = "crate::init")]
 /// Command-line utility to manage cronback projects
 pub struct Cli {
     #[clap(flatten)]
     pub common: CommonOptions,
     #[clap(flatten)]
+    #[cling(collect)]
     pub verbose: clap_verbosity_flag::Verbosity,
 
     #[command(subcommand)]
