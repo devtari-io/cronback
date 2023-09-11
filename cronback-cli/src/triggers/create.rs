@@ -5,7 +5,7 @@ use cling::prelude::*;
 use crate::args::CommonOptions;
 use crate::confirm_or_abort;
 
-#[derive(CliRunnable, CliParam, Clone, Debug, Parser)]
+#[derive(Run, Collect, Args, Clone, Debug)]
 #[cling(run = "create")]
 pub struct Create {
     /// JSON file name with the trigger definition, or use - for stdin

@@ -3,7 +3,7 @@ use cling::prelude::*;
 
 use crate::args::CommonOptions;
 
-#[derive(CliRunnable, CliParam, Clone, Debug, Parser)]
+#[derive(Run, Collect, Args, Clone, Debug)]
 #[cling(run = "view")]
 pub struct View {
     /// Trigger name

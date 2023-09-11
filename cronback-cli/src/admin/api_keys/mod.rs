@@ -4,7 +4,7 @@ mod create;
 mod list;
 mod revoke;
 
-#[derive(CliRunnable, Subcommand, Debug, Clone)]
+#[derive(Run, Subcommand, Debug, Clone)]
 pub enum ApiKeysCommand {
     /// List API keys
     #[command(visible_alias = "ls")]

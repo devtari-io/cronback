@@ -179,8 +179,8 @@ impl<E> NameCache<E> {
 
 // Ensure that NameCache is Send + Sync. Compiler will fail if it's not.
 const _: () = {
-    fn assert_send<T: Send + Sync>() {}
-    let _ = assert_send::<NameCache<anyhow::Error>>;
+    const fn assert_send<T: Send + Sync>() {}
+    assert_send::<NameCache<anyhow::Error>>();
 };
 
 #[cfg(test)]

@@ -7,7 +7,7 @@ use prettytable::{row, Table};
 use crate::args::CommonOptions;
 use crate::ui::FancyToString;
 
-#[derive(CliRunnable, CliParam, Clone, Debug, Parser)]
+#[derive(Run, Collect, Args, Clone, Debug)]
 #[cling(run = "list_runs")]
 pub struct ListRuns {
     /// Cursor to start listing from

@@ -4,7 +4,7 @@ use cronback_api_model::admin::APIKeyMetaData;
 
 use crate::args::CommonOptions;
 
-#[derive(CliRunnable, CliParam, Clone, Debug, Parser)]
+#[derive(Run, Collect, Clone, Debug, Parser)]
 #[cling(run = "create")]
 pub struct Create {
     /// The name of the key to be created
