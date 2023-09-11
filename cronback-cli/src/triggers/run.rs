@@ -6,7 +6,7 @@ use spinners::{Spinner, Spinners};
 use crate::args::CommonOptions;
 use crate::confirm_or_abort;
 
-#[derive(CliRunnable, CliParam, Clone, Debug, Parser)]
+#[derive(Run, Collect, Args, Clone, Debug)]
 #[cling(run = "run")]
 pub struct RunArgs {
     /// Trigger name

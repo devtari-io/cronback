@@ -632,18 +632,17 @@ checksum = "cd7cc57abe963c6d3b9d8be5b06ba7c8957a930305ca90304f24ef040aa6f961"
 
 [[package]]
 name = "cling"
-version = "0.0.1-alpha.1"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93e4a2e71e9fceda49fccfea44aae2de7d76f32a7fd239f2c2be2719cbb3c18f"
+checksum = "d6d3c3668d01b3168d5126326fa4181c454fc8430173129170a9eb12d65ffba9"
 dependencies = [
  "anyhow",
  "async-trait",
  "clap",
- "clap-stdin",
  "cling-derive",
- "colored",
  "indoc",
- "shlex",
+ "rustc_version",
+ "rustversion",
  "static_assertions",
  "termcolor",
  "tracing",
@@ -651,11 +650,12 @@ dependencies = [
 
 [[package]]
 name = "cling-derive"
-version = "0.0.1-alpha.1"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33def7d20ed0d80fe555bda22d949a6de0519fe763a57ef0871150971447d70d"
+checksum = "49a1db6bf280e9890a7663e8e9f299d4b62b3fe4f7e3ec8a6b2c0ee4a7da656a"
 dependencies = [
  "darling",
+ "indoc",
  "proc-macro2",
  "quote",
  "syn 2.0.29",
@@ -822,7 +822,7 @@ dependencies = [
 
 [[package]]
 name = "cronback-cli"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3565,12 +3565,6 @@ checksum = "900fba806f70c630b0a382d0d825e17a0f19fcd059a2ade1ff237bcddf446b31"
 dependencies = [
  "lazy_static",
 ]
-
-[[package]]
-name = "shlex"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43b2853a4d09f215c24cc5489c992ce46052d359b5109343cbafbf26bc62f8a3"
 
 [[package]]
 name = "signal-hook-registry"

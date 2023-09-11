@@ -3,7 +3,7 @@ use cling::prelude::*;
 
 use crate::args::CommonOptions;
 
-#[derive(CliRunnable, Clone, Debug, Parser)]
+#[derive(Run, Args, Clone, Debug)]
 #[cling(run = "create")]
 pub struct Create;
 

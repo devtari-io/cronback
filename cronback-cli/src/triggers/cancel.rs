@@ -5,7 +5,7 @@ use crate::args::CommonOptions;
 use crate::confirm_or_abort;
 use crate::ui::FancyToString;
 
-#[derive(CliRunnable, CliParam, Clone, Debug, Parser)]
+#[derive(Run, Collect, Args, Clone, Debug)]
 #[cling(run = "cancel")]
 pub struct Cancel {
     /// Trigger name

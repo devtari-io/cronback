@@ -4,7 +4,7 @@ use prettytable::{row, Table};
 
 use crate::args::CommonOptions;
 
-#[derive(CliRunnable, Clone, Debug, Parser)]
+#[derive(Run, Args, Clone, Debug)]
 #[cling(run = "list")]
 pub struct List;
 

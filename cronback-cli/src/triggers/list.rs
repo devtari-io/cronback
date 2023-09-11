@@ -2,7 +2,6 @@ use std::fmt::Write as FmtWrite;
 
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use clap::Parser;
 use cling::prelude::*;
 use colored::Colorize;
 use cronback_client::{
@@ -18,7 +17,7 @@ use prettytable::{row, Table};
 use crate::args::CommonOptions;
 use crate::ui::FancyToString;
 
-#[derive(CliRunnable, CliParam, Clone, Debug, Parser)]
+#[derive(Run, Collect, Args, Clone, Debug)]
 #[cling(run = "list")]
 pub struct List {
     /// Cursor to start listing from

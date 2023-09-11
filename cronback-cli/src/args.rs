@@ -19,7 +19,7 @@ const CRONBACK_SECRET_TOKEN_VAR: &str = "CRONBACK_SECRET_TOKEN";
 #[cfg(feature = "admin")]
 const CRONBACK_PROJECT_ID_VAR: &str = "CRONBACK_PROJECT_ID";
 
-#[derive(CliRunnable, Parser, Debug, Clone)]
+#[derive(Run, Parser, Debug, Clone)]
 #[cling(run = "crate::init")]
 /// Command-line utility to manage cronback projects
 pub struct Cli {
@@ -33,7 +33,7 @@ pub struct Cli {
     pub command: CliCommand,
 }
 
-#[derive(CliParam, Parser, Debug, Clone)]
+#[derive(Collect, Args, Debug, Clone)]
 pub struct CommonOptions {
     #[arg(long, global = true)]
     /// Connect to a local cronback service (http://localhost:8888)
@@ -65,7 +65,7 @@ pub struct CommonOptions {
     pub yes: bool,
 }
 
-#[derive(CliRunnable, Subcommand, Debug, Clone)]
+#[derive(Run, Subcommand, Debug, Clone)]
 pub enum CliCommand {
     /// Commands for triggers
     #[command(subcommand)]
@@ -83,7 +83,7 @@ pub enum CliCommand {
     Admin(admin::AdminCommand),
 }
 
-#[derive(CliRunnable, Subcommand, Debug, Clone)]
+#[derive(Run, Subcommand, Debug, Clone)]
 pub enum TriggerCommand {
     /// List triggers
     #[command(visible_alias = "ls")]
@@ -108,7 +108,7 @@ pub enum TriggerCommand {
     Delete(triggers::Delete),
 }
 
-#[derive(CliRunnable, Subcommand, Debug, Clone)]
+#[derive(Run, Subcommand, Debug, Clone)]
 pub enum RunsCommand {
     /// View details about a given trigger run
     View(runs::View),

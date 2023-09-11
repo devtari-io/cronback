@@ -240,8 +240,8 @@ pub(crate) struct ClientConfig {
 
 // Ensure that Client is Send + Sync. Compiler will fail if it's not.
 const _: () = {
-    fn assert_send<T: Send + Sync>() {}
-    let _ = assert_send::<Client>;
+    const fn assert_send<T: Send + Sync>() {}
+    assert_send::<Client>();
 };
 
 #[async_trait]

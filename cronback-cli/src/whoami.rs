@@ -4,7 +4,7 @@ use colored::Colorize;
 
 use crate::args::CommonOptions;
 
-#[derive(CliRunnable, CliParam, Clone, Debug, Parser)]
+#[derive(Run, Collect, Clone, Debug, Parser)]
 #[cling(run = "whoami")]
 pub struct WhoAmI {
     #[arg(long)]

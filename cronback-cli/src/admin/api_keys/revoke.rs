@@ -4,7 +4,7 @@ use cling::prelude::*;
 use crate::args::CommonOptions;
 use crate::confirm::confirm_or_abort;
 
-#[derive(CliRunnable, CliParam, Clone, Debug, Parser)]
+#[derive(Run, Collect, Args, Clone, Debug)]
 #[cling(run = "revoke")]
 pub struct Revoke {
     /// The Id of the key to be revoked

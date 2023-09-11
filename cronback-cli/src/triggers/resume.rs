@@ -1,11 +1,10 @@
 use anyhow::Result;
-use clap::Parser;
 use cling::prelude::*;
 
 use crate::args::CommonOptions;
 use crate::ui::FancyToString;
 
-#[derive(CliRunnable, CliParam, Clone, Debug, Parser)]
+#[derive(Run, Collect, Args, Clone, Debug)]
 #[cling(run = "resume")]
 pub struct Resume {
     /// Trigger name

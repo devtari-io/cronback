@@ -1,7 +1,7 @@
 [package]
 name = "cronback-cli"
 description = "Cronback CLI"
-version = "0.1.0"
+version = "0.1.1"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -26,7 +26,7 @@ admin = ["cronback-client/admin", "cronback-api-model/admin"]
 [dependencies]
 cronback-client = { workspace = true }
 cronback-api-model = { workspace = true, features = ["client", "clap"] }
-cling = { version = "0.0.1-alpha.1" }
+cling = { version = "0.1.0" }
 
 anyhow = { version = "1.0.71" }
 async-trait = { workspace = true }
