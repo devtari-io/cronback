@@ -1,5 +1,6 @@
 [workspace]
 members = ["clients/rust", "cronback", "cronback-*"]
+resolver = "2"
 
 [workspace.package]
 license = "BSD-2-Clause-Patent"
